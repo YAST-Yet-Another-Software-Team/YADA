@@ -59,8 +59,7 @@ YADA is a web application that streamlines on-demand motor courier delivery for 
 | Frontend   | Svelte      |
 | Backend    | Node.js     |
 | Database   | PostgreSQL  |
-| Transport  | HTTPS       |
-| Email      | SMTP (password recovery) |
+____________________________
 
 ## System Architecture
 
