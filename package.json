@@ -18,9 +18,9 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@sveltejs/adapter-node": "^5.0.0",
-    "@sveltejs/kit": "^2.16.0",
-    "drizzle-orm": "^0.38.0",
+    "@sveltejs/adapter-node": "^5.5.7",
+    "@sveltejs/kit": "^2.69.3",
+    "drizzle-orm": "^0.45.2",
     "pg": "^8.13.0",
     "socket.io": "^4.8.1",
     "svelte": "^5.0.0"
@@ -28,8 +28,9 @@
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@types/node": "^22.13.0",
+    "@types/pg": "^8.15.5",
     "autoprefixer": "^10.4.20",
-    "drizzle-kit": "^0.31.0",
+    "drizzle-kit": "^0.31.10",
     "postcss": "^8.5.2",
     "prettier": "^3.5.1",
     "prettier-plugin-svelte": "^3.3.3",
@@ -37,5 +38,8 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
     "vite": "^6.1.0"
+  }
+  ,"overrides": {
+    "cookie": "^0.7.2"
   }
 }

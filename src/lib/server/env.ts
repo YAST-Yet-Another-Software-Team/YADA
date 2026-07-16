@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { env } from 'node:process';
 
 export const appEnv = {
   nodeEnv: env.NODE_ENV ?? 'development',

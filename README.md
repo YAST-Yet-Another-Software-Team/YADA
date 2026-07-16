@@ -54,11 +54,13 @@ YADA is a web application that streamlines on-demand motor courier delivery for 
 
 ## Tech Stack
 
-| Layer      | Technology  |
-|------------|-------------|
-| Frontend   | Svelte      |
-| Backend    | Node.js     |
-| Database   | PostgreSQL  |
+- Frontend: SvelteKit, Tailwind CSS, Google Maps API
+- Backend: Node.js, TypeScript
+- Real Time Communication: Socket.IO
+- Location service: google maps
+- Database: PostgreSQL Neon, PostGIS, Drizzle ORM
+- Authentication: Better Auth, OAuth
+- Deployment: Cloudflare, Railway/Render
 ____________________________
 
 ## System Architecture
