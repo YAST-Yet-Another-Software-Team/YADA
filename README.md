@@ -1,6 +1,6 @@
 # YADA – Motor Courier Request Web Application
 
-YADA is a web application that streamlines on-demand motor courier delivery for Favorie a food business. It replaces manual delivery coordination (phone calls and text messages) with a single platform where the business can request, track, and manage deliveries, and couriers can accept and fulfill them.
+YADA is a web application that streamlines on-demand motor courier delivery for Favorie, a food business. It replaces manual delivery coordination (phone calls and text messages) with a single platform where the business can request, track, and manage deliveries, and couriers can accept and fulfill them.
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ YADA is a web application that streamlines on-demand motor courier delivery for 
 
 ## Overview
 
-**Favorie** a businesses that relies on motor delivery often coordinate couriers manually, which is slow and hard to track. YADA solves this by letting **Favorie** request a courier, matching the request to a nearby available **Courier**, and tracking the delivery in real time from request through completion.
+**Favorie** a businesses that relies on motor delivery often coordinate couriers manually, which is slow, time consuming and hard to track. YADA solves this by letting **Favorie** request a courier, matching the request to a nearby available **Courier**, and tracking the delivery in real time from request through completion.
 
 ## Key Features
 
