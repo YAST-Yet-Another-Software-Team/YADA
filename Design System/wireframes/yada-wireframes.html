@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>YADA — Low-fi Wireframes</title>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Architects Daughter', cursive; color: #222; }
+
+  .row-title {
+    position: absolute;
+    font-size: 30px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    text-decoration-color: #dd3b3b;
+    text-underline-offset: 6px;
+  }
+  .row-sub { position:absolute; font-size:15px; color:#666; font-style:italic; }
+
+  .frame {
+    position: absolute;
+    background: #fffdf8;
+    border: 2.5px solid #222;
+    box-shadow: 5px 5px 0 rgba(0,0,0,0.10);
+  }
+  .frame-title { position: absolute; font-size: 18px; font-weight: 700; white-space: nowrap; }
+  .variant-caption { position: absolute; font-size: 14px; font-style: italic; color: #555; white-space: nowrap; max-width: 320px; }
+
+  .mobile { width: 320px; height: 650px; border-radius: 26px; overflow: hidden; }
+  .desktop { width: 900px; height: 600px; border-radius: 6px; overflow: hidden; }
+
+  /* mobile chrome */
+  .status { height: 26px; border-bottom: 2px solid #222; display:flex; align-items:center; justify-content:center; font-size: 10px; letter-spacing: 3px; color:#555; }
+  .topbar { height: 52px; border-bottom: 2px solid #222; display:flex; align-items:center; padding:0 14px; justify-content:space-between; font-size:17px; font-weight:700; }
+  .content { padding: 16px; display:flex; flex-direction:column; gap: 12px; height: calc(100% - 26px); }
+  .content.notop { height: calc(100% - 26px); }
+  .content.withtop { height: calc(100% - 78px); }
+
+  .icon-circle { width: 30px; height: 30px; border: 2px solid #222; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size: 13px; flex-shrink:0; }
+  .label { font-size: 13px; color: #666; }
+  .input-box { border: 2px solid #222; border-radius: 8px; padding: 10px 12px; font-size: 15px; }
+  .btn { border: 2.5px solid #222; border-radius: 8px; padding: 12px; text-align:center; font-size: 16px; font-weight:700; }
+  .btn-primary { background: #dd3b3b; color: #fff; border-color:#dd3b3b; }
+  .btn-ghost { background: transparent; }
+  .btn-sm { padding: 8px 14px; font-size: 14px; display:inline-block; }
+  .map-placeholder { flex:1; border: 2px dashed #999; background-image: repeating-linear-gradient(45deg,#e2e2e2,#e2e2e2 1px,transparent 1px,transparent 12px); display:flex; align-items:center; justify-content:center; font-size:13px; color:#888; text-align:center; padding: 8px; }
+  .card { border: 2px solid #222; border-radius: 10px; padding: 12px; }
+  .divider { border-top: 2px dashed #999; }
+  .pill { display:inline-block; border: 2px solid #222; border-radius: 20px; padding: 3px 10px; font-size: 12px; }
+  .pill-red { border-color:#dd3b3b; color:#dd3b3b; }
+  .avatar-circle { width: 46px; height: 46px; border: 2px solid #222; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size: 12px; flex-shrink:0; }
+  .bottom-sheet { position:absolute; left:0; right:0; bottom:0; border-top: 2.5px solid #222; background:#fffdf8; border-radius: 20px 20px 0 0; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .row { display:flex; align-items:center; gap: 10px; }
+  .between { display:flex; align-items:center; justify-content:space-between; }
+  .tab { border-bottom: 3px solid transparent; padding-bottom: 4px; font-size: 14px; }
+  .tab-active { border-bottom: 3px solid #dd3b3b; font-weight:700; }
+
+  /* desktop chrome */
+  .desktop-topnav { height: 58px; border-bottom: 2.5px solid #222; display:flex; align-items:center; justify-content:space-between; padding: 0 24px; }
+  .desktop-nav-links { display:flex; gap: 22px; font-size: 15px; }
+  .desktop-nav-links span.active { font-weight:700; border-bottom: 3px solid #dd3b3b; padding-bottom: 2px; }
+  .desktop-body { display:flex; height: calc(100% - 58px); }
+  .stat-card { border: 2px solid #222; border-radius: 8px; padding: 14px; flex:1; }
+  .table-row { display:flex; align-items:center; border-bottom: 2px dashed #bbb; padding: 10px 4px; font-size: 14px; gap: 12px; }
+  .table-header { display:flex; align-items:center; border-bottom: 2.5px solid #222; padding: 8px 4px; font-size: 12px; font-weight:700; color:#666; gap:12px; }
+  .col { flex:1; }
+  .kanban-col { flex:1; border-right: 2px dashed #bbb; padding: 12px; display:flex; flex-direction:column; gap: 10px; }
+  .kanban-col:last-child { border-right:none; }
+  .kanban-head { font-size: 13px; font-weight:700; color:#555; margin-bottom: 4px; }
+  .kanban-card { border: 2px solid #222; border-radius: 8px; padding: 10px; font-size: 13px; background:#fff; }
+  .desktop-content { padding: 20px; overflow:hidden; height:100%; }
+  .desktop-mobile-frame { display:flex; height:100%; }
+  .desktop-sidepanel { width: 280px; border-left: 2.5px solid #222; padding: 16px; display:flex; flex-direction:column; gap:12px; }
+
+  .annotate { position:absolute; font-size: 13px; color:#dd3b3b; font-style: italic; max-width: 220px; }
+  .arrow { position:absolute; font-size: 22px; color:#dd3b3b; }
+</style>
+<template id="__bundler_thumbnail">
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100" height="100" fill="#fffdf8"/>
+  <rect x="15" y="15" width="70" height="70" fill="none" stroke="#dd3b3b" stroke-width="4" rx="6"/>
+  <text x="50" y="58" font-size="26" text-anchor="middle" fill="#222" font-family="cursive">Y</text>
+</svg>
+</template>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- ROW 1 — RIDER (MOBILE)                                        -->
+<!-- ============================================================ -->
+<div class="row-title" style="left:40px; top:30px;">Courier (rider) — mobile</div>
+<div class="row-sub" style="left:40px; top:80px;">The rider who delivers: goes online → gets called by a business → picks up → drops off</div>
+
+<!-- Login -->
+<div class="frame-title" style="left:40px; top:110px;">Login</div>
+<div class="frame mobile" style="left:40px; top:140px;">
+  <div class="status">9:41</div>
+  <div class="content notop" style="justify-content:center;">
+    <div style="font-size:34px; font-weight:700; color:#dd3b3b; margin-bottom:4px;">YADA</div>
+    <div class="label" style="margin-bottom:20px;">sign in to start delivering</div>
+    <div class="label">Phone number</div>
+    <div class="input-box">( _ _ _ ) _ _ _ – _ _ _ _</div>
+    <div class="label">Vehicle</div>
+    <div class="input-box between">Bike ▾</div>
+    <div class="btn btn-primary" style="margin-top:8px;">Continue</div>
+  </div>
+</div>
+
+<!-- Waiting -->
+<div class="frame-title" style="left:440px; top:110px;">Waiting for a request</div>
+<div class="frame mobile" style="left:440px; top:140px;">
+  <div class="status">9:41</div>
+  <div class="topbar between">Kwame A. <span class="pill pill-red">● Online</span></div>
+  <div class="content withtop" style="align-items:center; justify-content:center; text-align:center;">
+    <div style="width:120px; height:120px; border:2px dashed #999; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:6px;">
+      <div style="width:80px; height:80px; border:2px dashed #bbb; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+        <div class="icon-circle" style="width:44px; height:44px; font-size:20px;">◉</div>
+      </div>
+    </div>
+    <div style="font-weight:700; font-size:17px;">Waiting for a delivery request…</div>
+    <div class="label">stay nearby — businesses call riders based on distance</div>
+    <div style="flex:1;"></div>
+    <div class="divider" style="width:100%;"></div>
+    <div class="row between" style="width:100%; padding-top:6px;">
+      <div class="label">Today: 3 deliveries</div>
+    </div>
+    <div class="btn btn-ghost" style="width:100%;">Go offline</div>
+  </div>
+</div>
+
+<!-- Incoming request A -->
+<div class="frame-title" style="left:840px; top:110px;">Incoming request</div>
+<div class="variant-caption" style="left:840px; top:800px;">A — full-screen offer: deliberate accept/decline, all details up front</div>
+<div class="frame mobile" style="left:840px; top:140px;">
+  <div class="status">9:41</div>
+  <div class="content notop">
+    <div class="row between">
+      <div style="font-weight:700; font-size:17px;">New delivery request</div>
+      <div class="pill pill-red">0:12</div>
+    </div>
+    <div class="card">
+      <div class="label">Pickup · 0.4 mi</div>
+      <div style="font-weight:700;">YADA Kitchen — 221 Baker St</div>
+    </div>
+    <div class="card">
+      <div class="label">Dropoff · 1.4 mi</div>
+      <div style="font-weight:700;">88 Elm St</div>
+    </div>
+    <div class="row between">
+    </div>
+    <div style="flex:1;"></div>
+    <div class="row">
+      <div class="btn btn-ghost" style="flex:1;">Decline</div>
+      <div class="btn btn-primary" style="flex:2;">Accept</div>
+    </div>
+  </div>
+</div>
+
+<!-- Incoming request B -->
+<div class="frame-title" style="left:1240px; top:110px;">Incoming request</div>
+<div class="variant-caption" style="left:1240px; top:800px;">B — map stays live underneath, offer slides up as a banner — less context switch</div>
+<div class="frame mobile" style="left:1240px; top:140px;">
+  <div class="status">9:41</div>
+  <div class="map-placeholder" style="height: calc(100% - 26px - 200px); border:none; border-radius:0; opacity:.5;">map (dimmed)</div>
+  <div class="bottom-sheet" style="height:200px;">
+    <div class="row between">
+      <div style="font-weight:700;">New request</div>
+      <div class="icon-circle" style="width:26px; height:26px; font-size:12px;">0:12</div>
+    </div>
+    <div class="label">Pickup: YADA Kitchen (0.4 mi) → Dropoff: 88 Elm St (1.4 mi)</div>
+    <div class="row">
+      <div class="icon-circle">✕</div>
+      <div class="btn btn-primary" style="flex:1;">Accept</div>
+    </div>
+  </div>
+</div>
+
+<!-- En route to pickup -->
+<div class="frame-title" style="left:1640px; top:110px;">Heading to pickup</div>
+<div class="frame mobile" style="left:1640px; top:140px;">
+  <div class="status">9:41</div>
+  <div class="map-placeholder" style="height: calc(100% - 26px - 190px); border:none; border-radius:0;">◉----🏪 route to business</div>
+  <div class="bottom-sheet" style="height:190px;">
+    <div class="pill" style="align-self:flex-start;">→ heading to pickup</div>
+    <div>
+      <div style="font-weight:700;">Favorie</div>
+      <div class="label">221 Baker St · Order #4521</div>
+    </div>
+    <div class="row">
+      <div class="btn btn-ghost btn-sm">Navigate</div>
+      <div style="flex:1;"></div>
+      <div class="btn btn-primary btn-sm">Confirm pickup</div>
+    </div>
+  </div>
+</div>
+
+<!-- Delivering -->
+<div class="frame-title" style="left:2040px; top:110px;">Delivering</div>
+<div class="frame mobile" style="left:2040px; top:140px;">
+  <div class="status">9:41</div>
+  <div class="map-placeholder" style="height: calc(100% - 26px - 190px); border:none; border-radius:0;">◉----📍 route to customer</div>
+  <div class="bottom-sheet" style="height:190px;">
+    <div class="pill pill-red" style="align-self:flex-start;">→ delivering</div>
+    <div>
+      <div style="font-weight:700;">88 Elm St</div>
+      <div class="label">note: leave at door</div>
+    </div>
+    <div class="row">
+      <div class="icon-circle">☎</div>
+      <div class="icon-circle">✉</div>
+      <div style="flex:1;"></div>
+      <div class="btn btn-primary btn-sm">Mark delivered</div>
+    </div>
+  </div>
+</div>
+
+<!-- Trip complete -->
+<div class="frame-title" style="left:2440px; top:110px;">Trip complete</div>
+<div class="frame mobile" style="left:2440px; top:140px;">
+  <div class="status">9:41</div>
+  <div class="content notop" style="align-items:center; justify-content:center; text-align:center;">
+    <div class="icon-circle" style="width:60px; height:60px; font-size:28px; margin-bottom:6px;">✓</div>
+    <div style="font-weight:700; font-size:20px;">Delivered!</div>
+    <div class="card" style="width:100%; margin-top:10px;">
+      <div class="row between"><span class="label">Distance</span><span>1.4 mi</span></div>
+      <div class="row between"><span class="label">Time</span><span>6 min</span></div>
+      <div class="row between">
+      </div>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="btn btn-primary" style="width:100%;">Back online</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- ROW 2 — BUSINESS (DESKTOP)                                    -->
+<!-- ============================================================ -->
+<div class="row-title" style="left:40px; top:960px;">Business — desktop</div>
+<div class="row-sub" style="left: 66px; top: 1009px; position: absolute">Restaurant staff manage requests from a workstation · top nav + full-width content</div>
+
+<!-- Login -->
+<div class="frame-title" style="left:40px; top:1040px;">Login</div>
+<div class="frame desktop" style="left:40px; top:1070px; width:420px;">
+  <div class="desktop-content" style="display:flex; flex-direction:column; justify-content:center; align-items:center; gap:14px;">
+    <div style="font-size:36px; font-weight:700; color:#dd3b3b;">YADA</div>
+    <div class="label">for business</div>
+    <div style="width:80%;">
+      <div class="label">Work email</div>
+      <div class="input-box">name@restaurant.com</div>
+    </div>
+    <div style="width:80%;">
+      <div class="label">Password</div>
+      <div class="input-box">••••••••</div>
+    </div>
+    <div class="btn btn-primary" style="width:80%;">Log in</div>
+  </div>
+</div>
+
+<!-- Dashboard A -->
+<div class="frame-title" style="left:540px; top:1040px;">Dashboard</div>
+<div class="variant-caption" style="left:540px; top:1690px;">A — stats + flat table: fast scanning of everything at once</div>
+<div class="frame desktop" style="left:540px; top:1070px;">
+  <div class="desktop-topnav">
+    <div style="font-weight:700; color:#dd3b3b; font-size:20px;">YADA</div>
+    <div class="desktop-nav-links"><span class="active">Dashboard</span><span>Requests</span><span>History</span><span>Team</span></div>
+    <div class="avatar-circle" style="width:34px;height:34px;">JM</div>
+  </div>
+  <div class="desktop-content">
+    <div class="row" style="gap:16px; margin-bottom:16px;">
+      <div class="stat-card"><div class="label">Active deliveries</div><div style="font-size:26px; font-weight:700;">3</div></div>
+      <div class="stat-card"><div class="label">Avg. pickup time</div><div style="font-size:26px; font-weight:700;">6 min</div></div>
+      <div class="stat-card"><div class="label">Delivered today</div><div style="font-size:26px; font-weight:700;">28</div></div>
+    </div>
+    <div class="between" style="margin-bottom:8px;">
+      <div style="font-weight:700; font-size:16px;">Active requests</div>
+      <div class="btn btn-primary btn-sm">+ New request</div>
+    </div>
+    <div class="table-header"><div class="col">Order</div><div class="col">Rider</div><div class="col">Destination</div><div class="col">ETA</div><div class="col">Status</div></div>
+    <div class="table-row"><div class="col">#4521</div><div class="col">Kwame A.</div><div class="col">88 Elm St</div><div class="col">4 min</div><div class="col"><span class="pill pill-red">en route</span></div></div>
+    <div class="table-row"><div class="col">#4520</div><div class="col">Ama O.</div><div class="col">14 Pine Ct</div><div class="col">9 min</div><div class="col"><span class="pill">assigned</span></div></div>
+    <div class="table-row"><div class="col">#4519</div><div class="col">—</div><div class="col">300 Oak Ave</div><div class="col">—</div><div class="col"><span class="pill">finding rider</span></div></div>
+  </div>
+</div>
+
+<!-- Dashboard B -->
+<div class="frame-title" style="left:1540px; top:1040px;">Dashboard (board)</div>
+<div class="variant-caption" style="left:1540px; top:1690px;">B — kanban by status: better for a busy counter watching lifecycle at a glance</div>
+<div class="frame desktop" style="left:1540px; top:1070px;">
+  <div class="desktop-topnav">
+    <div style="font-weight:700; color:#dd3b3b; font-size:20px;">YADA</div>
+    <div class="desktop-nav-links"><span class="active">Dashboard</span><span>Requests</span><span>History</span><span>Team</span></div>
+    <div class="btn btn-primary btn-sm">+ New request</div>
+  </div>
+  <div class="desktop-body">
+    <div class="kanban-col">
+      <div class="kanban-head">FINDING RIDER (1)</div>
+      <div class="kanban-card">#4519 · 300 Oak Ave</div>
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-head">ASSIGNED (1)</div>
+      <div class="kanban-card">#4520 · Ama O. · 14 Pine Ct</div>
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-head">EN ROUTE (1)</div>
+      <div class="kanban-card" style="border-color:#dd3b3b;">#4521 · Kwame A. · 88 Elm St · 4 min</div>
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-head">DELIVERED TODAY (28)</div>
+      <div class="kanban-card" style="opacity:.5;">#4518 · 2:10 PM</div>
+      <div class="kanban-card" style="opacity:.5;">#4517 · 1:52 PM</div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Request -->
+<div class="frame-title" style="left:2540px; top:1040px;">Create request</div>
+<div class="frame desktop" style="left:2540px; top:1070px;">
+  <div class="desktop-topnav">
+    <div style="font-weight:700; color:#dd3b3b; font-size:20px;">YADA</div>
+    <div class="desktop-nav-links"><span>Dashboard</span><span class="active">Requests</span><span>History</span><span>Team</span></div>
+    <div class="avatar-circle" style="width:34px;height:34px;">JM</div>
+  </div>
+  <div class="desktop-body">
+    <div class="desktop-content" style="flex:1;">
+      <div style="font-weight:700; font-size:18px; margin-bottom:14px;">New delivery request</div>
+      <div class="label">Pickup (defaults to your location)</div>
+      <div class="input-box" style="margin-bottom:12px;">◎ 221 Baker St — Kitchen</div>
+      <div class="label">Dropoff</div>
+      <div class="input-box" style="margin-bottom:12px;">📍 Customer address</div>
+      <div class="label">Vehicle</div>
+      <div class="input-box between" style="margin-bottom:16px;">Bike — fastest nearby ▾</div>
+      <div class="btn btn-primary" style="width:200px;">Find a rider</div>
+    </div>
+    <div class="desktop-sidepanel">
+      <div style="font-weight:700;">Route preview</div>
+      <div class="map-placeholder" style="height:220px;">map</div>
+      <div class="label">Est. distance: 1.4 mi</div>
+      <div class="label">Est. time: 5–8 min</div>
+    </div>
+  </div>
+</div>
+
+<!-- Track Delivery -->
+<div class="frame-title" style="left:3540px; top:1040px;">Track delivery</div>
+<div class="frame desktop" style="left:3540px; top:1070px;">
+  <div class="desktop-topnav">
+    <div style="font-weight:700; color:#dd3b3b; font-size:20px;">YADA</div>
+    <div class="desktop-nav-links"><span>Dashboard</span><span class="active">Requests</span><span>History</span><span>Team</span></div>
+    <div class="avatar-circle" style="width:34px;height:34px;">JM</div>
+  </div>
+  <div class="desktop-body">
+    <div class="map-placeholder" style="border:none; border-radius:0; flex:2;">◉----📍 live route</div>
+    <div class="desktop-sidepanel" style="width:320px;">
+      <div class="pill pill-red">➜ en route</div>
+      <div class="row">
+        <div class="avatar-circle">KA</div>
+        <div><div style="font-weight:700;">Kwame A.</div><div class="label">Bike · Yamaha</div></div>
+      </div>
+      <div style="font-size:26px; font-weight:700; color:#dd3b3b;">4 min</div>
+      <div class="divider"></div>
+      <div class="label">Order #4521 → 88 Elm St</div>
+      <div class="row">
+        <div class="icon-circle">☎</div>
+        <div class="icon-circle">✉</div>
+      </div>
+      <div style="flex:1;"></div>
+      <div class="btn btn-ghost btn-sm">Cancel request</div>
+    </div>
+  </div>
+</div>
+
+<!-- History + filters -->
+<div class="frame-title" style="left:4540px; top:1040px;">History + filters</div>
+<div class="frame desktop" style="left:4540px; top:1070px;">
+  <div class="desktop-topnav">
+    <div style="font-weight:700; color:#dd3b3b; font-size:20px;">YADA</div>
+    <div class="desktop-nav-links"><span>Dashboard</span><span>Requests</span><span class="active">History</span><span>Team</span></div>
+    <div class="avatar-circle" style="width:34px;height:34px;">JM</div>
+  </div>
+  <div class="desktop-content">
+    <div class="between" style="margin-bottom:14px;">
+      <div style="font-weight:700; font-size:18px;">Delivery history</div>
+      <div class="row">
+        <div class="input-box btn-sm">Date range ▾</div>
+        <div class="input-box btn-sm">Status ▾</div>
+        <div class="input-box btn-sm">🔍 Search order #</div>
+      </div>
+    </div>
+    <div class="table-header"><div class="col">Order</div><div class="col">Rider</div><div class="col">Destination</div><div class="col">Completed</div><div class="col">Status</div></div>
+    <div class="table-row"><div class="col">#4521</div><div class="col">Kwame A.</div><div class="col">88 Elm St</div><div class="col">2:41 PM</div><div class="col"><span class="pill">delivered</span></div></div>
+    <div class="table-row"><div class="col">#4498</div><div class="col">Ama O.</div><div class="col">12 River Rd</div><div class="col">1:05 PM</div><div class="col"><span class="pill">delivered</span></div></div>
+    <div class="table-row"><div class="col">#4477</div><div class="col">—</div><div class="col">300 Oak Ave</div><div class="col">Yesterday</div><div class="col"><span class="pill pill-red">cancelled</span></div></div>
+    <div class="table-row"><div class="col">#4460</div><div class="col">Kojo B.</div><div class="col">9 Pine Ct</div><div class="col">Yesterday</div><div class="col"><span class="pill">delivered</span></div></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- ROW 3 — BUSINESS (MOBILE)                                     -->
+<!-- ============================================================ -->
+<div class="row-title" style="left:40px; top:1790px;">Business — mobile</div>
+<div class="row-sub" style="left:40px; top:1840px;">Full flow, compact — sign in, request a rider, track through delivered</div>
+
+<div class="frame-title" style="left:40px; top:1870px;">Login</div>
+<div class="frame mobile" style="left:40px; top:1900px;">
+  <div class="status">9:41</div>
+  <div class="content notop" style="justify-content:center;">
+    <div style="font-size:34px; font-weight:700; color:#dd3b3b; margin-bottom:4px;">YADA</div>
+    <div class="label" style="margin-bottom:20px;">for business</div>
+    <div class="label">Work email</div>
+    <div class="input-box">name@restaurant.com</div>
+    <div class="label">Password</div>
+    <div class="input-box">••••••••</div>
+    <div class="btn btn-primary" style="margin-top:8px;">Log in</div>
+  </div>
+</div>
+
+<div class="frame-title" style="left:440px; top:1870px;">Dashboard</div>
+<div class="frame mobile" style="left:440px; top:1900px;">
+  <div class="status">9:41</div>
+  <div class="topbar between">☰ Dashboard <div class="avatar-circle" style="width:28px;height:28px;">JM</div></div>
+  <div class="content withtop">
+    <div class="row" style="gap:10px;">
+      <div class="stat-card"><div class="label">Active</div><div style="font-size:20px; font-weight:700;">3</div></div>
+      <div class="stat-card"><div class="label">Today</div><div style="font-size:20px; font-weight:700;">28</div></div>
+    </div>
+    <div style="font-weight:700;">Active requests</div>
+    <div class="card between"><span>#4521 · 88 Elm St</span><span class="pill pill-red">en route</span></div>
+    <div class="card between"><span>#4520 · 14 Pine Ct</span><span class="pill">assigned</span></div>
+    <div class="card between"><span>#4519 · 300 Oak Ave</span><span class="pill">finding</span></div>
+    <div style="flex:1;"></div>
+    <div class="btn btn-primary">+ New request</div>
+  </div>
+</div>
+
+<div class="frame-title" style="left:840px; top:1870px;">Request a rider</div>
+<div class="frame mobile" style="left:840px; top:1900px;">
+  <div class="status">9:41</div>
+  <div class="topbar">← New request</div>
+  <div class="content withtop">
+    <div class="label">Pickup</div>
+    <div class="input-box">◎ 221 Baker St — Kitchen</div>
+    <div class="label">Dropoff</div>
+    <div class="input-box">📍 Customer address</div>
+    <div class="label">Vehicle</div>
+    <div class="input-box between">Bike ▾</div>
+    <div class="map-placeholder" style="height:130px;">route preview</div>
+    <div class="btn btn-primary">Find a rider</div>
+  </div>
+</div>
+
+<div class="frame-title" style="left:1240px; top:1870px;">Matching</div>
+<div class="frame mobile" style="left:1240px; top:1900px;">
+  <div class="status">9:41</div>
+  <div class="map-placeholder" style="height: calc(100% - 26px - 200px); border:none; border-radius:0;">◉ searching…</div>
+  <div class="bottom-sheet" style="height:200px; align-items:center; text-align:center;">
+    <div class="pill pill-red">◌ finding rider</div>
+    <div style="font-weight:700; font-size:17px;">Finding a rider near you</div>
+    <div class="label">usually under a minute</div>
+    <div class="btn btn-ghost btn-sm">Cancel request</div>
+  </div>
+</div>
+
+<div class="frame-title" style="left:1640px; top:1870px;">Tracking</div>
+<div class="frame mobile" style="left:1640px; top:1900px;">
+  <div class="status">9:41</div>
+  <div class="map-placeholder" style="height: calc(100% - 26px - 210px); border:none; border-radius:0;">◉----📍 route</div>
+  <div class="bottom-sheet" style="height:210px;">
+    <div class="pill" style="align-self:flex-start;">➜ en route</div>
+    <div class="row between">
+      <div class="row">
+        <div class="avatar-circle">KA</div>
+        <div>
+          <div style="font-weight:700;">Kwame A.</div>
+          <div class="label">Bike</div>
+        </div>
+      </div>
+      <div style="font-size:22px; font-weight:700; color:#dd3b3b;">4 min</div>
+    </div>
+    <div class="row">
+      <div class="icon-circle">☎</div>
+      <div class="icon-circle">✉</div>
+      <div class="btn btn-ghost btn-sm">Cancel</div>
+      <div style="flex:1;"></div>
+      <div class="btn btn-primary btn-sm">Mark delivered</div>
+    </div>
+  </div>
+</div>
+
+<div class="frame-title" style="left:2040px; top:1870px;">Delivered</div>
+<div class="frame mobile" style="left:2040px; top:1900px;">
+  <div class="status">9:41</div>
+  <div class="content notop" style="align-items:center; justify-content:center; text-align:center;">
+    <div class="icon-circle" style="width:60px; height:60px; font-size:28px; margin-bottom:6px;">✓</div>
+    <div style="font-weight:700; font-size:20px;">Delivered</div>
+    <div class="card" style="width:100%; margin-top:10px;">
+      <div class="row between"><span class="label">Order</span><span>#4521</span></div>
+      <div class="row between"><span class="label">Rider</span><span>Kwame A.</span></div>
+      <div class="row between"><span class="label">Delivered</span><span>2:41 PM</span></div>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="btn btn-primary" style="width:100%;">Back to dashboard</div>
+  </div>
+</div>
+
+</body>
+</html>
