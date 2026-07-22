@@ -44,3 +44,17 @@ body {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+@keyframes yada-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-yada-pulse {
+  animation: yada-pulse 1.4s var(--ease-standard) infinite;
+}

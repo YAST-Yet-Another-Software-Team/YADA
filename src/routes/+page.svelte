@@ -50,16 +50,16 @@
 
     <div class="mt-8 flex flex-wrap gap-3">
       <a
-        href="#how-it-works"
+        href="/auth"
         class="inline-flex items-center justify-center rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-on transition duration-200 hover:bg-primary-hover active:scale-[0.98] active:bg-primary-active"
       >
-        See how it works
+        Open dispatch flow
       </a>
       <a
-        href="#lifecycle"
+        href="#how-it-works"
         class="inline-flex items-center justify-center rounded-md border border-border bg-surface px-5 py-3 text-sm font-semibold text-ink transition duration-200 hover:border-border-strong hover:bg-primary-subtle"
       >
-        Trip lifecycle
+        See how it works
       </a>
     </div>
   </section>
