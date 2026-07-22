@@ -2,7 +2,7 @@
   export let label = '';
   export let value = '';
   export let placeholder = '';
-  export let type: 'text' | 'tel' | 'email' = 'text';
+  export let type: 'text' | 'tel' | 'email' | 'password' = 'text';
   export let disabled = false;
   export let id = `input-${Math.random().toString(36).slice(2, 9)}`;
 </script>

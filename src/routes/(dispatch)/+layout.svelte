@@ -1,33 +1,49 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+	import { page } from '$app/stores';
+	import BusinessTopNav from '$lib/components/business/BusinessTopNav.svelte';
 
-  const steps = [
-    { href: '/auth', label: 'Auth' },
-    { href: '/request', label: 'Request' },
-    { href: '/matching', label: 'Match' },
-    { href: '/tracking', label: 'Track' },
-    { href: '/history', label: 'History' }
-  ];
+	$: path = $page.url.pathname;
+	$: isAuth = path === '/auth';
+	$: showDesktopNav = !isAuth;
 </script>
 
-<div class="min-h-screen bg-neutral-200 px-4 py-6 sm:py-10">
-  <div class="mx-auto mb-4 flex max-w-[390px] flex-wrap gap-2">
-    {#each steps as step}
-      <a
-        href={step.href}
-        class="rounded-md px-2.5 py-1 text-xs font-semibold transition {$page.url.pathname ===
-        step.href
-          ? 'bg-primary text-primary-on'
-          : 'bg-surface text-ink-secondary hover:text-ink'}"
-      >
-        {step.label}
-      </a>
-    {/each}
-  </div>
+{#if isAuth}
+	<div class="min-h-svh bg-bg">
+		<slot />
+	</div>
+{:else}
+	<div class="min-h-svh bg-bg">
+		<!-- Mobile top bar -->
+		<header class="flex items-center justify-between border-b border-border bg-surface px-4 py-3 lg:hidden">
+			<a href="/dashboard" class="font-display text-lg font-bold text-primary">YADA</a>
+			<nav class="flex items-center gap-3 text-sm font-semibold">
+				<a
+					href="/dashboard"
+					class={path === '/dashboard' ? 'text-primary' : 'text-ink-secondary'}>Home</a
+				>
+				<a
+					href="/request"
+					class={path === '/request' || path === '/matching' || path === '/tracking'
+						? 'text-primary'
+						: 'text-ink-secondary'}>Request</a
+				>
+				<a href="/history" class={path === '/history' ? 'text-primary' : 'text-ink-secondary'}
+					>History</a
+				>
+			</nav>
+		</header>
 
-  <div
-    class="relative mx-auto h-[min(812px,calc(100svh-5.5rem))] w-full max-w-[390px] overflow-hidden rounded-xl border border-border bg-bg shadow-lg"
-  >
-    <slot />
-  </div>
-</div>
+		<!-- Desktop website chrome -->
+		{#if showDesktopNav}
+			<div class="hidden lg:block">
+				<BusinessTopNav />
+			</div>
+		{/if}
+
+		<main class="mx-auto w-full max-w-7xl lg:px-6 lg:py-6">
+			<div class="min-h-[calc(100svh-3.25rem)] lg:min-h-[calc(100svh-58px-3rem)]">
+				<slot />
+			</div>
+		</main>
+	</div>
+{/if}

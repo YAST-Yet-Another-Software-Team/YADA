@@ -53,7 +53,7 @@
         href="/auth"
         class="inline-flex items-center justify-center rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-on transition duration-200 hover:bg-primary-hover active:scale-[0.98] active:bg-primary-active"
       >
-        Open dispatch flow
+        Open business dispatch
       </a>
       <a
         href="#how-it-works"
