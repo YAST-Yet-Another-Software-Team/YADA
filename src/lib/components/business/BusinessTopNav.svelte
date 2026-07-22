@@ -16,7 +16,7 @@
 	$: path = $page.url.pathname;
 
 	function isActive(match: string[]) {
-		return match.some((m) => path === m || path.startsWith(m + '/'));
+		return match.some((m) => path === m || path.startsWith(`${m}/`));
 	}
 
 	function toggleProfile(e: MouseEvent) {
@@ -25,27 +25,35 @@
 	}
 </script>
 
-<header class="sticky top-0 z-20 border-b border-border bg-surface">
-	<div class="mx-auto flex h-[58px] max-w-7xl items-stretch justify-between gap-4 px-6">
+<header class="sticky top-0 z-20 bg-surface">
+	<div
+		class="mx-auto flex h-[58px] max-w-7xl items-stretch justify-between gap-4 border-b border-border px-6"
+	>
 		<div class="flex items-center">
 			<BrandLogo href="/dashboard" size="sm" />
 		</div>
 
-		<nav class="hidden items-stretch gap-1 md:flex" aria-label="Business">
+		<nav class="hidden h-full items-stretch gap-1 md:flex" aria-label="Business">
 			{#each links as link}
+				{@const active = isActive(link.match)}
 				<a
 					href={link.href}
-					class="-mb-px flex items-center border-b-[3px] px-3 text-[15px] transition {isActive(
-						link.match
-					)
-						? 'border-primary font-bold text-ink'
-						: 'border-transparent font-medium text-ink-secondary hover:text-ink'}"
+					aria-current={active ? 'page' : undefined}
+					class="relative flex h-full items-center px-3 text-[15px] transition-colors {active
+						? 'font-bold text-ink'
+						: 'font-medium text-ink-secondary hover:text-ink'}"
 				>
 					{link.label}
+					<span
+						class="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] rounded-t-sm transition-opacity duration-200 {active
+							? 'bg-primary opacity-100'
+							: 'bg-primary opacity-0'}"
+						aria-hidden="true"
+					></span>
 				</a>
 			{/each}
 			<span
-				class="-mb-px flex cursor-not-allowed items-center border-b-[3px] border-transparent px-3 text-[15px] text-ink-disabled"
+				class="relative flex h-full cursor-not-allowed items-center px-3 text-[15px] text-ink-disabled"
 				title="Coming soon"
 			>
 				Team

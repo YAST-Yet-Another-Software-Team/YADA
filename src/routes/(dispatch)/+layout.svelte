@@ -23,24 +23,9 @@
 {:else}
 	<div class="min-h-svh bg-bg">
 		<!-- Mobile top bar -->
-		<header
-			class="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 lg:hidden"
-		>
-			<BrandLogo href="/dashboard" size="sm" />
-			<nav class="flex flex-1 items-center justify-end gap-3 text-sm font-semibold">
-				<a href="/dashboard" class={path === '/dashboard' ? 'text-primary' : 'text-ink-secondary'}
-					>Home</a
-				>
-				<a
-					href="/request"
-					class={path === '/request' || path === '/matching' || path === '/tracking'
-						? 'text-primary'
-						: 'text-ink-secondary'}>Request</a
-				>
-				<a href="/map" class={path === '/map' ? 'text-primary' : 'text-ink-secondary'}>Map</a>
-				<a href="/history" class={path === '/history' ? 'text-primary' : 'text-ink-secondary'}
-					>History</a
-				>
+		<header class="border-b border-border bg-surface lg:hidden">
+			<div class="flex items-center justify-between gap-3 px-4 pt-3">
+				<BrandLogo href="/dashboard" size="sm" />
 				<div class="relative" data-profile-menu>
 					<button
 						type="button"
@@ -52,6 +37,34 @@
 					</button>
 					<ProfileMenu open={profileOpen} on:close={() => (profileOpen = false)} />
 				</div>
+			</div>
+			<nav class="flex items-stretch gap-1 overflow-x-auto px-2" aria-label="Business">
+				{#each [
+					{ href: '/dashboard', label: 'Home', active: path === '/dashboard' },
+					{
+						href: '/request',
+						label: 'Request',
+						active: path === '/request' || path === '/matching' || path === '/tracking'
+					},
+					{ href: '/map', label: 'Map', active: path === '/map' },
+					{ href: '/history', label: 'History', active: path === '/history' }
+				] as link}
+					<a
+						href={link.href}
+						aria-current={link.active ? 'page' : undefined}
+						class="relative flex shrink-0 items-center px-3 py-2.5 text-sm transition-colors {link.active
+							? 'font-bold text-ink'
+							: 'font-semibold text-ink-secondary'}"
+					>
+						{link.label}
+						<span
+							class="pointer-events-none absolute inset-x-1 bottom-0 h-[3px] rounded-t-sm {link.active
+								? 'bg-primary'
+								: 'bg-transparent'}"
+							aria-hidden="true"
+						></span>
+					</a>
+				{/each}
 			</nav>
 		</header>
 
