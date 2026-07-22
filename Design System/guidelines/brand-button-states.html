@@ -1,0 +1,10 @@
+<!-- @dsCard group="Brand" viewport="700x150" name="Button states" subtitle="Hover/press = flat color step, not opacity" -->
+<html><head><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;padding:24px;display:flex;gap:16px;align-items:center;font-family:var(--font-body)}
+.btn{border:none;border-radius:var(--radius-md);padding:12px 20px;font:var(--text-label);color:var(--color-on-primary);cursor:pointer}
+</style></head><body>
+<button class="btn" style="background:var(--color-primary)">Rest</button>
+<button class="btn" style="background:var(--color-primary-hover)">Hover</button>
+<button class="btn" style="background:var(--color-primary-active);transform:scale(0.98)">Press</button>
+<button class="btn" style="background:var(--neutral-300);color:var(--neutral-500)">Disabled</button>
+</body></html>

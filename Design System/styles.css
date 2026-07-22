@@ -1,0 +1,8 @@
+/* YADA Design System — global stylesheet entry point.
+   Keep this file as @import statements only; the compiler reads everything
+   transitively imported here for tokens, fonts, and shared base rules. */
+
+@import "tokens/colors.css";
+@import "tokens/typography.css";
+@import "tokens/spacing.css";
+@import "tokens/base.css";

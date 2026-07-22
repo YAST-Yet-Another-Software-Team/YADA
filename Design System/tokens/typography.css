@@ -1,0 +1,67 @@
+/* ==========================================================================
+   YADA — Typography tokens
+   No font files were supplied with this brief, so we substitute the closest
+   Google Fonts match for a fast, friendly, geometric-but-warm consumer app:
+     - Plus Jakarta Sans  → display + body (rounded terminals, confident, not
+       as overexposed as Inter; reads energetic without being sci-fi)
+     - JetBrains Mono     → fare/ETA/order-code figures where tabular numerals
+       and unambiguous characters matter
+   FLAG: substitution — no brand font files were provided. If YADA has
+   licensed fonts, replace the @font-face sources below and swap the family
+   names in --font-display / --font-body / --font-mono.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ---- Families --------------------------------------------------------- */
+  --font-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body:    "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ---- Type scale (px) --------------------------------------------------- */
+  --text-xs:   12px;
+  --text-sm:   14px;
+  --text-md:   16px;
+  --text-lg:   18px;
+  --text-xl:   20px;
+  --text-2xl:  24px;
+  --text-3xl:  30px;
+  --text-4xl:  38px;
+  --text-5xl:  48px;
+  --text-6xl:  60px;
+
+  /* ---- Line heights ------------------------------------------------------ */
+  --leading-tight:  1.1;
+  --leading-snug:   1.25;
+  --leading-normal: 1.45;
+  --leading-relaxed:1.65;
+
+  /* ---- Weights ------------------------------------------------------------ */
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-extrabold:800;
+
+  /* ---- Letter spacing ------------------------------------------------------ */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0em;
+  --tracking-wide:  0.04em;
+  --tracking-widest:0.12em; /* for eyebrows / labels */
+
+  /* ---- Semantic aliases --------------------------------------------------- */
+  --text-display-lg: var(--weight-extrabold) var(--text-6xl)/var(--leading-tight) var(--font-display);
+  --text-display-md: var(--weight-bold) var(--text-5xl)/var(--leading-tight) var(--font-display);
+  --text-display-sm: var(--weight-bold) var(--text-4xl)/var(--leading-snug) var(--font-display);
+  --text-heading-lg: var(--weight-bold) var(--text-3xl)/var(--leading-snug) var(--font-display);
+  --text-heading-md: var(--weight-semibold) var(--text-2xl)/var(--leading-snug) var(--font-display);
+  --text-heading-sm: var(--weight-semibold) var(--text-xl)/var(--leading-snug) var(--font-display);
+  --text-body-lg:    var(--weight-regular) var(--text-lg)/var(--leading-normal) var(--font-body);
+  --text-body-md:    var(--weight-regular) var(--text-md)/var(--leading-normal) var(--font-body);
+  --text-body-sm:    var(--weight-regular) var(--text-sm)/var(--leading-normal) var(--font-body);
+  --text-label:      var(--weight-semibold) var(--text-sm)/var(--leading-snug) var(--font-body);
+  --text-eyebrow:    var(--weight-semibold) var(--text-xs)/var(--leading-snug) var(--font-body);
+  --text-mono-md:    var(--weight-medium) var(--text-md)/var(--leading-normal) var(--font-mono);
+  --text-mono-sm:    var(--weight-medium) var(--text-sm)/var(--leading-normal) var(--font-mono);
+}

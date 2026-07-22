@@ -1,0 +1,12 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Semantic status" subtitle="Success, warning, info, danger" -->
+<html><head><link rel="stylesheet" href="../styles.css"><style>
+body{margin:0;font-family:var(--font-body);display:flex;height:150px}
+.col{flex:1;display:flex;flex-direction:column}
+.chip{flex:1;display:flex;align-items:center;justify-content:center;font:var(--text-label);color:var(--neutral-0)}
+.sub{height:44px;display:flex;align-items:center;justify-content:center;font:var(--text-mono-sm)}
+</style></head><body>
+<div class="col"><div class="chip" style="background:var(--color-success)">Success</div><div class="sub" style="background:var(--color-success-subtle);color:var(--green-600)">delivered</div></div>
+<div class="col"><div class="chip" style="background:var(--color-warning);color:var(--neutral-950)">Warning</div><div class="sub" style="background:var(--color-warning-subtle);color:var(--amber-600)">delayed</div></div>
+<div class="col"><div class="chip" style="background:var(--color-info)">Info</div><div class="sub" style="background:var(--color-info-subtle);color:var(--blue-600)">en route</div></div>
+<div class="col"><div class="chip" style="background:var(--color-danger)">Danger</div><div class="sub" style="background:var(--color-danger-subtle);color:var(--red-700)">cancelled</div></div>
+</body></html>

@@ -1,0 +1,25 @@
+/* ==========================================================================
+   YADA — Minimal base resets (kept intentionally small; components use
+   inline/scoped styling, this just sets sane document defaults)
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font: var(--text-body-md);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--red-200);
+  color: var(--red-900);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
