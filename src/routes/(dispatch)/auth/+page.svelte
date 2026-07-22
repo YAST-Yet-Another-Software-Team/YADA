@@ -1,4 +1,5 @@
 <script lang="ts">
+	import BrandLogo from '$lib/components/BrandLogo.svelte';
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
@@ -17,9 +18,9 @@
 
 <div class="flex min-h-svh flex-col items-center justify-center px-6 py-12">
 	<div class="w-full max-w-md">
-		<div class="mb-8 text-center lg:mb-10">
-			<p class="font-display text-[34px] font-extrabold leading-none text-primary lg:text-5xl">YADA</p>
-			<p class="mt-2 text-sm font-semibold uppercase tracking-[0.12em] text-ink-tertiary">
+		<div class="mb-8 flex flex-col items-center text-center lg:mb-10">
+			<BrandLogo href="/auth" size="md" />
+			<p class="mt-3 text-sm font-semibold uppercase tracking-[0.12em] text-ink-tertiary">
 				for business
 			</p>
 		</div>

@@ -1,8 +1,11 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	import { boardColumns, type MockTrip, type TripStatus } from '$lib/data/mock-trips';
 
 	export let trips: MockTrip[] = [];
 	export let deliveredToday: MockTrip[] = [];
+
+	const dispatch = createEventDispatcher<{ select: MockTrip }>();
 
 	function columnTrips(key: TripStatus | 'delivered') {
 		if (key === 'delivered') return deliveredToday;
@@ -19,10 +22,15 @@
 			</h3>
 			<div class="flex flex-1 flex-col gap-2">
 				{#each cards as trip (trip.id)}
-					<article
-						class="rounded-md border bg-surface p-3 text-sm shadow-xs {trip.status === 'en_route'
+					<button
+						type="button"
+						class="rounded-md border bg-surface p-3 text-left text-sm shadow-xs transition hover:border-primary {trip.status ===
+						'en_route'
 							? 'border-primary'
 							: 'border-border'} {column.key === 'delivered' ? 'opacity-60' : ''}"
+						on:click={() => {
+							if (column.key !== 'delivered') dispatch('select', trip);
+						}}
 					>
 						{#if column.key === 'delivered'}
 							<span class="font-mono-data text-ink-tertiary">#{trip.id.replace('YD-', '')}</span>
@@ -37,7 +45,7 @@
 								· <span class="font-mono-data text-primary">{trip.eta}</span>
 							{/if}
 						{/if}
-					</article>
+					</button>
 				{/each}
 			</div>
 		</section>

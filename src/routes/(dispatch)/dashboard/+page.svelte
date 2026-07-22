@@ -3,15 +3,21 @@
 	import { goto } from '$app/navigation';
 	import DashboardBoard from '$lib/components/business/DashboardBoard.svelte';
 	import DashboardTable from '$lib/components/business/DashboardTable.svelte';
+	import RiderPin from '$lib/components/business/RiderPin.svelte';
+	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import {
 		activeTrips,
+		businessProfile,
 		dashboardStats,
-		historyTrips
+		historyTrips,
+		type MockTrip
 	} from '$lib/data/mock-trips';
 	import { dashboardView } from '$lib/stores/dashboard-view';
+
+	let selected: MockTrip | null = null;
 
 	onMount(() => {
 		dashboardView.hydrate();
@@ -26,13 +32,21 @@
 	function setView(view: 'table' | 'board') {
 		dashboardView.set(view);
 	}
+
+	function selectTrip(trip: MockTrip) {
+		selected = trip;
+	}
+
+	function closePanel() {
+		selected = null;
+	}
 </script>
 
 <svelte:head>
 	<title>Dashboard | YADA</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6 p-4 pb-24 lg:p-0 lg:pb-0">
+<div class="relative flex flex-col gap-6 p-4 pb-24 lg:p-0 lg:pb-0">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
 			<h1 class="text-2xl font-semibold text-ink">Dashboard</h1>
@@ -40,7 +54,6 @@
 		</div>
 
 		<div class="flex items-center gap-3">
-			<!-- Desktop view toggle -->
 			<div class="hidden items-center rounded-md bg-surface-sunken p-1 lg:flex">
 				<button
 					type="button"
@@ -68,7 +81,6 @@
 		</div>
 	</div>
 
-	<!-- Stats -->
 	<div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
 		<div class="rounded-lg border border-border bg-surface p-4 shadow-xs">
 			<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
@@ -94,42 +106,123 @@
 		</div>
 	</div>
 
-	<!-- Mobile: card list -->
 	<section class="flex flex-col gap-3 lg:hidden">
 		<h2 class="text-base font-semibold text-ink">Active requests</h2>
 		{#each activeTrips as trip (trip.id)}
-			<Card>
-				<div class="flex items-center justify-between gap-3">
-					<div>
-						<p class="text-sm font-semibold text-ink">
-							#{trip.id.replace('YD-', '')} · {trip.destination}
-						</p>
-						{#if trip.rider}
-							<p class="text-sm text-ink-secondary">{trip.rider}</p>
-						{/if}
+			<button type="button" class="w-full text-left" on:click={() => selectTrip(trip)}>
+				<Card>
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="text-sm font-semibold text-ink">
+								#{trip.id.replace('YD-', '')} · {trip.destination}
+							</p>
+							{#if trip.rider}
+								<p class="text-sm text-ink-secondary">{trip.rider}</p>
+							{/if}
+						</div>
+						<StatusPill status={trip.status} />
 					</div>
-					<StatusPill status={trip.status} />
-				</div>
-			</Card>
+				</Card>
+			</button>
 		{/each}
 	</section>
 
-	<!-- Desktop: table or board -->
 	<section class="hidden flex-col gap-4 lg:flex">
 		{#if $dashboardView === 'table'}
 			<div class="flex items-center justify-between">
 				<h2 class="text-base font-semibold text-ink">Active requests</h2>
+				<p class="text-sm text-ink-tertiary">Click a row to see the rider on the map</p>
 			</div>
-			<DashboardTable trips={activeTrips} />
+			<DashboardTable trips={activeTrips} on:select={(e) => selectTrip(e.detail)} />
 		{:else}
-			<DashboardBoard trips={activeTrips} {deliveredToday} />
+			<DashboardBoard
+				trips={activeTrips}
+				{deliveredToday}
+				on:select={(e) => selectTrip(e.detail)}
+			/>
 		{/if}
 	</section>
 
-	<!-- Mobile sticky CTA -->
-	<div
-		class="fixed bottom-0 left-0 right-0 border-t border-border bg-surface p-4 lg:hidden"
-	>
+	<div class="fixed bottom-0 left-0 right-0 border-t border-border bg-surface p-4 lg:hidden">
 		<Button variant="primary" size="lg" fullWidth on:click={newRequest}>+ New request</Button>
 	</div>
 </div>
+
+{#if selected}
+	<!-- Overlay map panel (stays on dashboard) -->
+	<div class="fixed inset-0 z-40 flex justify-end bg-[color:var(--color-overlay)]" role="dialog" aria-modal="true">
+		<button
+			type="button"
+			class="absolute inset-0 cursor-default"
+			aria-label="Close map panel"
+			on:click={closePanel}
+		></button>
+		<aside
+			class="relative z-10 flex h-full w-full max-w-lg flex-col border-l border-border bg-surface shadow-lg"
+		>
+			<div class="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+				<div>
+					<p class="font-mono-data text-xs text-ink-tertiary">#{selected.id}</p>
+					<h2 class="text-lg font-semibold text-ink">{selected.destination}</h2>
+					<div class="mt-2"><StatusPill status={selected.status} /></div>
+				</div>
+				<button
+					type="button"
+					class="rounded-md px-2 py-1 text-sm font-semibold text-ink-secondary hover:bg-neutral-100"
+					on:click={closePanel}
+				>
+					Close
+				</button>
+			</div>
+
+			<div class="relative min-h-0 flex-1">
+				<MapBackdrop routeLabel={selected.status === 'en_route'}>
+					<!-- Business location -->
+					<div
+						class="absolute z-10 -translate-x-1/2 -translate-y-1/2"
+						style="left:{businessProfile.mapX}%; top:{businessProfile.mapY}%"
+					>
+						<div
+							class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-ink text-[10px] font-bold text-primary-on shadow-sm"
+							title={businessProfile.businessName}
+						>
+							HQ
+						</div>
+					</div>
+
+					{#if selected.rider && selected.mapX != null && selected.mapY != null}
+						<div
+							class="absolute z-10 -translate-x-1/2 -translate-y-full"
+							style="left:{selected.mapX}%; top:{selected.mapY}%"
+						>
+							<RiderPin label={selected.rider} size={40} accent={selected.status === 'en_route'} />
+						</div>
+					{:else}
+						<div
+							class="absolute left-1/2 top-[42%] z-10 -translate-x-1/2 rounded-md bg-surface px-3 py-2 text-sm text-ink-secondary shadow-sm"
+						>
+							Searching for a nearby motor rider…
+						</div>
+					{/if}
+				</MapBackdrop>
+			</div>
+
+			<div class="space-y-2 border-t border-border px-5 py-4 text-sm">
+				<p class="text-ink-secondary">
+					<span class="font-semibold text-ink">Rider:</span>
+					{selected.rider ?? 'Unassigned'}
+				</p>
+				{#if selected.eta}
+					<p class="text-ink-secondary">
+						<span class="font-semibold text-ink">ETA:</span>
+						<span class="font-mono-data text-primary">{selected.eta}</span>
+					</p>
+				{/if}
+				<p class="text-ink-secondary">
+					<span class="font-semibold text-ink">Pickup:</span>
+					{selected.pickup ?? businessProfile.address}
+				</p>
+			</div>
+		</aside>
+	</div>
+{/if}
