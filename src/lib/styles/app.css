@@ -5,7 +5,7 @@
 :root {
   color-scheme: light;
   font-family:
-    Inter,
+    ui-sans-serif,
     ui-sans-serif,
     system-ui,
     -apple-system,
@@ -35,4 +35,272 @@ body {
 
 .text-balance {
   text-wrap: balance;
+}
+
+.wireframe-canvas {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), transparent 22%),
+    radial-gradient(circle at 90% 12%, rgba(214, 69, 65, 0.12), transparent 18%),
+    linear-gradient(180deg, #f4f2ee 0%, #f8f7f4 100%);
+}
+
+.wireframe-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 1.75rem;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 1.75rem;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+.wireframe-header h1,
+.wireframe-group-title {
+  margin: 0;
+  color: #1f1b16;
+  letter-spacing: -0.03em;
+}
+
+.wireframe-header h1 {
+  max-width: 14ch;
+  font-size: clamp(2rem, 4vw, 4rem);
+  line-height: 0.95;
+}
+
+.wireframe-kicker {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #8e6f5a;
+}
+
+.wireframe-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.wireframe-chip {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 0.85rem;
+  color: #41362c;
+}
+
+.wireframe-group-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.wireframe-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.wireframe-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wireframe-screen-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: #6b645d;
+}
+
+.wireframe-screen-top p,
+.wireframe-screen-top span,
+.wireframe-brand,
+.wireframe-subtitle,
+.wireframe-block span,
+.wireframe-block strong {
+  margin: 0;
+}
+
+.wireframe-screen-top p,
+.wireframe-brand {
+  font-weight: 700;
+  color: #2e241d;
+}
+
+.wireframe-screen-body {
+  min-height: 100%;
+}
+
+.wireframe-frame {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(39, 24, 17, 0.18);
+  border-radius: 1.5rem;
+  background: linear-gradient(180deg, #fffefc 0%, #f7f4ef 100%);
+  box-shadow: 0 24px 40px rgba(43, 32, 21, 0.08);
+}
+
+.wireframe-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.025) 1px, transparent 1px);
+  background-size: 100% 1.15rem;
+  pointer-events: none;
+}
+
+.wireframe-frame-phone {
+  min-height: 410px;
+}
+
+.wireframe-frame-desktop {
+  min-height: 260px;
+}
+
+.wireframe-frame-header {
+  height: 1.3rem;
+  border-bottom: 1px solid rgba(39, 24, 17, 0.12);
+  background: linear-gradient(90deg, rgba(255, 117, 74, 0.08), rgba(255, 255, 255, 0));
+}
+
+.wireframe-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1rem;
+}
+
+.wireframe-content-phone {
+  padding: 1rem 0.9rem 1.1rem;
+}
+
+.wireframe-content-desktop {
+  padding: 1rem;
+}
+
+.wireframe-hero {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.wireframe-hero h3 {
+  margin: 0.25rem 0 0;
+  font-size: 1rem;
+  color: #211913;
+}
+
+.wireframe-subtitle {
+  margin-top: 0.2rem;
+  font-size: 0.76rem;
+  color: #766b62;
+}
+
+.wireframe-badge {
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 1px solid rgba(39, 24, 17, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.wireframe-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.wireframe-list-phone {
+  grid-template-columns: 1fr;
+}
+
+.wireframe-list-desktop {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wire-block {
+  min-height: 3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(37, 23, 16, 0.16);
+  border-radius: 0.95rem;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.wire-block span {
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #94867c;
+}
+
+.wire-block strong {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #241b15;
+}
+
+.wire-block-strong {
+  border-color: rgba(217, 72, 64, 0.35);
+  background: rgba(217, 72, 64, 0.09);
+}
+
+.wire-block-strong strong {
+  color: #b5362e;
+}
+
+.wire-block-accent {
+  border-color: rgba(94, 109, 211, 0.28);
+  background: rgba(94, 109, 211, 0.08);
+}
+
+.wire-block-accent strong {
+  color: #4957b7;
+}
+
+.wireframe-desktop-panels {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 0.5rem;
+}
+
+.wireframe-panel {
+  min-height: 4rem;
+  border: 1px dashed rgba(37, 23, 16, 0.2);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.wireframe-panel-tall {
+  min-height: 6rem;
+}
+
+@media (max-width: 640px) {
+  .wireframe-header {
+    padding: 1.2rem;
+  }
+
+  .wireframe-header h1 {
+    max-width: none;
+  }
+
+  .wireframe-list-desktop,
+  .wireframe-desktop-panels {
+    grid-template-columns: 1fr;
+  }
 }

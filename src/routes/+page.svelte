@@ -1,117 +1,281 @@
 <script lang="ts">
-  const metrics = [
-    { label: 'Request to first offer', value: '< 5s' },
-    { label: 'Location freshness', value: '< 3s' },
-    { label: 'Trip states', value: '6-stage lifecycle' }
-  ];
+  type ScreenVariant = 'phone' | 'desktop';
+  type BlockTone = 'soft' | 'strong' | 'accent';
 
-  const pillars = [
+  type WireframeBlock = {
+    label: string;
+    value: string;
+    tone?: BlockTone;
+  };
+
+  type WireframeScreen = {
+    title: string;
+    subtitle: string;
+    variant: ScreenVariant;
+    blocks: WireframeBlock[];
+  };
+
+  const customerScreens: WireframeScreen[] = [
     {
-      title: 'Business dispatch',
-      description:
-        'Request a courier, see ETA before confirmation, and track the trip in one browser-based workspace.'
+      title: 'Login',
+      subtitle: 'Business access',
+      variant: 'phone',
+      blocks: [
+        { label: 'Logo', value: 'YADA' },
+        { label: 'Email', value: 'business@favorie.com' },
+        { label: 'Password', value: '••••••••' },
+        { label: 'Sign in', value: 'Primary button', tone: 'strong' }
+      ]
     },
     {
-      title: 'Courier workflow',
-      description:
-        'Accept offers, navigate to pickup and drop-off, and keep live location updates flowing in near real time.'
+      title: 'New order',
+      subtitle: 'Request a courier',
+      variant: 'phone',
+      blocks: [
+        { label: 'Pickup', value: 'Favorie kitchen' },
+        { label: 'Drop-off', value: 'Customer address' },
+        { label: 'Package', value: 'Small parcel' },
+        { label: 'Confirm request', value: 'Bottom button', tone: 'strong' }
+      ]
     },
     {
-      title: 'Operational control',
-      description:
-        'Keep the trip lifecycle, telemetry, ratings, and support surfaces separated enough to scale cleanly.'
+      title: 'Offer received',
+      subtitle: 'Courier matched',
+      variant: 'phone',
+      blocks: [
+        { label: 'Courier', value: 'Rider profile card', tone: 'accent' },
+        { label: 'ETA', value: 'Live arrival estimate' },
+        { label: 'Accept', value: 'Primary action', tone: 'strong' },
+        { label: 'Decline', value: 'Secondary action' }
+      ]
+    },
+    {
+      title: 'Trip tracking',
+      subtitle: 'Live status',
+      variant: 'phone',
+      blocks: [
+        { label: 'Map', value: 'Courier position' },
+        { label: 'Status', value: 'In progress', tone: 'accent' },
+        { label: 'Route', value: 'Pickup to drop-off' },
+        { label: 'Contact', value: 'Call courier' }
+      ]
+    },
+    {
+      title: 'Delivery complete',
+      subtitle: 'Rate the trip',
+      variant: 'phone',
+      blocks: [
+        { label: 'Summary', value: 'Completed' },
+        { label: 'Rating', value: 'Star input' },
+        { label: 'Comment', value: 'Optional note' },
+        { label: 'Submit', value: 'Confirm feedback', tone: 'strong' }
+      ]
     }
   ];
 
-  const lifecycle = [
-    'requested',
-    'accepted',
-    'courier arriving',
-    'arrived',
-    'in progress',
-    'completed / cancelled'
+  const businessScreens: WireframeScreen[] = [
+    {
+      title: 'Dashboard',
+      subtitle: 'Desktop workspace',
+      variant: 'desktop',
+      blocks: [
+        { label: 'Search', value: 'Order, rider, history' },
+        { label: 'Trips', value: 'Rows with status pills' },
+        { label: 'Actions', value: 'Create request', tone: 'strong' },
+        { label: 'Summary', value: 'Stats and filters' }
+      ]
+    },
+    {
+      title: 'Delivery board',
+      subtitle: 'Kanban state columns',
+      variant: 'desktop',
+      blocks: [
+        { label: 'Requested', value: 'Column one' },
+        { label: 'Accepted', value: 'Column two', tone: 'accent' },
+        { label: 'In progress', value: 'Column three' },
+        { label: 'Completed', value: 'Column four' }
+      ]
+    },
+    {
+      title: 'Create request',
+      subtitle: 'New courier request form',
+      variant: 'desktop',
+      blocks: [
+        { label: 'Trip details', value: 'Pickup and drop-off fields' },
+        { label: 'Notes', value: 'Instruction box' },
+        { label: 'Preview', value: 'Route summary panel' },
+        { label: 'Submit', value: 'Send request', tone: 'strong' }
+      ]
+    },
+    {
+      title: 'Trip detail',
+      subtitle: 'Live monitoring',
+      variant: 'desktop',
+      blocks: [
+        { label: 'Map', value: 'Large map region' },
+        { label: 'Sidebar', value: 'Courier profile and status', tone: 'accent' },
+        { label: 'Timeline', value: 'State events' },
+        { label: 'Chat', value: 'Contact thread' }
+      ]
+    },
+    {
+      title: 'History',
+      subtitle: 'Past deliveries',
+      variant: 'desktop',
+      blocks: [
+        { label: 'Filters', value: 'Date, status, courier' },
+        { label: 'Table', value: 'Trip rows' },
+        { label: 'Badges', value: 'Status tags' },
+        { label: 'Export', value: 'Download report', tone: 'strong' }
+      ]
+    }
   ];
+
+  const courierScreens: WireframeScreen[] = [
+    {
+      title: 'Login',
+      subtitle: 'Courier access',
+      variant: 'phone',
+      blocks: [
+        { label: 'Logo', value: 'YADA' },
+        { label: 'Phone', value: '+233 xxx xxx xxx' },
+        { label: 'OTP', value: 'Code entry' },
+        { label: 'Sign in', value: 'Primary button', tone: 'strong' }
+      ]
+    },
+    {
+      title: 'Availability',
+      subtitle: 'Go online',
+      variant: 'phone',
+      blocks: [
+        { label: 'Status', value: 'Online toggle', tone: 'accent' },
+        { label: 'Jobs', value: 'Incoming requests' },
+        { label: 'Profile', value: 'Name and rating' },
+        { label: 'Map', value: 'Nearby areas' }
+      ]
+    },
+    {
+      title: 'Offer detail',
+      subtitle: 'Accept or reject',
+      variant: 'phone',
+      blocks: [
+        { label: 'Pickup', value: 'Origin address' },
+        { label: 'Drop-off', value: 'Destination address' },
+        { label: 'Timer', value: 'Acceptance countdown' },
+        { label: 'Accept', value: 'Primary button', tone: 'strong' }
+      ]
+    },
+    {
+      title: 'Navigation',
+      subtitle: 'Active trip',
+      variant: 'phone',
+      blocks: [
+        { label: 'Map', value: 'Turn-by-turn view' },
+        { label: 'Status', value: 'En route', tone: 'accent' },
+        { label: 'Action', value: 'Mark arrived' },
+        { label: 'Contact', value: 'Call business' }
+      ]
+    },
+    {
+      title: 'Payment',
+      subtitle: 'Trip finished',
+      variant: 'phone',
+      blocks: [
+        { label: 'Summary', value: 'Completed trip' },
+        { label: 'Payout', value: 'Earnings panel' },
+        { label: 'Rating', value: 'Customer score' },
+        { label: 'Done', value: 'Return to dashboard', tone: 'strong' }
+      ]
+    }
+  ];
+
+  const screenGroups = [
+    { name: 'Customer - mobile', screens: customerScreens },
+    { name: 'Business - desktop', screens: businessScreens },
+    { name: 'Courier - mobile', screens: courierScreens }
+  ];
+
+  const statusChips = ['Login', 'Requests', 'Offers', 'Tracking', 'History'];
+
+  const toneClass = (tone?: BlockTone) => {
+    if (tone === 'strong') return 'wire-block wire-block-strong';
+    if (tone === 'accent') return 'wire-block wire-block-accent';
+    return 'wire-block';
+  };
 </script>
 
 <svelte:head>
-  <title>YADA | Motor courier request platform</title>
-  <meta
-    name="description"
-    content="YADA streamlines motor courier requests, courier matching, live tracking, and trip management for Favorie."
-  />
+  <title>YADA | Wireframes</title>
+  <meta name="description" content="Wireframe mockups for YADA across customer, business, and courier flows." />
 </svelte:head>
 
-<main class="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-  <section class="mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/85 shadow-glow backdrop-blur">
-    <div class="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
-      <div class="relative overflow-hidden px-6 py-8 sm:px-10 sm:py-12 lg:px-12 lg:py-16">
-        <div class="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(255,159,58,0.16),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.12),_transparent_26%)]"></div>
-        <div class="inline-flex items-center gap-2 rounded-full border border-sand-200 bg-sand-50 px-3 py-1 text-sm font-medium text-sand-800">
-          <span class="h-2 w-2 rounded-full bg-accent-500"></span>
-          Favorie courier operations
-        </div>
-
-        <h1 class="mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl lg:text-6xl text-balance">
-          Motor courier dispatch built for speed, clarity, and live delivery control.
-        </h1>
-
-        <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
-          YADA turns phone calls and text threads into a single platform for requesting couriers,
-          matching the right rider, tracking progress, and capturing the trip record from first offer
-          through completion.
-        </p>
-
-        <div class="mt-8 flex flex-wrap gap-3">
-          <a
-            href="/"
-            class="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Open dispatch flow
-          </a>
-          <a
-            href="#structure"
-            class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
-          >
-            View project structure
-          </a>
-        </div>
-
-        <div class="mt-10 grid gap-4 sm:grid-cols-3">
-          {#each metrics as metric}
-            <article class="rounded-2xl border border-white/60 bg-white/70 p-4 shadow-[0_12px_34px_rgba(15,23,42,0.06)]">
-              <p class="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">{metric.label}</p>
-              <p class="mt-3 text-2xl font-semibold text-slate-950">{metric.value}</p>
-            </article>
-          {/each}
-        </div>
+<main class="wireframe-canvas min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+  <section class="mx-auto flex max-w-[1600px] flex-col gap-8">
+    <header class="wireframe-header">
+      <div>
+        <p class="wireframe-kicker">YADA concept board</p>
+        <h1>Wireframe study for customer, business, and courier flows</h1>
       </div>
+      <div class="wireframe-status-row">
+        {#each statusChips as chip}
+          <span class="wireframe-chip">{chip}</span>
+        {/each}
+      </div>
+    </header>
 
-      <div class="border-t border-slate-200/80 bg-slate-950 px-6 py-8 text-white sm:px-10 sm:py-12 lg:border-l lg:border-t-0 lg:px-12 lg:py-16">
-        <p class="text-sm font-medium uppercase tracking-[0.28em] text-slate-400">System frame</p>
-        <h2 class="mt-4 text-2xl font-semibold text-white">What the first commit sets up</h2>
-
-        <div class="mt-8 space-y-4">
-          {#each pillars as pillar}
-            <article class="rounded-3xl border border-white/10 bg-white/5 p-5">
-              <h3 class="text-lg font-semibold text-white">{pillar.title}</h3>
-              <p class="mt-2 text-sm leading-7 text-slate-300">{pillar.description}</p>
-            </article>
-          {/each}
-        </div>
-
-        <div id="structure" class="mt-8 rounded-3xl border border-white/10 bg-gradient-to-br from-white/8 to-white/3 p-5">
-          <p class="text-sm font-medium uppercase tracking-[0.24em] text-slate-400">Lifecycle</p>
-          <div class="mt-4 flex flex-wrap gap-2">
-            {#each lifecycle as state}
-              <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-sm text-slate-200">{state}</span>
-            {/each}
+    {#each screenGroups as group}
+      <section class="space-y-4">
+        <div class="flex items-end justify-between gap-4">
+          <div>
+            <p class="wireframe-kicker">{group.name}</p>
+            <h2 class="wireframe-group-title">{group.screens.length} screen sequence</h2>
           </div>
-          <p class="mt-5 text-sm leading-7 text-slate-300">
-            The application is organized around a trip state machine, geospatial matching, realtime courier updates,
-            and server-side data boundaries for auth, database access, and socket coordination.
-          </p>
         </div>
-      </div>
-    </div>
+
+        <div class="wireframe-grid">
+          {#each group.screens as screen}
+            <article class={`wireframe-card ${screen.variant === 'phone' ? 'wireframe-phone' : 'wireframe-desktop'}`}>
+              <div class="wireframe-screen-top">
+                <p>{screen.title}</p>
+                <span>{screen.subtitle}</span>
+              </div>
+
+              <div class={`wireframe-screen-body ${screen.variant === 'desktop' ? 'wireframe-screen-body-desktop' : ''}`}>
+                <div class={screen.variant === 'phone' ? 'wireframe-frame wireframe-frame-phone' : 'wireframe-frame wireframe-frame-desktop'}>
+                  <div class="wireframe-frame-header"></div>
+                  <div class={screen.variant === 'phone' ? 'wireframe-content wireframe-content-phone' : 'wireframe-content wireframe-content-desktop'}>
+                    <div class="wireframe-hero">
+                      <div>
+                        <p class="wireframe-brand">YADA</p>
+                        <h3>{screen.title}</h3>
+                        <p class="wireframe-subtitle">{screen.subtitle}</p>
+                      </div>
+                      <div class="wireframe-badge"></div>
+                    </div>
+
+                    <div class={screen.variant === 'phone' ? 'wireframe-list wireframe-list-phone' : 'wireframe-list wireframe-list-desktop'}>
+                      {#each screen.blocks as block}
+                        <div class={toneClass(block.tone)}>
+                          <span>{block.label}</span>
+                          <strong>{block.value}</strong>
+                        </div>
+                      {/each}
+                    </div>
+
+                    {#if screen.variant === 'desktop'}
+                      <div class="wireframe-desktop-panels">
+                        <div class="wireframe-panel"></div>
+                        <div class="wireframe-panel wireframe-panel-tall"></div>
+                        <div class="wireframe-panel"></div>
+                      </div>
+                    {/if}
+                  </div>
+                </div>
+              </div>
+            </article>
+          {/each}
+        </div>
+      </section>
+    {/each}
   </section>
 </main>
