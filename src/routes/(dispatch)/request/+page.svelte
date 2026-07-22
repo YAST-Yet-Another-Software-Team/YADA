@@ -7,11 +7,13 @@
 
 	let pickup = '221 Baker St — Kitchen';
 	let dropoff = '';
-	let vehicle = 'bike';
+	let distance = 'fastest';
 
-	const vehicleOptions = [
-		{ value: 'bike', label: 'Bike — fastest for nearby drops' },
-		{ value: 'car', label: 'Car — larger orders' }
+	const distanceOptions = [
+		{ value: 'fastest', label: 'Fastest nearby' },
+		{ value: 'nearby', label: 'Nearby' },
+		{ value: 'further', label: 'Further away' },
+		{ value: 'any', label: 'Any available' }
 	];
 
 	function findRider() {
@@ -25,7 +27,6 @@
 </svelte:head>
 
 <div class="flex h-full min-h-[calc(100svh-3.25rem)] flex-col lg:min-h-[calc(100svh-58px-3rem)]">
-	<!-- Mobile header -->
 	<div class="flex items-center gap-3 border-b border-border px-4 py-3 lg:hidden">
 		<a href="/dashboard" class="text-ink" aria-label="Back">
 			<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"
@@ -35,9 +36,10 @@
 		<h1 class="text-lg font-semibold text-ink">New request</h1>
 	</div>
 
-	<div class="flex flex-1 flex-col lg:flex-row lg:gap-0 lg:overflow-hidden lg:rounded-lg lg:border lg:border-border lg:bg-surface">
-		<!-- Form -->
-		<div class="flex flex-1 flex-col gap-4 p-4 lg:max-w-xl lg:gap-5 lg:p-8">
+	<div
+		class="flex flex-1 flex-col lg:min-h-[calc(100svh-58px-3rem)] lg:flex-row lg:overflow-hidden lg:rounded-lg lg:border lg:border-border lg:bg-surface"
+	>
+		<div class="flex w-full flex-col gap-4 p-4 lg:w-[380px] lg:shrink-0 lg:gap-5 lg:p-8">
 			<h1 class="hidden text-xl font-semibold text-ink lg:block">New delivery request</h1>
 
 			<Input label="Pickup (defaults to your location)" bind:value={pickup}>
@@ -70,11 +72,10 @@
 				</svelte:fragment>
 			</Input>
 
-			<Select label="Vehicle" options={vehicleOptions} bind:value={vehicle} />
+			<Select label="Rider distance" options={distanceOptions} bind:value={distance} />
 
-			<!-- Mobile map preview -->
-			<div class="relative h-[130px] overflow-hidden rounded-lg border border-border lg:hidden">
-				<MapBackdrop />
+			<div class="relative h-[160px] overflow-hidden rounded-lg border border-border lg:hidden">
+				<MapBackdrop routeLabel />
 			</div>
 
 			<div class="mt-auto pt-2">
@@ -90,16 +91,17 @@
 			</div>
 		</div>
 
-		<!-- Desktop side panel -->
+		<!-- Desktop: route preview fills remaining space (wireframe-style) -->
 		<aside
-			class="relative hidden w-[320px] shrink-0 flex-col gap-3 border-l border-border bg-surface p-5 lg:flex"
+			class="relative hidden min-h-[320px] flex-1 flex-col border-l border-border bg-surface lg:flex"
 		>
-			<h2 class="font-semibold text-ink">Route preview</h2>
-			<div class="relative h-[220px] overflow-hidden rounded-md border border-border">
+			<div class="border-b border-border px-5 py-4">
+				<h2 class="font-semibold text-ink">Route preview</h2>
+				<p class="mt-1 text-sm text-ink-secondary">Est. distance 1.4 mi · Est. time 5–8 min</p>
+			</div>
+			<div class="relative min-h-0 flex-1">
 				<MapBackdrop routeLabel />
 			</div>
-			<p class="text-sm text-ink-secondary">Est. distance: 1.4 mi</p>
-			<p class="text-sm text-ink-secondary">Est. time: 5–8 min</p>
 		</aside>
 	</div>
 </div>

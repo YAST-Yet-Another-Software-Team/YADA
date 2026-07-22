@@ -34,11 +34,15 @@
 
 <main class="min-h-screen bg-bg">
   <section class="mx-auto flex min-h-[100svh] max-w-3xl flex-col justify-center px-6 py-16 sm:px-8">
-    <p
-      class="font-display text-[clamp(2.75rem,8vw,4.5rem)] font-extrabold leading-none tracking-tight text-primary"
-    >
-      YADA
-    </p>
+    <div class="mb-2">
+      <a href="/" class="inline-flex" aria-label="YADA home">
+        <img
+          src="/yada-logo.png"
+          alt="YADA by favorie"
+          class="h-16 w-auto object-contain object-left sm:h-20"
+        />
+      </a>
+    </div>
 
     <h1 class="mt-4 max-w-xl text-balance text-2xl font-semibold leading-snug text-ink sm:text-3xl">
       Find a rider to deliver your order.

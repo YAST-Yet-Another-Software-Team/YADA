@@ -1,8 +1,11 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import type { MockTrip } from '$lib/data/mock-trips';
 
 	export let trips: MockTrip[] = [];
+
+	const dispatch = createEventDispatcher<{ select: MockTrip }>();
 </script>
 
 <div class="overflow-x-auto rounded-lg border border-border bg-surface">
@@ -18,7 +21,13 @@
 		</thead>
 		<tbody>
 			{#each trips as trip (trip.id)}
-				<tr class="border-b border-border last:border-0">
+				<tr
+					class="cursor-pointer border-b border-border last:border-0 transition hover:bg-primary-subtle"
+					on:click={() => dispatch('select', trip)}
+					on:keydown={(e) => e.key === 'Enter' && dispatch('select', trip)}
+					tabindex="0"
+					role="button"
+				>
 					<td class="font-mono-data px-4 py-3 text-ink">#{trip.id.replace('YD-', '')}</td>
 					<td class="px-4 py-3 text-ink">{trip.rider ?? '—'}</td>
 					<td class="px-4 py-3 text-ink">{trip.destination}</td>
