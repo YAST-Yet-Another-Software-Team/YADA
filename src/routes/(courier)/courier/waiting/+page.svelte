@@ -9,7 +9,7 @@
 	onMount(() => {
 		if (online) {
 			timer = setTimeout(() => {
-				goto('/courier/offer');
+				goto('/courier/offer-sheet');
 			}, 2200);
 		}
 	});
@@ -24,7 +24,12 @@
 		goto('/courier/auth');
 	}
 
-	function simulate() {
+	function simulateSheet() {
+		if (timer) clearTimeout(timer);
+		goto('/courier/offer-sheet');
+	}
+
+	function simulateFull() {
 		if (timer) clearTimeout(timer);
 		goto('/courier/offer');
 	}
@@ -71,9 +76,16 @@
 		<button
 			type="button"
 			class="mt-2 text-sm font-semibold text-primary underline-offset-2 hover:underline"
-			on:click={simulate}
+			on:click={simulateSheet}
 		>
 			Simulate request
+		</button>
+		<button
+			type="button"
+			class="text-xs font-medium text-ink-tertiary underline-offset-2 hover:text-ink-secondary hover:underline"
+			on:click={simulateFull}
+		>
+			Try full-screen offer
 		</button>
 	</div>
 
