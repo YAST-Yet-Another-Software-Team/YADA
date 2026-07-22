@@ -60,8 +60,14 @@
         Open business dispatch
       </a>
       <a
-        href="#how-it-works"
+        href="/courier/auth"
         class="inline-flex items-center justify-center rounded-md border border-border bg-surface px-5 py-3 text-sm font-semibold text-ink transition duration-200 hover:border-border-strong hover:bg-primary-subtle"
+      >
+        Courier sign in
+      </a>
+      <a
+        href="#how-it-works"
+        class="inline-flex items-center justify-center rounded-md border border-transparent px-5 py-3 text-sm font-semibold text-ink-secondary transition duration-200 hover:text-ink"
       >
         See how it works
       </a>
