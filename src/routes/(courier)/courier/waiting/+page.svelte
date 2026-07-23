@@ -40,7 +40,7 @@
 </svelte:head>
 
 <div class="flex h-full min-h-[inherit] flex-1 flex-col bg-bg">
-	<header class="flex items-center justify-between border-b border-border px-4 py-3">
+	<div class="flex items-center justify-between px-4 py-3">
 		<p class="text-sm font-semibold text-ink">Kwame A.</p>
 		<span
 			class="inline-flex items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1 text-xs font-semibold text-primary"
@@ -48,7 +48,7 @@
 			<span class="h-2 w-2 rounded-full bg-primary animate-yada-pulse"></span>
 			Online
 		</span>
-	</header>
+	</div>
 
 	<div class="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
 		<div
