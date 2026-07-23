@@ -10,3 +10,12 @@ export function loadGoogleMaps(apiKey: string) {
 
   return importLibrary('maps');
 }
+
+export function loadGoogleMapsGeocoding(apiKey: string) {
+  if (configuredApiKey !== apiKey) {
+    setOptions({ key: apiKey, v: 'weekly' });
+    configuredApiKey = apiKey;
+  }
+
+  return importLibrary('geocoding');
+}
