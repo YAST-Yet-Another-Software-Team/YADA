@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 
 	const dispatch = createEventDispatcher<{ close: void }>();
 
@@ -19,6 +21,12 @@
 		if (!target?.closest('[data-profile-menu]')) {
 			dispatch('close');
 		}
+	}
+
+	function signOut(e: MouseEvent) {
+		e.stopPropagation();
+		dispatch('close');
+		goto('/auth');
 	}
 
 	onMount(() => {
@@ -45,7 +53,7 @@
 				<p class="text-xs text-ink-secondary">{profile.businessName}</p>
 			</div>
 		</div>
-		<dl class="space-y-2.5 text-sm">
+		<dl class="mb-4 space-y-2.5 text-sm">
 			<div>
 				<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Email</dt>
 				<dd class="text-ink">{profile.email}</dd>
@@ -59,5 +67,8 @@
 				<dd class="text-ink">{profile.address}</dd>
 			</div>
 		</dl>
+		<div class="border-t border-border pt-3">
+			<Button variant="ghost" size="sm" fullWidth on:click={signOut}>Sign out</Button>
+		</div>
 	</div>
 {/if}

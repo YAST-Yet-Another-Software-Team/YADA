@@ -4,9 +4,9 @@
 	export let size: 'sm' | 'md' | 'lg' = 'sm';
 
 	const sizeClass = {
-		sm: 'h-8 w-auto',
-		md: 'h-12 w-auto sm:h-14',
-		lg: 'h-16 w-auto sm:h-20'
+		sm: 'h-9 w-auto',
+		md: 'h-14 w-auto sm:h-16',
+		lg: 'h-20 w-auto sm:h-24'
 	};
 </script>
 
@@ -14,6 +14,6 @@
 	<img
 		src="/yada-logo.png"
 		alt="YADA by favorie"
-		class="{sizeClass[size]} object-contain object-left"
+		class="{sizeClass[size]} rounded-md object-contain object-left"
 	/>
 </a>

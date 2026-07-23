@@ -39,7 +39,7 @@
         <img
           src="/yada-logo.png"
           alt="YADA by favorie"
-          class="h-16 w-auto object-contain object-left sm:h-20"
+          class="h-20 w-auto rounded-md object-contain object-left sm:h-24"
         />
       </a>
     </div>
