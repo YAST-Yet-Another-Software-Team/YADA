@@ -1,14 +1,10 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
 
 import { appEnv } from './env';
 import * as schema from './schema';
 
-const pool = appEnv.databaseUrl
-  ? new Pool({
-      connectionString: appEnv.databaseUrl
-    })
-  : null;
+const sql = appEnv.databaseUrl ? neon(appEnv.databaseUrl) : null;
 
-export const db = pool ? drizzle(pool, { schema }) : null;
-export const databasePool = pool;
+export const db = sql ? drizzle({ client: sql, schema }) : null;
+export const databasePool = sql;
