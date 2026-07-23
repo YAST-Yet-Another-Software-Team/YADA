@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
+	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import { loadGoogleMapsGeocoding } from '$lib/maps/google-maps-loader';
+	import {
+		loadGoogleMapsGeocoding,
+		loadGoogleMapsRoutes
+	} from '$lib/maps/google-maps-loader';
 
 	type LocationPoint = {
 		lat: number;
@@ -14,13 +17,27 @@
 
 	type LocationMode = 'pickup' | 'dropoff';
 
+	type RouteSummary = {
+		distanceText: string;
+		durationText: string;
+		status: 'idle' | 'loading' | 'ready' | 'error';
+	};
+
 	let pickup = 'Current location';
 	let dropoff = '';
 	let distance = 'fastest';
 	let activeLocation: LocationMode = 'dropoff';
 	let pickupPoint: LocationPoint | null = null;
 	let dropoffPoint: LocationPoint | null = null;
+	let mapCenter: LocationPoint | null = null;
 	let pickupLoading = true;
+	let routeSummary: RouteSummary = {
+		distanceText: '—',
+		durationText: '—',
+		status: 'idle'
+	};
+	let routePolyline: google.maps.Polyline | null = null;
+	let routeMarkers: google.maps.Marker[] = [];
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
@@ -54,6 +71,17 @@
 		});
 	}
 
+	function normalizeLocation(place: google.maps.places.PlaceResult | null): LocationPoint | null {
+		if (!place?.geometry?.location) {
+			return null;
+		}
+
+		return {
+			lat: place.geometry.location.lat(),
+			lng: place.geometry.location.lng()
+		};
+	}
+
 	async function reverseGeocode(point: LocationPoint): Promise<string | null> {
 		if (!googleMapsApiKey) {
 			return null;
@@ -64,6 +92,71 @@
 		const response = await geocoder.geocode({ location: point });
 
 		return response.results[0]?.formatted_address ?? null;
+	}
+
+	async function syncRoutePreview() {
+		if (!pickupPoint || !dropoffPoint || !googleMapsApiKey) {
+			routeSummary = {
+				distanceText: '—',
+				durationText: '—',
+				status: 'idle'
+			};
+			return;
+		}
+
+		routeSummary = { ...routeSummary, status: 'loading' };
+
+		try {
+			const routesLibrary = await loadGoogleMapsRoutes(googleMapsApiKey);
+			const routeApi = (routesLibrary as unknown as { Route?: { computeRoutes: (request: unknown) => Promise<{ routes: Array<unknown> }> } }).Route;
+
+			if (!routeApi) {
+				throw new Error('Routes API is unavailable');
+			}
+
+			const response = await routeApi.computeRoutes({
+				origin: pickupPoint,
+				destination: dropoffPoint,
+				travelMode: 'DRIVING',
+				fields: ['legs', 'path']
+			});
+
+			const route = response.routes[0] as {
+				legs?: Array<{ distance?: { text?: string }; duration?: { text?: string } }>;
+				path?: google.maps.LatLngLiteral[];
+				createPolylines?: () => google.maps.Polyline[];
+			} | undefined;
+
+			if (!route?.legs?.length) {
+				throw new Error('No route returned');
+			}
+
+			routeSummary = {
+				distanceText: route.legs?.[0]?.distance?.text ?? '—',
+				durationText: route.legs?.[0]?.duration?.text ?? '—',
+				status: 'ready'
+			};
+
+			if (routePolyline) {
+				routePolyline.setMap(null);
+			}
+			routeMarkers.forEach((marker) => marker.setMap(null));
+			routeMarkers = [];
+
+			routePolyline = new google.maps.Polyline({
+				path: route.path ?? [],
+				strokeColor: '#ef4444',
+				strokeOpacity: 0.9,
+				strokeWeight: 4
+			});
+		} catch (error) {
+			console.error('Unable to compute route.', error);
+			routeSummary = {
+				distanceText: 'Unavailable',
+				durationText: 'Unavailable',
+				status: 'error'
+			};
+		}
 	}
 
 	async function setPickupFromLocation() {
@@ -78,25 +171,49 @@
 		pickupPoint = location;
 		pickup = (await reverseGeocode(location)) ?? 'Current location';
 		pickupLoading = false;
+		void syncRoutePreview();
 	}
 
 	function handleMapPick(event: CustomEvent<LocationPoint>) {
 		if (activeLocation === 'pickup') {
 			pickupPoint = event.detail;
+			mapCenter = pickupPoint;
 			void (async () => {
 				pickup = (await reverseGeocode(event.detail)) ?? pickup;
+				void syncRoutePreview();
 			})();
 			return;
 		}
 
 		dropoffPoint = event.detail;
+		mapCenter = dropoffPoint;
 		void (async () => {
 			dropoff = (await reverseGeocode(event.detail)) ?? dropoff;
+			void syncRoutePreview();
 		})();
+	}
+
+	function handlePickupSelect(event: CustomEvent<{ address: string; lat: number; lng: number }>) {
+		pickupPoint = { lat: event.detail.lat, lng: event.detail.lng };
+		pickup = event.detail.address;
+		mapCenter = pickupPoint;
+		void syncRoutePreview();
+	}
+
+	function handleDropoffSelect(event: CustomEvent<{ address: string; lat: number; lng: number }>) {
+		dropoffPoint = { lat: event.detail.lat, lng: event.detail.lng };
+		dropoff = event.detail.address;
+		mapCenter = dropoffPoint;
+		void syncRoutePreview();
 	}
 
 	onMount(() => {
 		void setPickupFromLocation();
+	});
+
+	onDestroy(() => {
+		routePolyline?.setMap(null);
+		routeMarkers.forEach((marker) => marker.setMap(null));
 	});
 
 	function findRider() {
@@ -154,35 +271,30 @@
 				{/if}
 			</p>
 
-			<Input label="Pickup (defaults to your location)" bind:value={pickup}>
-				<svelte:fragment slot="icon">
-					<svg
-						viewBox="0 0 24 24"
-						class="h-4 w-4 text-primary"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						><circle cx="12" cy="12" r="3" /><circle cx="12" cy="12" r="8" /></svg
-					>
-				</svelte:fragment>
-			</Input>
+			<AddressAutocomplete
+				label="Pickup (defaults to your location)"
+				bind:value={pickup}
+				iconColor="text-primary"
+				on:select={handlePickupSelect}
+			/>
 
-			<Input label="Dropoff" placeholder="Customer address" bind:value={dropoff}>
-				<svelte:fragment slot="icon">
-					<svg
-						viewBox="0 0 24 24"
-						class="h-4 w-4 text-secondary"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						><path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" /><circle
-							cx="12"
-							cy="10"
-							r="2.5"
-						/></svg
-					>
-				</svelte:fragment>
-			</Input>
+			<AddressAutocomplete
+				label="Dropoff"
+				placeholder="Customer address"
+				bind:value={dropoff}
+				iconColor="text-secondary"
+				on:select={handleDropoffSelect}
+			/>
+
+			<div class="grid gap-2 rounded-lg border border-border bg-bg px-4 py-3 text-sm text-ink-secondary">
+				<p>
+					<span class="font-semibold text-ink">Route:</span>
+					{routeSummary.distanceText} · {routeSummary.durationText}
+				</p>
+				<p>
+					Type an address and pick a result from autocomplete, or keep using the map to place the pins.
+				</p>
+			</div>
 
 			<Select label="Rider distance" options={distanceOptions} bind:value={distance} />
 
@@ -190,6 +302,7 @@
 				<MapBackdrop
 					routeLabel
 					interactive
+					center={mapCenter}
 					markers={[
 						...(pickupPoint
 							? [
@@ -237,12 +350,19 @@
 		>
 			<div class="border-b border-border px-5 py-4">
 				<h2 class="font-semibold text-ink">Route preview</h2>
-				<p class="mt-1 text-sm text-ink-secondary">Est. distance 1.4 mi · Est. time 5–8 min</p>
+				<p class="mt-1 text-sm text-ink-secondary">
+					{#if routeSummary.status === 'ready'}
+						Est. distance {routeSummary.distanceText} · Est. time {routeSummary.durationText}
+					{:else}
+						Select pickup & dropoff to preview route
+					{/if}
+				</p>
 			</div>
 			<div class="relative min-h-0 flex-1">
 				<MapBackdrop
 					routeLabel
 					interactive
+					center={mapCenter}
 					markers={[
 						...(pickupPoint
 							? [

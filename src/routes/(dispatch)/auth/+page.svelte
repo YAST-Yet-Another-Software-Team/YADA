@@ -5,8 +5,6 @@
 	import { auth } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
 
-	const bypassKey = 'yada-auth-bypass';
-
 	let mode: 'sign-in' | 'sign-up' = 'sign-in';
 	let name = '';
 	let email = '';
@@ -17,12 +15,6 @@
 
 	onMount(async () => {
 		try {
-			if (window.localStorage.getItem(bypassKey) === 'true') {
-				isLoading = false;
-				window.location.replace('/dashboard');
-				return;
-			}
-
 			const session = await auth.syncSession();
 			if (session) {
 				window.location.replace('/dashboard');
@@ -43,20 +35,6 @@
 		}
 
 		void auth.signIn(email, password).then(() => window.location.replace('/dashboard'));
-	}
-
-	function bypassAuth() {
-		if (typeof window !== 'undefined') {
-			window.localStorage.setItem(bypassKey, 'true');
-		}
-		window.location.replace('/dashboard');
-	}
-
-	function clearBypass() {
-		if (typeof window !== 'undefined') {
-			window.localStorage.removeItem(bypassKey);
-		}
-		errorMessage = '';
 	}
 </script>
 
@@ -105,12 +83,9 @@
 					</div>
 
 					<div class="mt-6">
-						<div class="grid gap-3 sm:grid-cols-2">
+						<div class="grid gap-3">
 							<Button variant="primary" size="lg" fullWidth on:click={submitAuth} disabled={isLoading}>
 								{mode === 'sign-up' ? 'Create account' : 'Sign in'}
-							</Button>
-							<Button variant="secondary" size="lg" fullWidth on:click={bypassAuth}>
-								Test bypass
 							</Button>
 						</div>
 
@@ -125,16 +100,6 @@
 								}}
 							>
 								{mode === 'sign-up' ? 'Back to sign in' : 'Create one'}
-							</button>
-						</div>
-
-						<div class="mt-4 flex justify-center">
-							<button
-								type="button"
-								class="text-xs font-medium text-ink-tertiary underline-offset-4 hover:text-ink-secondary hover:underline"
-								on:click={clearBypass}
-							>
-								Clear test bypass
 							</button>
 						</div>
 					</div>
