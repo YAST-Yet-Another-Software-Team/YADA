@@ -1,26 +1,23 @@
-import {
-  BETTER_AUTH_API_KEY,
-  BETTER_AUTH_SECRET,
-  BETTER_AUTH_URL,
-  DATABASE_URL,
-  GOOGLE_MAPS_API_KEY,
-  NODE_ENV,
-  OAUTH_GOOGLE_CLIENT_ID,
-  OAUTH_GOOGLE_CLIENT_SECRET,
-  SOCKET_CORS_ORIGIN
-} from '$env/static/private';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import dotenv from 'dotenv';
+
+const envPath = resolve(process.cwd(), '.env');
+
+if (existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+}
+
+const env = process.env;
 
 export const appEnv = {
-  nodeEnv: NODE_ENV ?? 'development',
-  databaseUrl: DATABASE_URL ?? '',
-  betterAuthApiKey: BETTER_AUTH_API_KEY ?? '',
-  googleMapsApiKey: GOOGLE_MAPS_API_KEY ?? '',
-  // Better Auth
-  authSecret: BETTER_AUTH_SECRET ?? '',
-  authUrl: BETTER_AUTH_URL ?? 'http://localhost:5173',
-  // Google OAuth (used by Better Auth's socialProviders config)
-  oauthGoogleClientId: OAUTH_GOOGLE_CLIENT_ID ?? '',
-  oauthGoogleClientSecret: OAUTH_GOOGLE_CLIENT_SECRET ?? '',
-  // Socket.IO
-  socketCorsOrigin: SOCKET_CORS_ORIGIN ?? 'http://localhost:5173'
+  nodeEnv: env.NODE_ENV ?? 'development',
+  databaseUrl: env.DATABASE_URL ?? '',
+  betterAuthApiKey: env.BETTER_AUTH_API_KEY ?? '',
+  googleMapsApiKey: env.GOOGLE_MAPS_API_KEY ?? '',
+  authSecret: env.BETTER_AUTH_SECRET ?? '',
+  authUrl: env.BETTER_AUTH_URL ?? 'http://localhost:5173',
+  oauthGoogleClientId: env.OAUTH_GOOGLE_CLIENT_ID ?? '',
+  oauthGoogleClientSecret: env.OAUTH_GOOGLE_CLIENT_SECRET ?? '',
+  socketCorsOrigin: env.SOCKET_CORS_ORIGIN ?? 'http://localhost:5173'
 } as const;

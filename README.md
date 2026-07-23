@@ -59,7 +59,7 @@ YADA is a web application that streamlines on-demand motor courier delivery for 
 - Real Time Communication: Socket.IO
 - Location service: google maps
 - Database: PostgreSQL Neon, PostGIS, Drizzle ORM
-- Authentication: Better Auth, OAuth
+- Authentication: Better Auth
 - Deployment: Cloudflare, Railway/Render
 
 ____________________________

@@ -5,6 +5,10 @@
 	import { auth } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
 
+	const bypassKey = 'yada-auth-bypass';
+
+	let mode: 'sign-in' | 'sign-up' = 'sign-in';
+	let name = '';
 	let email = '';
 	let password = '';
 	let keepMeSignedIn = true;
@@ -13,6 +17,12 @@
 
 	onMount(async () => {
 		try {
+			if (window.localStorage.getItem(bypassKey) === 'true') {
+				isLoading = false;
+				window.location.replace('/dashboard');
+				return;
+			}
+
 			const session = await auth.syncSession();
 			if (session) {
 				window.location.replace('/dashboard');
@@ -24,8 +34,29 @@
 		}
 	});
 
-	function login() {
+	function submitAuth() {
+		if (mode === 'sign-up') {
+			void auth.signUp(email, password, name || email.split('@')[0] || 'Business user').then(() =>
+				window.location.replace('/dashboard')
+			);
+			return;
+		}
+
 		void auth.signIn(email, password).then(() => window.location.replace('/dashboard'));
+	}
+
+	function bypassAuth() {
+		if (typeof window !== 'undefined') {
+			window.localStorage.setItem(bypassKey, 'true');
+		}
+		window.location.replace('/dashboard');
+	}
+
+	function clearBypass() {
+		if (typeof window !== 'undefined') {
+			window.localStorage.removeItem(bypassKey);
+		}
+		errorMessage = '';
 	}
 </script>
 
@@ -43,10 +74,10 @@
 					Business access
 				</p>
 				<h1 class="mt-3 max-w-xl text-4xl font-semibold leading-tight text-ink">
-					Sign in with Auth0 to request and track couriers.
+					Sign in or create a business account to request and track couriers.
 				</h1>
 				<p class="mt-4 max-w-lg text-base leading-relaxed text-ink-secondary">
-					Use the Better Auth flow for secure login, then return straight to the dispatch dashboard.
+					Use the Better Auth flow for secure login, or create a new account in one step.
 				</p>
 
 				<div class="mt-8 flex flex-wrap gap-3 text-sm text-ink-secondary">
@@ -61,19 +92,51 @@
 					<div class="mb-6 rounded-2xl bg-primary-subtle p-5 text-primary">
 						<p class="text-xs font-semibold uppercase tracking-[0.16em]">Powered by Better Auth</p>
 						<p class="mt-2 text-sm text-ink-secondary">
-							Configure BETTER_AUTH_SECRET and your database to enable login.
+							Configure BETTER_AUTH_SECRET and your database to enable login and sign up.
 						</p>
 					</div>
 
 					<div class="flex flex-col gap-4">
+						{#if mode === 'sign-up'}
+							<Input label="Business name" type="text" placeholder="YADA Logistics" bind:value={name} />
+						{/if}
 						<Input label="Work email" type="email" placeholder="name@restaurant.com" bind:value={email} />
 						<Input label="Password" type="password" placeholder="••••••••" bind:value={password} />
 					</div>
 
 					<div class="mt-6">
-						<Button variant="primary" size="lg" fullWidth on:click={login} disabled={isLoading}>
-							Continue with Better Auth
-					</Button>
+						<div class="grid gap-3 sm:grid-cols-2">
+							<Button variant="primary" size="lg" fullWidth on:click={submitAuth} disabled={isLoading}>
+								{mode === 'sign-up' ? 'Create account' : 'Sign in'}
+							</Button>
+							<Button variant="secondary" size="lg" fullWidth on:click={bypassAuth}>
+								Test bypass
+							</Button>
+						</div>
+
+						<div class="mt-4 flex items-center justify-center gap-2 text-sm text-ink-secondary">
+							<span>{mode === 'sign-up' ? 'Already have an account?' : 'Need an account?'}</span>
+							<button
+								type="button"
+								class="font-semibold text-primary underline decoration-primary/40 underline-offset-4"
+								on:click={() => {
+									mode = mode === 'sign-up' ? 'sign-in' : 'sign-up';
+									errorMessage = '';
+								}}
+							>
+								{mode === 'sign-up' ? 'Back to sign in' : 'Create one'}
+							</button>
+						</div>
+
+						<div class="mt-4 flex justify-center">
+							<button
+								type="button"
+								class="text-xs font-medium text-ink-tertiary underline-offset-4 hover:text-ink-secondary hover:underline"
+								on:click={clearBypass}
+							>
+								Clear test bypass
+							</button>
+						</div>
 					</div>
 
 					{#if errorMessage}

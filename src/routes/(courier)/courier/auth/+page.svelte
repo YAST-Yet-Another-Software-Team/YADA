@@ -5,6 +5,8 @@
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth';
 
+	const bypassKey = 'yada-auth-bypass';
+
 	let fullName = '';
 	let phone = '';
 	let email = '';
@@ -20,6 +22,12 @@
 
 	onMount(async () => {
 		try {
+			if (window.localStorage.getItem(bypassKey) === 'true') {
+				isLoading = false;
+				window.location.replace('/courier/home');
+				return;
+			}
+
 			const session = await auth.syncSession();
 			if (session) {
 				window.location.replace('/courier/home');
@@ -34,6 +42,20 @@
 	function continueAuth() {
 		if (!canContinue) return;
 		void auth.signUp(email, password, fullName, phone).then(() => window.location.replace('/courier/home'));
+	}
+
+	function bypassAuth() {
+		if (typeof window !== 'undefined') {
+			window.localStorage.setItem(bypassKey, 'true');
+		}
+		window.location.replace('/courier/home');
+	}
+
+	function clearBypass() {
+		if (typeof window !== 'undefined') {
+			window.localStorage.removeItem(bypassKey);
+		}
+		errorMessage = '';
 	}
 </script>
 
@@ -68,9 +90,24 @@
 		</div>
 
 		<div class="mt-6">
-			<Button variant="primary" size="lg" fullWidth on:click={continueAuth} disabled={isLoading || !canContinue}>
-				Continue with Better Auth
-			</Button>
+			<div class="grid gap-3 sm:grid-cols-2">
+				<Button variant="primary" size="lg" fullWidth on:click={continueAuth} disabled={isLoading || !canContinue}>
+					Create courier account
+				</Button>
+				<Button variant="secondary" size="lg" fullWidth on:click={bypassAuth}>
+					Test bypass
+				</Button>
+			</div>
+
+			<div class="mt-4 flex justify-center">
+				<button
+					type="button"
+					class="text-xs font-medium text-ink-tertiary underline-offset-4 hover:text-ink-secondary hover:underline"
+					on:click={clearBypass}
+				>
+					Clear test bypass
+				</button>
+			</div>
 		</div>
 
 		{#if errorMessage}
