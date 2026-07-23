@@ -12,17 +12,75 @@ export const tripStatusEnum = pgEnum('trip_status', [
   'cancelled'
 ]);
 
+// ---------------------------------------------------------------------------
+// Core user table — field names aligned with Better Auth conventions.
+// Better Auth expects: id, name, email, emailVerified, image, createdAt, updatedAt.
+// Extra YADA fields (phoneNumber, role) are carried as additionalFields.
+// ---------------------------------------------------------------------------
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  fullName: text('full_name').notNull(),
+  name: text('name').notNull(),
   email: text('email').unique(),
+  emailVerified: boolean('email_verified').notNull().default(false),
+  image: text('image'),
   phoneNumber: text('phone_number').unique(),
   role: userRoleEnum('role').notNull().default('business'),
-  avatarUrl: text('avatar_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+// ---------------------------------------------------------------------------
+// Better Auth — sessions table
+// ---------------------------------------------------------------------------
+export const sessions = pgTable('sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+// ---------------------------------------------------------------------------
+// Better Auth — accounts table (for OAuth provider links, e.g. Google)
+// ---------------------------------------------------------------------------
+export const accounts = pgTable('accounts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at', { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { withTimezone: true }),
+  scope: text('scope'),
+  idToken: text('id_token'),
+  password: text('password'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+// ---------------------------------------------------------------------------
+// Better Auth — verifications table (email/OTP verification tokens)
+// ---------------------------------------------------------------------------
+export const verifications = pgTable('verifications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+// ---------------------------------------------------------------------------
+// YADA domain tables
+// ---------------------------------------------------------------------------
 export const courierProfiles = pgTable('courier_profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
