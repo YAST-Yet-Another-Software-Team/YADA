@@ -27,7 +27,7 @@
 
 	function decline() {
 		if (timer) clearInterval(timer);
-		goto('/courier/waiting');
+		goto('/courier/home');
 	}
 </script>
 

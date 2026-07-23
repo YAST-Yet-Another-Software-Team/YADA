@@ -4,7 +4,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 
 	function backOnline() {
-		goto('/courier/waiting');
+		goto('/courier/home');
 	}
 </script>
 
