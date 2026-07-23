@@ -129,7 +129,7 @@ npm install
 # Configure environment variables
 cp .env.example .env
 
-# For Google Maps, set PUBLIC_GOOGLE_MAPS_API_KEY to a browser-restricted key.
+# For Google Maps, set VITE_GOOGLE_MAPS_API_KEY to a browser-restricted key.
 
 # Run database migrations (PostgreSQL)
 npm run db:migrate

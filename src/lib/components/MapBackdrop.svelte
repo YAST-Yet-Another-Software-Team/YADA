@@ -6,7 +6,31 @@
 
   let mapElement: HTMLDivElement | null = null;
   let mapState: 'fallback' | 'loading' | 'ready' | 'error' = 'fallback';
-  const googleMapsApiKey = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
+  const fallbackCenter = { lat: 5.6037, lng: -0.187 };
+
+  function getUserLocation(): Promise<{ lat: number; lng: number } | null> {
+    if (!navigator.geolocation) {
+      return Promise.resolve(null);
+    }
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        () => resolve(null),
+        {
+          enableHighAccuracy: true,
+          timeout: 6000,
+          maximumAge: 60_000
+        }
+      );
+    });
+  }
 
   onMount(async () => {
     if (!googleMapsApiKey || !mapElement) {
@@ -22,8 +46,8 @@
         return;
       }
 
-      new Map(mapElement, {
-        center: { lat: 5.6037, lng: -0.187 },
+      const map = new Map(mapElement, {
+        center: fallbackCenter,
         zoom: 13,
         disableDefaultUI: true,
         clickableIcons: false,
@@ -31,6 +55,15 @@
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false
+      });
+
+      void getUserLocation().then((location) => {
+        if (!location) {
+          return;
+        }
+
+        map.panTo(location);
+        map.setZoom(15);
       });
 
       mapState = 'ready';
