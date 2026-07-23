@@ -18,7 +18,9 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@auth0/auth0-spa-js": "^2.24.0",
     "@better-auth/drizzle-adapter": "^1.6.25",
+    "@better-auth/infra": "^0.3.7",
     "@googlemaps/js-api-loader": "^2.1.1",
     "@neondatabase/serverless": "^1.1.0",
     "@sveltejs/adapter-node": "^5.5.7",
