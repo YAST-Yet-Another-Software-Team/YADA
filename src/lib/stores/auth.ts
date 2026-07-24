@@ -247,6 +247,39 @@ async function updateProfile(fields: { name?: string; phone?: string }) {
   }
 }
 
+async function changePassword(currentPassword: string, newPassword: string) {
+  update((state) => ({ ...state, isLoading: true, error: null }));
+
+  try {
+    const response = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentPassword,
+        newPassword,
+        revokeOtherSessions: false
+      })
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        error?: { message?: string };
+      } | null;
+      throw new Error(
+        payload?.message || payload?.error?.message || 'Unable to change password.'
+      );
+    }
+
+    update((state) => ({ ...state, isLoading: false, error: null }));
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to change password.';
+    update((state) => ({ ...state, isLoading: false, error: message }));
+    throw error;
+  }
+}
+
 export const auth = {
   subscribe,
   syncSession,
@@ -254,6 +287,7 @@ export const auth = {
   signUp,
   signOut,
   updateProfile,
+  changePassword,
   requestPasswordReset,
   resetPassword
 };

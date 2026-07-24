@@ -246,9 +246,20 @@
 	</div>
 
 	<div class="flex min-h-0 flex-1 flex-col lg:flex-row">
-		<!-- Left controls (tester-style panel) -->
+		<!-- Map on top in portrait; right pane in landscape -->
+		<div class="relative order-1 min-h-[52svh] flex-1 lg:order-2 lg:min-h-0">
+			<MapBackdrop
+				interactive
+				center={mapCenter}
+				zoom={mapZoom}
+				markers={mapMarkers}
+				on:pick={handleMapPick}
+			/>
+		</div>
+
+		<!-- Request controls below in portrait; left pane in landscape -->
 		<aside
-			class="relative z-20 flex w-full shrink-0 flex-col gap-5 overflow-visible border-b border-border bg-surface p-4 lg:w-[320px] lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-6"
+			class="relative z-20 order-2 flex w-full shrink-0 flex-col gap-5 overflow-visible border-t border-border bg-surface p-4 lg:order-1 lg:w-[320px] lg:overflow-y-auto lg:border-r lg:border-t-0 lg:p-6"
 		>
 			<div class="hidden lg:block">
 				<h1 class="text-xl font-semibold text-ink">New delivery request</h1>
@@ -304,16 +315,5 @@
 				</Button>
 			</div>
 		</aside>
-
-		<!-- Map pane -->
-		<div class="relative min-h-[52svh] flex-1 lg:min-h-0">
-			<MapBackdrop
-				interactive
-				center={mapCenter}
-				zoom={mapZoom}
-				markers={mapMarkers}
-				on:pick={handleMapPick}
-			/>
-		</div>
 	</div>
 </div>

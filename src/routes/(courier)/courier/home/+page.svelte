@@ -196,11 +196,13 @@
 						<p class="mt-0.5 text-xs text-ink-secondary">
 							{data.activeTrip.pickupAddress} → {data.activeTrip.dropoffAddress}
 						</p>
-					{:else if currentRequest}
-						<p class="mt-2 text-sm font-semibold text-ink">{currentRequest.businessName}</p>
-						<p class="mt-0.5 text-xs text-ink-secondary">
-							{currentRequest.pickupAddress} → {currentRequest.dropoffAddress}
+					{:else if data.pendingRequests.length > 0}
+						<p class="mt-2 text-sm font-semibold text-ink">
+							{data.pendingRequests.length} delivery request{data.pendingRequests.length === 1
+								? ''
+								: 's'}
 						</p>
+						<p class="mt-0.5 text-xs text-ink-secondary">Review offers below to accept a trip</p>
 					{:else}
 						<p class="mt-2 text-sm font-semibold text-ink">Waiting for a delivery request…</p>
 						<p class="mt-0.5 text-xs text-ink-secondary">
@@ -288,7 +290,11 @@
 		{/if}
 
 		{#if $courierOnline}
-			<Button variant="ghost" size="lg" fullWidth on:click={goOffline}>Go offline</Button>
+			{#if data.pendingRequests.length === 0 || data.activeTrip}
+				<Button variant="ghost" size="lg" fullWidth on:click={goOffline}>Go offline</Button>
+			{:else}
+				<Button variant="ghost" size="sm" fullWidth on:click={goOffline}>Go offline</Button>
+			{/if}
 		{:else}
 			<Button variant="primary" size="lg" fullWidth on:click={goOnline}>Go online</Button>
 		{/if}
