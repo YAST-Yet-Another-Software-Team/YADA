@@ -70,14 +70,14 @@ async function syncSession() {
   }
 }
 
-async function signIn(email: string, password: string) {
+async function signIn(email: string, password: string, rememberMe = false) {
   update((state) => ({ ...state, isLoading: true, error: null }));
 
   try {
     const response = await fetch('/api/auth/sign-in/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, rememberMe })
     });
 
     if (!response.ok) {
@@ -89,6 +89,57 @@ async function signIn(email: string, password: string) {
     const message = error instanceof Error ? error.message : 'Unable to sign in.';
     update((state) => ({ ...state, isLoading: false, error: message }));
     throw error;
+  }
+}
+
+async function requestPasswordReset(email: string) {
+  update((state) => ({ ...state, isLoading: true, error: null }));
+
+  try {
+    const redirectTo =
+      typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : '/reset-password';
+
+    const response = await fetch('/api/auth/forget-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, redirectTo })
+    });
+
+    if (!response.ok) {
+      throw new Error('Unable to send password reset email.');
+    }
+
+    return await response.json();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to send password reset email.';
+    update((state) => ({ ...state, isLoading: false, error: message }));
+    throw error;
+  } finally {
+    update((state) => ({ ...state, isLoading: false }));
+  }
+}
+
+async function resetPassword(token: string, newPassword: string) {
+  update((state) => ({ ...state, isLoading: true, error: null }));
+
+  try {
+    const response = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    });
+
+    if (!response.ok) {
+      throw new Error('Unable to reset password.');
+    }
+
+    return await response.json();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to reset password.';
+    update((state) => ({ ...state, isLoading: false, error: message }));
+    throw error;
+  } finally {
+    update((state) => ({ ...state, isLoading: false }));
   }
 }
 
@@ -129,5 +180,7 @@ export const auth = {
   syncSession,
   signIn,
   signUp,
-  signOut
+  signOut,
+  requestPasswordReset,
+  resetPassword
 };
