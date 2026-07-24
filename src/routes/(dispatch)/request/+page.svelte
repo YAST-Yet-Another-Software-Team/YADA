@@ -12,37 +12,21 @@
 
 	type LocationMode = 'pickup' | 'dropoff';
 
-	type RouteSummary = {
-		distanceText: string;
-		durationText: string;
-		distanceKm: number | null;
-		durationMinutes: number | null;
-		path: LatLng[];
-		status: 'idle' | 'loading' | 'ready' | 'error';
-		error?: string;
-	};
-
 	let pickup = '';
 	let dropoff = '';
 	let pickupPlaceId: string | undefined;
 	let dropoffPlaceId: string | undefined;
 	let distance = 'fastest';
+	/** Which address field map clicks / focus update (no visible toggle). */
 	let activeLocation: LocationMode = 'dropoff';
 	let pickupPoint: LatLng | null = null;
 	let dropoffPoint: LatLng | null = null;
 	let mapCenter: LatLng | null = KUMASI_CENTER;
 	let mapZoom: number | null = null;
-	let pickupLoading = true;
 	let submitting = false;
 	let zoneError = '';
-	let routeSummary: RouteSummary = {
-		distanceText: '—',
-		durationText: '—',
-		distanceKm: null,
-		durationMinutes: null,
-		path: [],
-		status: 'idle'
-	};
+	let estimatedDistanceKm: number | null = null;
+	let estimatedDurationMinutes: number | null = null;
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
@@ -57,8 +41,7 @@
 		Boolean(pickupPoint && dropoffPoint && dropoff.trim() && pickup.trim()) &&
 		containsPoint(pickupPoint!) &&
 		containsPoint(dropoffPoint!) &&
-		!submitting &&
-		routeSummary.status !== 'loading';
+		!submitting;
 
 	function getUserLocation(): Promise<LatLng | null> {
 		if (!navigator.geolocation) return Promise.resolve(null);
@@ -75,137 +58,101 @@
 		});
 	}
 
-	async function syncRoutePreview() {
+	async function refreshEstimatesQuietly() {
 		if (!pickupPoint || !dropoffPoint || !googleMapsApiKey) {
-			routeSummary = {
-				distanceText: '—',
-				durationText: '—',
-				distanceKm: null,
-				durationMinutes: null,
-				path: [],
-				status: 'idle'
-			};
+			estimatedDistanceKm = null;
+			estimatedDurationMinutes = null;
 			return;
 		}
-
-		routeSummary = { ...routeSummary, status: 'loading', error: undefined };
-
 		try {
 			const route = await computeDrivingRoute(googleMapsApiKey, pickupPoint, dropoffPoint);
-			routeSummary = {
-				distanceText: route.distanceText,
-				durationText: route.durationText,
-				distanceKm: route.distanceKm,
-				durationMinutes: route.durationMinutes,
-				path: route.path,
-				status: 'ready'
-			};
-		} catch (error) {
-			const code = (error as { code?: GeoErrorCode }).code ?? 'unavailable';
-			routeSummary = {
-				distanceText: 'Unavailable',
-				durationText: 'Unavailable',
-				distanceKm: null,
-				durationMinutes: null,
-				path: [],
-				status: 'error',
-				error: geoErrorMessage(code)
-			};
+			estimatedDistanceKm = route.distanceKm;
+			estimatedDurationMinutes = route.durationMinutes;
+		} catch {
+			estimatedDistanceKm = null;
+			estimatedDurationMinutes = null;
 		}
 	}
 
-	async function setPickupFromLocation() {
-		pickupLoading = true;
-		const location = await getUserLocation();
-
-		if (!location) {
-			pickupPoint = { ...KUMASI_CENTER };
-			pickup = 'Ayeduase / KNUST (default)';
-			mapCenter = pickupPoint;
-			pickupLoading = false;
-			return;
-		}
-
-		if (!containsPoint(location)) {
-			zoneError = geoErrorMessage('out_of_zone');
-			pickupPoint = { ...KUMASI_CENTER };
-			pickup = 'Ayeduase Gate, near KNUST, Kumasi';
-			mapCenter = pickupPoint;
-			pickupLoading = false;
-			return;
-		}
-
-		pickupPoint = location;
-		mapCenter = location;
-		const reverse = await reverseGeocode(location);
-		pickup = reverse.ok ? reverse.result.address : 'Current location';
-		pickupLoading = false;
-		void syncRoutePreview();
-	}
-
-	function handleMapPick(event: CustomEvent<LatLng>) {
-		const point = event.detail;
-		const inZone = containsPoint(point);
-		if (!inZone) {
+	async function applyPoint(mode: LocationMode, point: LatLng, address?: string, placeId?: string) {
+		if (!containsPoint(point)) {
 			zoneError = geoErrorMessage('out_of_zone');
 			return;
 		}
 		zoneError = '';
-
-		if (activeLocation === 'pickup') {
-			pickupPoint = point;
-			mapCenter = point;
-			mapZoom = 16;
-			void (async () => {
-				const reverse = await reverseGeocode(point);
-				pickup = reverse.ok ? reverse.result.address : pickup;
-				void syncRoutePreview();
-			})();
-			return;
-		}
-
-		dropoffPoint = point;
 		mapCenter = point;
 		mapZoom = 16;
-		void (async () => {
-			const reverse = await reverseGeocode(point);
-			dropoff = reverse.ok ? reverse.result.address : dropoff;
-			void syncRoutePreview();
-		})();
+
+		if (mode === 'pickup') {
+			pickupPoint = point;
+			pickupPlaceId = placeId;
+			if (address) pickup = address;
+			else {
+				const reverse = await reverseGeocode(point);
+				pickup = reverse.ok ? reverse.result.address : pickup;
+			}
+		} else {
+			dropoffPoint = point;
+			dropoffPlaceId = placeId;
+			if (address) dropoff = address;
+			else {
+				const reverse = await reverseGeocode(point);
+				dropoff = reverse.ok ? reverse.result.address : dropoff;
+			}
+		}
+
+		void refreshEstimatesQuietly();
+	}
+
+	async function setPickupFromLocation() {
+		const location = await getUserLocation();
+		const point = location && containsPoint(location) ? location : { ...KUMASI_CENTER };
+		await applyPoint(
+			'pickup',
+			point,
+			location && containsPoint(location) ? undefined : 'Ayeduase Gate, near KNUST, Kumasi'
+		);
+		if (location && !containsPoint(location)) {
+			zoneError = '';
+		}
+	}
+
+	function handleMapPick(event: CustomEvent<LatLng>) {
+		void applyPoint(activeLocation, event.detail);
 	}
 
 	function handlePickupSelect(
 		event: CustomEvent<{ address: string; lat: number; lng: number; placeId?: string; inZone: boolean }>
 	) {
+		activeLocation = 'pickup';
 		if (!event.detail.inZone) {
 			zoneError = geoErrorMessage('out_of_zone');
 			pickupPoint = null;
 			return;
 		}
-		zoneError = '';
-		pickupPoint = { lat: event.detail.lat, lng: event.detail.lng };
-		pickup = event.detail.address;
-		pickupPlaceId = event.detail.placeId;
-		mapCenter = pickupPoint;
-		mapZoom = 16;
-		void syncRoutePreview();
+		void applyPoint(
+			'pickup',
+			{ lat: event.detail.lat, lng: event.detail.lng },
+			event.detail.address,
+			event.detail.placeId
+		);
 	}
 
 	function handleDropoffSelect(
 		event: CustomEvent<{ address: string; lat: number; lng: number; placeId?: string; inZone: boolean }>
 	) {
+		activeLocation = 'dropoff';
 		if (!event.detail.inZone) {
 			zoneError = geoErrorMessage('out_of_zone');
 			dropoffPoint = null;
 			return;
 		}
-		zoneError = '';
-		dropoffPoint = { lat: event.detail.lat, lng: event.detail.lng };
-		dropoff = event.detail.address;
-		dropoffPlaceId = event.detail.placeId;
-		mapCenter = dropoffPoint;
-		mapZoom = 16;
-		void syncRoutePreview();
+		void applyPoint(
+			'dropoff',
+			{ lat: event.detail.lat, lng: event.detail.lng },
+			event.detail.address,
+			event.detail.placeId
+		);
 	}
 
 	function handleGeoError(event: CustomEvent<{ code: GeoErrorCode; message: string }>) {
@@ -217,6 +164,8 @@
 		submitting = true;
 
 		try {
+			await refreshEstimatesQuietly();
+
 			const response = await fetch('/api/trips', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -229,8 +178,8 @@
 					dropoffLng: dropoffPoint.lng,
 					pickupPlaceId,
 					dropoffPlaceId,
-					estimatedDistanceKm: routeSummary.distanceKm,
-					estimatedDurationMinutes: routeSummary.durationMinutes
+					estimatedDistanceKm,
+					estimatedDurationMinutes
 				})
 			});
 
@@ -243,9 +192,8 @@
 				pickupLng: pickupPoint.lng,
 				dropoffLat: dropoffPoint.lat,
 				dropoffLng: dropoffPoint.lng,
-				estimatedDistanceKm: routeSummary.distanceKm,
-				estimatedDurationMinutes: routeSummary.durationMinutes,
-				routePath: routeSummary.path
+				estimatedDistanceKm,
+				estimatedDurationMinutes
 			};
 			sessionStorage.setItem('yada:active-trip', JSON.stringify(tripPayload));
 
@@ -285,7 +233,9 @@
 	<title>New request | YADA</title>
 </svelte:head>
 
-<div class="flex h-full min-h-[calc(100svh-3.25rem)] flex-col lg:min-h-[calc(100svh-58px-3rem)]">
+<div
+	class="flex h-full min-h-[calc(100svh-3.25rem)] flex-col lg:min-h-[calc(100svh-58px-3rem)] lg:overflow-hidden lg:rounded-lg lg:border lg:border-border lg:bg-surface"
+>
 	<div class="flex items-center gap-3 border-b border-border px-4 py-3 lg:hidden">
 		<a href="/dashboard" class="text-ink" aria-label="Back">
 			<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"
@@ -295,89 +245,52 @@
 		<h1 class="text-lg font-semibold text-ink">New request</h1>
 	</div>
 
-	<div
-		class="flex flex-1 flex-col overflow-visible lg:min-h-[calc(100svh-58px-3rem)] lg:flex-row lg:overflow-visible lg:rounded-lg lg:border lg:border-border lg:bg-surface"
-	>
-		<div class="relative z-20 flex w-full flex-col gap-4 overflow-visible p-4 lg:w-[380px] lg:shrink-0 lg:gap-5 lg:p-8">
-			<h1 class="hidden text-xl font-semibold text-ink lg:block">New delivery request</h1>
-
-			<div class="flex gap-2 rounded-lg border border-border bg-surface p-1 text-sm">
-				<button
-					type="button"
-					class="flex-1 rounded-md px-3 py-2 font-semibold transition-colors {activeLocation === 'pickup'
-						? 'bg-primary text-primary-on'
-						: 'text-ink-secondary hover:bg-primary-subtle'}"
-					on:click={() => (activeLocation = 'pickup')}
-				>
-					Set pickup on map
-				</button>
-				<button
-					type="button"
-					class="flex-1 rounded-md px-3 py-2 font-semibold transition-colors {activeLocation === 'dropoff'
-						? 'bg-primary text-primary-on'
-						: 'text-ink-secondary hover:bg-primary-subtle'}"
-					on:click={() => (activeLocation = 'dropoff')}
-				>
-					Set dropoff on map
-				</button>
+	<div class="flex min-h-0 flex-1 flex-col lg:flex-row">
+		<!-- Left controls (tester-style panel) -->
+		<aside
+			class="relative z-20 flex w-full shrink-0 flex-col gap-5 overflow-visible border-b border-border bg-surface p-4 lg:w-[320px] lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-6"
+		>
+			<div class="hidden lg:block">
+				<h1 class="text-xl font-semibold text-ink">New delivery request</h1>
+				<p class="mt-1 text-sm text-ink-secondary">
+					Search addresses or tap the map to place pins.
+				</p>
 			</div>
-
-			<p class="text-xs text-ink-tertiary">
-				{#if pickupLoading}
-					Resolving pickup in Kumasi (KNUST/Ayeduase)…
-				{:else}
-					Addresses must be inside the KNUST / Ayeduase delivery zone.
-				{/if}
-			</p>
 
 			{#if zoneError}
 				<p class="rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{zoneError}</p>
 			{/if}
 
-			<AddressAutocomplete
-				label="Pickup (defaults to your location)"
-				bind:value={pickup}
-				iconColor="text-primary"
-				on:select={handlePickupSelect}
-				on:error={handleGeoError}
-			/>
+			<section class="space-y-2">
+				<p class="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Pickup</p>
+				<div on:focusin={() => (activeLocation = 'pickup')}>
+					<AddressAutocomplete
+						placeholder="Business / pickup address"
+						bind:value={pickup}
+						iconColor="text-primary"
+						on:select={handlePickupSelect}
+						on:error={handleGeoError}
+					/>
+				</div>
+			</section>
 
-			<AddressAutocomplete
-				label="Dropoff"
-				placeholder="Customer address in KNUST / Ayeduase"
-				bind:value={dropoff}
-				iconColor="text-secondary"
-				on:select={handleDropoffSelect}
-				on:error={handleGeoError}
-			/>
+			<section class="space-y-2">
+				<p class="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Dropoff</p>
+				<div on:focusin={() => (activeLocation = 'dropoff')}>
+					<AddressAutocomplete
+						placeholder="Customer delivery address"
+						bind:value={dropoff}
+						iconColor="text-secondary"
+						on:select={handleDropoffSelect}
+						on:error={handleGeoError}
+					/>
+				</div>
+			</section>
 
-			<div class="grid gap-2 rounded-lg border border-border bg-bg px-4 py-3 text-sm text-ink-secondary">
-				<p>
-					<span class="font-semibold text-ink">Route:</span>
-					{#if routeSummary.status === 'loading'}
-						Calculating…
-					{:else}
-						{routeSummary.distanceText} · {routeSummary.durationText}
-					{/if}
-				</p>
-				{#if routeSummary.error}
-					<p class="text-red-600">{routeSummary.error}</p>
-				{/if}
-			</div>
-
-			<Select label="Rider distance" options={distanceOptions} bind:value={distance} />
-
-			<div class="relative h-[160px] overflow-hidden rounded-lg border border-border lg:hidden">
-				<MapBackdrop
-					routeLabel
-					interactive
-					center={mapCenter}
-					zoom={mapZoom}
-					markers={mapMarkers}
-					polylinePath={routeSummary.path}
-					on:pick={handleMapPick}
-				/>
-			</div>
+			<section class="space-y-2">
+				<p class="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Dispatch</p>
+				<Select label="Rider distance" options={distanceOptions} bind:value={distance} />
+			</section>
 
 			<div class="mt-auto pt-2">
 				<Button
@@ -390,34 +303,17 @@
 					{submitting ? 'Saving…' : 'Find a rider'}
 				</Button>
 			</div>
-		</div>
-
-		<aside
-			class="relative hidden min-h-[320px] flex-1 flex-col border-l border-border bg-surface lg:flex"
-		>
-			<div class="border-b border-border px-5 py-4">
-				<h2 class="font-semibold text-ink">Route preview</h2>
-				<p class="mt-1 text-sm text-ink-secondary">
-					{#if routeSummary.status === 'ready'}
-						Est. distance {routeSummary.distanceText} · Est. time {routeSummary.durationText}
-					{:else if routeSummary.status === 'loading'}
-						Calculating driving route…
-					{:else}
-						Select pickup & dropoff inside KNUST / Ayeduase
-					{/if}
-				</p>
-			</div>
-			<div class="relative min-h-0 flex-1">
-				<MapBackdrop
-					routeLabel
-					interactive
-					center={mapCenter}
-					zoom={mapZoom}
-					markers={mapMarkers}
-					polylinePath={routeSummary.path}
-					on:pick={handleMapPick}
-				/>
-			</div>
 		</aside>
+
+		<!-- Map pane -->
+		<div class="relative min-h-[52svh] flex-1 lg:min-h-0">
+			<MapBackdrop
+				interactive
+				center={mapCenter}
+				zoom={mapZoom}
+				markers={mapMarkers}
+				on:pick={handleMapPick}
+			/>
+		</div>
 	</div>
 </div>

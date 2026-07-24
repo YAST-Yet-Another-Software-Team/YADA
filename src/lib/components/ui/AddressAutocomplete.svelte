@@ -2,6 +2,7 @@
 	import { createEventDispatcher, onDestroy } from 'svelte';
 	import Input from './Input.svelte';
 	import { loadGoogleMapsPlaces } from '$lib/maps/google-maps-loader';
+	import { MAPS_ENABLED } from '$lib/maps/maps-enabled';
 	import { containsPoint, getZoneBounds, KUMASI_CENTER } from '$lib/geo/service-area';
 	import { geoErrorMessage, type GeoErrorCode } from '$lib/geo/errors';
 	import { createClientGeocodeCache, placeCacheKey } from '$lib/geo/geocode-cache';
@@ -72,6 +73,12 @@
 	async function fetchSuggestions(query: string) {
 		const q = query.trim();
 		if (!q) {
+			suggestions = [];
+			isOpen = false;
+			return;
+		}
+
+		if (!MAPS_ENABLED) {
 			suggestions = [];
 			isOpen = false;
 			return;
@@ -345,7 +352,7 @@
 		<p class="mt-1.5 text-xs font-medium text-red-600">{errorMessage}</p>
 	{/if}
 
-	{#if !googleMapsApiKey}
+	{#if MAPS_ENABLED && !googleMapsApiKey}
 		<p class="mt-1.5 text-xs text-ink-tertiary">
 			Set VITE_GOOGLE_MAPS_API_KEY to enable address search near KNUST / Ayeduase
 			({KUMASI_CENTER.lat.toFixed(2)}, {KUMASI_CENTER.lng.toFixed(2)}).

@@ -7,6 +7,7 @@
 
 	onMount(() => {
 		courierOnline.hydrate();
+		void auth.syncSession();
 	});
 
 	$: user = $auth.user;
@@ -27,12 +28,20 @@
 </svelte:head>
 
 <div class="flex flex-1 flex-col gap-5 bg-bg p-4">
-	<div class="flex items-center gap-3">
-		<Avatar initials={initials} size={56} status={$courierOnline ? 'online' : null} />
-		<div>
-			<h1 class="text-xl font-semibold text-ink">{profileName}</h1>
-			<p class="text-sm text-ink-secondary">Courier · {vehicle}</p>
+	<div class="flex items-start justify-between gap-3">
+		<div class="flex items-center gap-3">
+			<Avatar initials={initials} size={56} status={$courierOnline ? 'online' : null} />
+			<div>
+				<h1 class="text-xl font-semibold text-ink">{profileName}</h1>
+				<p class="text-sm text-ink-secondary">Courier · {vehicle}</p>
+			</div>
 		</div>
+		<a
+			href="/courier/profile/edit"
+			class="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink hover:bg-neutral-50"
+		>
+			Edit
+		</a>
 	</div>
 
 	<div class="grid grid-cols-2 gap-3">
@@ -47,7 +56,12 @@
 	</div>
 
 	<section class="rounded-lg border border-border bg-surface p-4">
-		<h2 class="mb-3 text-sm font-semibold text-ink">Account</h2>
+		<div class="mb-3 flex items-center justify-between gap-2">
+			<h2 class="text-sm font-semibold text-ink">Account</h2>
+			<a href="/courier/profile/edit" class="text-sm font-semibold text-primary hover:underline">
+				Edit profile
+			</a>
+		</div>
 		<dl class="space-y-3 text-sm">
 			<div>
 				<dt class="text-ink-tertiary">Phone</dt>

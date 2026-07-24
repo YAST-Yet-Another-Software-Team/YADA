@@ -19,5 +19,10 @@ export const appEnv = {
   authUrl: env.BETTER_AUTH_URL ?? 'http://localhost:5173',
   oauthGoogleClientId: env.OAUTH_GOOGLE_CLIENT_ID ?? '',
   oauthGoogleClientSecret: env.OAUTH_GOOGLE_CLIENT_SECRET ?? '',
-  socketCorsOrigin: env.SOCKET_CORS_ORIGIN ?? 'http://localhost:5173'
+  socketCorsOrigin: env.SOCKET_CORS_ORIGIN ?? 'http://localhost:5173',
+  /** Extra comma-separated origins, e.g. http://172.20.10.3:5173 */
+  trustedOrigins: (env.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
 } as const;

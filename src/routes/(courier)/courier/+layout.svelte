@@ -1,7 +1,11 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import BrandLogo from '$lib/components/BrandLogo.svelte';
 	import CourierTabBar from '$lib/components/courier/CourierTabBar.svelte';
+	import Avatar from '$lib/components/ui/Avatar.svelte';
+	import { auth } from '$lib/stores/auth';
+	import { courierOnline } from '$lib/stores/courier-online';
 
 	$: path = $page.url.pathname;
 	$: isAuth = path === '/courier/auth';
@@ -12,6 +16,20 @@
 		path === '/courier/deliver';
 	$: showChrome = !isAuth;
 	$: showTabs = showChrome && !isFocusedTrip;
+	$: isHome = path === '/courier/home';
+	$: user = $auth.user;
+	$: initials =
+		(user?.name || 'C')
+			.split(/\s+/)
+			.slice(0, 2)
+			.map((part) => part[0] || '')
+			.join('')
+			.toUpperCase() || 'C';
+
+	onMount(() => {
+		courierOnline.hydrate();
+		void auth.syncSession();
+	});
 </script>
 
 <div class="min-h-svh bg-neutral-200">
@@ -20,13 +38,20 @@
 	>
 		{#if showChrome}
 			<header
-				class="z-20 flex shrink-0 items-center border-b border-border bg-surface px-4 py-2.5"
+				class="z-20 flex shrink-0 items-center justify-between border-b border-border bg-surface px-4 py-2.5"
 			>
 				<BrandLogo href="/courier/home" size="sm" />
+				<a
+					href="/courier/profile"
+					class="rounded-full outline-none ring-primary focus-visible:ring-2"
+					aria-label="Open profile"
+				>
+					<Avatar initials={initials} size={32} status={$courierOnline ? 'online' : null} />
+				</a>
 			</header>
 		{/if}
 
-		<div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+		<div class="flex min-h-0 flex-1 flex-col {isHome ? 'overflow-hidden' : 'overflow-y-auto'}">
 			<slot />
 		</div>
 

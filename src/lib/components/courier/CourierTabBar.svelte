@@ -11,7 +11,13 @@
 		{
 			href: '/courier/orders',
 			label: 'Orders',
-			match: ['/courier/orders', '/courier/offer', '/courier/offer-sheet', '/courier/pickup', '/courier/deliver'],
+			match: [
+				'/courier/orders',
+				'/courier/offer',
+				'/courier/offer-sheet',
+				'/courier/pickup',
+				'/courier/deliver'
+			],
 			icon: 'orders'
 		},
 		{
@@ -21,10 +27,10 @@
 			icon: 'trips'
 		},
 		{
-			href: '/courier/profile',
-			label: 'Profile',
-			match: ['/courier/profile'],
-			icon: 'profile'
+			href: '/courier/settings',
+			label: 'Settings',
+			match: ['/courier/settings'],
+			icon: 'settings'
 		}
 	];
 
@@ -103,7 +109,9 @@
 								stroke-width="2"
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								><path d="M19 21a7 7 0 0 0-14 0" /><circle cx="12" cy="8" r="4" /></svg
+								><circle cx="12" cy="12" r="3" /><path
+									d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+								/></svg
 							>
 						{/if}
 					</span>

@@ -1,16 +1,20 @@
-import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
-
 /**
- * Required Google Cloud APIs for YADA:
+ * Required Google Cloud APIs for YADA (when MAPS_ENABLED / VITE_MAPS_ENABLED=true):
  * - Maps JavaScript API
- * - Places API (New) — PlaceAutocompleteElement
+ * - Places API (New)
  * - Geocoding API
  * - Routes API
  */
 
+import { MAPS_ENABLED } from './maps-enabled';
+import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
+
 let configuredApiKey: string | null = null;
 
 function configure(apiKey: string) {
+  if (!MAPS_ENABLED) {
+    throw new Error('Maps are temporarily disabled (VITE_MAPS_ENABLED=false).');
+  }
   if (configuredApiKey !== apiKey) {
     setOptions({ key: apiKey, v: 'weekly' });
     configuredApiKey = apiKey;

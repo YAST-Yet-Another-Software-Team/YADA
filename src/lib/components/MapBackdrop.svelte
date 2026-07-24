@@ -15,6 +15,7 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import { loadGoogleMaps } from '$lib/maps/google-maps-loader';
+  import { MAPS_ENABLED } from '$lib/maps/maps-enabled';
   import {
     KUMASI_CENTER,
     KUMASI_DEFAULT_ZOOM,
@@ -25,6 +26,8 @@
   export let interactive = false;
   /** @deprecated Zone outline removed from UI; prop kept so callers don't break. */
   export let showZone = false;
+  /** Thin brand red wash over the map (YADA primary). */
+  export let brandTint = true;
   export let locationUnavailable = false;
   export let followId: string | null = null;
   export let markers: MapMarker[] = [];
@@ -84,6 +87,11 @@
   }
 
   onMount(async () => {
+    if (!MAPS_ENABLED) {
+      mapState = 'fallback';
+      return;
+    }
+
     if (!googleMapsApiKey || !mapElement) {
       return;
     }
@@ -245,7 +253,9 @@
       style="background-image: linear-gradient(var(--neutral-200) 1px, transparent 1px), linear-gradient(90deg, var(--neutral-200) 1px, transparent 1px); background-size: 28px 28px;"
     >
       <div class="font-mono-data absolute left-4 top-4 text-xs tracking-wide text-neutral-400">
-        {#if mapState === 'loading'}
+        {#if !MAPS_ENABLED}
+          MAPS TEMPORARILY DISABLED
+        {:else if mapState === 'loading'}
           LOADING KUMASI MAP…
         {:else if mapState === 'error'}
           GOOGLE MAPS FAILED — FALLING BACK TO MOCK MAP
@@ -274,6 +284,14 @@
     >
       Location unavailable — showing last known position
     </div>
+  {/if}
+
+  {#if brandTint}
+    <div
+      class="pointer-events-none absolute inset-0 z-[1]"
+      style="background: color-mix(in srgb, var(--color-primary, #e11d48) 10%, transparent);"
+      aria-hidden="true"
+    ></div>
   {/if}
 
   <slot />

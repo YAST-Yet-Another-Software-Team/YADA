@@ -202,12 +202,58 @@ async function signOut(returnTo = '/') {
   }
 }
 
+async function updateProfile(fields: { name?: string; phone?: string }) {
+  update((state) => ({ ...state, isLoading: true, error: null }));
+
+  try {
+    const body: Record<string, string> = {};
+    if (fields.name !== undefined) body.name = fields.name.trim();
+    if (fields.phone !== undefined) body.phoneNumber = fields.phone.trim();
+
+    const response = await fetch('/api/auth/update-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        error?: { message?: string };
+      } | null;
+      throw new Error(
+        payload?.message || payload?.error?.message || 'Unable to update profile.'
+      );
+    }
+
+    const payload = (await response.json()) as {
+      user?: Parameters<typeof mapUser>[0] | null;
+      data?: { user?: Parameters<typeof mapUser>[0] | null } | null;
+    };
+
+    const currentUser = payload.user ?? payload.data?.user ?? null;
+    const mappedUser = mapUser(currentUser) ?? (await syncSession());
+
+    if (!mappedUser) {
+      throw new Error('Unable to update profile.');
+    }
+
+    set({ user: mappedUser, isLoading: false, error: null });
+    return mappedUser;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to update profile.';
+    update((state) => ({ ...state, isLoading: false, error: message }));
+    throw error;
+  }
+}
+
 export const auth = {
   subscribe,
   syncSession,
   signIn,
   signUp,
   signOut,
+  updateProfile,
   requestPasswordReset,
   resetPassword
 };

@@ -8,19 +8,57 @@ import { db } from './db';
 import { appEnv } from './env';
 import * as schema from './schema';
 
-// ---------------------------------------------------------------------------
-// Better Auth instance
-//
-// - drizzleAdapter maps our custom table names / field names to BA's models.
-// - generateId: false — let PostgreSQL produce UUIDs via defaultRandom().
-// - Google OAuth provider is declared here; fill in credentials via .env.
-// - role + phoneNumber live on the users table as additionalFields so BA
-//   reads/writes them alongside its own fields.
-// - sveltekitCookies plugin ensures Set-Cookie works inside SvelteKit's
-//   server actions (which bypass the normal response cycle).
-// ---------------------------------------------------------------------------
+function isPrivateLanOrigin(origin: string) {
+  try {
+    const { hostname, protocol } = new URL(origin);
+    if (protocol !== 'http:' && protocol !== 'https:') return false;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
+    const parts = hostname.split('.').map(Number);
+    if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) return false;
+    const [a, b] = parts;
+    return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  } catch {
+    return false;
+  }
+}
+
+async function resolveTrustedOrigins(request?: Request) {
+  const origins = [
+    appEnv.authUrl,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    // Host wildcards (Better Auth matches against hostname)
+    '172.*.*.*:5173',
+    '192.168.*.*:5173',
+    '10.*.*.*:5173',
+    '172.*.*.*:3000',
+    '192.168.*.*:3000',
+    '10.*.*.*:3000',
+    ...appEnv.trustedOrigins
+  ];
+
+  // Always accept the live browser Origin on private LAN in development
+  // (covers phone hotspot IPs like http://172.20.10.3:5173).
+  if (appEnv.nodeEnv !== 'production' && request) {
+    const header = request.headers.get('origin') ?? request.headers.get('referer');
+    if (header) {
+      try {
+        const origin = new URL(header).origin;
+        if (isPrivateLanOrigin(origin)) {
+          origins.push(origin);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  return [...new Set(origins.filter(Boolean))];
+}
+
 export const auth = betterAuth({
-  // Require DATABASE_URL to be set; db can be null during type-check without a DB
   database: drizzleAdapter(db!, {
     provider: 'pg',
     schema: {
@@ -33,13 +71,8 @@ export const auth = betterAuth({
 
   secret: appEnv.authSecret,
   baseURL: appEnv.authUrl,
-  trustedOrigins: [
-    appEnv.authUrl,
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-  ],
+  // Function form so each request can include its LAN Origin (hotspot/phone testing)
+  trustedOrigins: resolveTrustedOrigins,
 
   emailAndPassword: {
     enabled: true
@@ -57,8 +90,6 @@ export const auth = betterAuth({
     : {}),
 
   user: {
-    // Map BA's default 'image' field to our column name is already handled
-    // by the schema rename. Declare extra YADA columns as additionalFields.
     additionalFields: {
       role: {
         type: 'string',
@@ -74,13 +105,9 @@ export const auth = betterAuth({
     }
   },
 
-  // sveltekitCookies must be last — it finalises Set-Cookie during server actions.
   plugins: [dash(), sveltekitCookies(getRequestEvent)]
 });
 
-// ---------------------------------------------------------------------------
-// Re-export the session user shape so the rest of the app can reference it.
-// ---------------------------------------------------------------------------
 export type AuthRole = 'business' | 'courier' | 'admin';
 
 export interface SessionUser {
