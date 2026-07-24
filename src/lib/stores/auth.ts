@@ -87,7 +87,16 @@ async function signIn(email: string, password: string, rememberMe = false) {
       throw new Error('Unable to sign in.');
     }
 
-    return await syncSession();
+    const payload = (await response.json()) as {
+      user?: Parameters<typeof mapUser>[0] | null;
+      data?: { user?: Parameters<typeof mapUser>[0] | null } | null;
+    };
+
+    const currentUser = payload.user ?? payload.data?.user ?? null;
+    const mappedUser = mapUser(currentUser);
+
+    set({ user: mappedUser, isLoading: false, error: null });
+    return mappedUser;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to sign in.';
     update((state) => ({ ...state, isLoading: false, error: message }));
@@ -146,21 +155,36 @@ async function resetPassword(token: string, newPassword: string) {
   }
 }
 
-async function signUp(email: string, password: string, name: string, phone?: string) {
+async function signUp(
+  email: string,
+  password: string,
+  name: string,
+  phone?: string,
+  role: 'business' | 'courier' | 'admin' = 'business'
+) {
   update((state) => ({ ...state, isLoading: true, error: null }));
 
   try {
     const response = await fetch('/api/auth/sign-up/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, phoneNumber: phone })
+      body: JSON.stringify({ email, password, name, phoneNumber: phone, role })
     });
 
     if (!response.ok) {
       throw new Error('Unable to sign up.');
     }
 
-    return await syncSession();
+    const payload = (await response.json()) as {
+      user?: Parameters<typeof mapUser>[0] | null;
+      data?: { user?: Parameters<typeof mapUser>[0] | null } | null;
+    };
+
+    const currentUser = payload.user ?? payload.data?.user ?? null;
+    const mappedUser = mapUser(currentUser);
+
+    set({ user: mappedUser, isLoading: false, error: null });
+    return mappedUser;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to sign up.';
     update((state) => ({ ...state, isLoading: false, error: message }));
