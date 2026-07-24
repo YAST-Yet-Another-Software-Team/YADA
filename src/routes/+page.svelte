@@ -319,7 +319,7 @@
 					{/if}
 
 					<p class="mt-4 text-center text-xs leading-6 text-ink-tertiary lg:mt-6">
-						No payment info needed — YADA only locates and tracks riders.
+					
 					</p>
 				</div>
 			</section>

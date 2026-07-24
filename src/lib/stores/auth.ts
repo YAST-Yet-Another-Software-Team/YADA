@@ -53,16 +53,19 @@ async function syncSession() {
     }
 
     const payload = (await response.json()) as {
-      data?: { user?: Parameters<typeof mapUser>[0] } | null;
+      user?: Parameters<typeof mapUser>[0] | null;
+      data?: { user?: Parameters<typeof mapUser>[0] | null } | null;
     };
 
+    const currentUser = payload.user ?? payload.data?.user ?? null;
+
     set({
-      user: mapUser(payload.data?.user ?? null),
+      user: mapUser(currentUser),
       isLoading: false,
       error: null
     });
 
-    return mapUser(payload.data?.user ?? null);
+    return mapUser(currentUser);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load session.';
     set({ user: null, isLoading: false, error: message });
