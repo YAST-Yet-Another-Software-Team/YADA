@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { onDestroy, onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import Button from '$lib/components/ui/Button.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
@@ -43,9 +43,18 @@
 	};
 
 	let acceptingId: string | null = null;
+	let decliningId: string | null = null;
+	let refreshTimer: ReturnType<typeof setInterval> | undefined;
 
 	onMount(() => {
 		courierOnline.hydrate();
+		refreshTimer = setInterval(() => {
+			void invalidateAll();
+		}, 5000);
+	});
+
+	onDestroy(() => {
+		if (refreshTimer) clearInterval(refreshTimer);
 	});
 
 	$: currentRequest = data.pendingRequests[0] ?? null;
@@ -90,6 +99,27 @@
 			}
 		} finally {
 			acceptingId = null;
+		}
+	}
+
+	async function declineRequest(requestId: string) {
+		if (decliningId || !$courierOnline) return;
+
+		decliningId = requestId;
+		try {
+			const response = await fetch('/api/courier/decline-trip', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tripId: requestId })
+			});
+
+			if (!response.ok) {
+				throw new Error('Unable to decline request');
+			}
+
+			goto('/courier/home');
+		} finally {
+			decliningId = null;
 		}
 	}
 
@@ -224,14 +254,24 @@
 									<p class="mt-1 line-clamp-2 text-xs text-ink-tertiary">{request.notes}</p>
 								{/if}
 							</div>
-							<Button
-								variant="primary"
-								size="sm"
-								disabled={acceptingId === request.id}
-								on:click={() => acceptRequest(request.id)}
-							>
-								{acceptingId === request.id ? '…' : 'Accept'}
-							</Button>
+							<div class="flex shrink-0 flex-col gap-1.5">
+								<Button
+									variant="primary"
+									size="sm"
+									disabled={acceptingId === request.id || decliningId === request.id}
+									on:click={() => acceptRequest(request.id)}
+								>
+									{acceptingId === request.id ? '…' : 'Accept'}
+								</Button>
+								<Button
+									variant="ghost"
+									size="sm"
+									disabled={acceptingId === request.id || decliningId === request.id}
+									on:click={() => declineRequest(request.id)}
+								>
+									{decliningId === request.id ? '…' : 'Decline'}
+								</Button>
+							</div>
 						</div>
 					</div>
 				{/each}

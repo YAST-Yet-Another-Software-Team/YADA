@@ -15,15 +15,32 @@
 	/** When true, reject selections outside the Kumasi KNUST zone. */
 	export let enforceZone = true;
 
-	type Suggestion = {
+	type LocalSuggestion = {
 		id: string;
 		mainText: string;
 		secondaryText: string;
 		fullAddress: string;
+		lat: number;
+		lng: number;
+		placeId?: string;
+		source: 'local';
+	};
+
+	type GoogleSuggestion = {
+		id: string;
+		mainText: string;
+		secondaryText: string;
+		fullAddress: string;
+		lat: number;
+		lng: number;
+		placeId?: string;
+		source: 'google';
 		prediction: {
 			toPlace: () => Promise<PlaceLike> | PlaceLike;
 		};
 	};
+
+	type Suggestion = LocalSuggestion | GoogleSuggestion;
 
 	type PlaceLike = {
 		fetchFields?: (opts: { fields: string[] }) => Promise<void>;
@@ -56,6 +73,47 @@
 	let sessionToken: unknown = null;
 	let placesReady = false;
 	const cache = createClientGeocodeCache();
+	const LOCAL_SUGGESTIONS = [
+		{
+			id: 'ayeduase-gate',
+			mainText: 'Ayeduase Gate',
+			secondaryText: 'near KNUST, Kumasi',
+			fullAddress: 'Ayeduase Gate, near KNUST, Kumasi',
+			lat: 6.6785,
+			lng: -1.5645
+		},
+		{
+			id: 'knust-commercial',
+			mainText: 'KNUST Commercial Area',
+			secondaryText: 'Kumasi',
+			fullAddress: 'KNUST Commercial Area, Kumasi',
+			lat: 6.6745,
+			lng: -1.5716
+		},
+		{
+			id: 'unity-hall',
+			mainText: 'Unity Hall',
+			secondaryText: 'KNUST, Kumasi',
+			fullAddress: 'Unity Hall, KNUST',
+			lat: 6.6798,
+			lng: -1.5732
+		},
+		{
+			id: 'ayeduase-new-site',
+			mainText: 'Ayeduase New Site',
+			secondaryText: 'Kumasi',
+			fullAddress: 'Ayeduase New Site, Kumasi',
+			lat: 6.682,
+			lng: -1.56
+		}
+	] satisfies Array<{
+		id: string;
+		mainText: string;
+		secondaryText: string;
+		fullAddress: string;
+		lat: number;
+		lng: number;
+	}>;
 
 	async function ensurePlaces() {
 		if (placesReady || !googleMapsApiKey) return placesReady;
@@ -78,14 +136,22 @@
 			return;
 		}
 
-		if (!MAPS_ENABLED) {
-			suggestions = [];
-			isOpen = false;
-			return;
-		}
-
-		if (!googleMapsApiKey) {
-			errorMessage = 'Maps key missing — address search unavailable.';
+		if (!MAPS_ENABLED || !googleMapsApiKey) {
+			const normalized = q.toLowerCase();
+			suggestions = LOCAL_SUGGESTIONS.filter(
+				(item) =>
+					item.mainText.toLowerCase().includes(normalized) ||
+					item.secondaryText.toLowerCase().includes(normalized) ||
+					item.fullAddress.toLowerCase().includes(normalized)
+			)
+				.slice(0, 5)
+				.map((item) => ({
+					...item,
+					placeId: `local-${item.id}`,
+					source: 'local' as const
+				}));
+			isOpen = suggestions.length > 0;
+			selectedIndex = suggestions.length > 0 ? 0 : -1;
 			return;
 		}
 
@@ -149,10 +215,13 @@
 						mainText: main,
 						secondaryText: secondary,
 						fullAddress: full,
+							lat: KUMASI_CENTER.lat,
+							lng: KUMASI_CENTER.lng,
+							source: 'google' as const,
 						prediction
-					} satisfies Suggestion;
+						} satisfies GoogleSuggestion;
 				})
-				.filter((item): item is Suggestion => item != null);
+					.filter((item): item is GoogleSuggestion => item != null);
 
 			isOpen = suggestions.length > 0;
 			selectedIndex = -1;
@@ -187,6 +256,26 @@
 		errorMessage = '';
 		isOpen = false;
 		value = suggestion.fullAddress;
+		selectedIndex = -1;
+
+		if (suggestion.source === 'local') {
+			const inZone = containsPoint({ lat: suggestion.lat, lng: suggestion.lng });
+			if (enforceZone && !inZone) {
+				errorMessage = geoErrorMessage('out_of_zone');
+				dispatch('error', { code: 'out_of_zone', message: errorMessage });
+				return;
+			}
+
+			dispatch('select', {
+				address: suggestion.fullAddress,
+				lat: suggestion.lat,
+				lng: suggestion.lng,
+				placeId: suggestion.placeId,
+				inZone
+			});
+			resolving = false;
+			return;
+		}
 
 		try {
 			let place = await Promise.resolve(suggestion.prediction.toPlace());
