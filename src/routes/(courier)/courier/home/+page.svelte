@@ -44,6 +44,7 @@
 
 	let acceptingId: string | null = null;
 	let decliningId: string | null = null;
+	let actionError = '';
 	let refreshTimer: ReturnType<typeof setInterval> | undefined;
 
 	onMount(() => {
@@ -82,6 +83,7 @@
 		if (acceptingId || !$courierOnline) return;
 
 		acceptingId = requestId;
+		actionError = '';
 		try {
 			const response = await fetch('/api/courier/accept-trip', {
 				method: 'POST',
@@ -97,6 +99,8 @@
 			if (payload.ok) {
 				goto(`/courier/pickup?tripId=${encodeURIComponent(payload.tripId)}`);
 			}
+		} catch (error) {
+			actionError = error instanceof Error ? error.message : 'Unable to accept request';
 		} finally {
 			acceptingId = null;
 		}
@@ -106,6 +110,7 @@
 		if (decliningId || !$courierOnline) return;
 
 		decliningId = requestId;
+		actionError = '';
 		try {
 			const response = await fetch('/api/courier/decline-trip', {
 				method: 'POST',
@@ -118,6 +123,8 @@
 			}
 
 			goto('/courier/home');
+		} catch (error) {
+			actionError = error instanceof Error ? error.message : 'Unable to decline request';
 		} finally {
 			decliningId = null;
 		}
@@ -235,6 +242,9 @@
 			</div>
 		{:else if $courierOnline && currentRequest}
 			<div class="rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
+				{#if actionError}
+					<p class="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{actionError}</p>
+				{/if}
 				<div class="flex items-start justify-between gap-3">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
@@ -269,7 +279,12 @@
 				</div>
 			</div>
 		{:else if $courierOnline}
-			<p class="text-center text-sm text-ink-secondary">Today: {data.summary.tripsToday} deliveries</p>
+			<div class="rounded-2xl border border-border bg-surface/95 p-3 text-center text-sm text-ink-secondary shadow-sm backdrop-blur-sm">
+				{#if actionError}
+					<p class="mb-2 rounded-xl bg-red-50 px-3 py-2 text-left text-xs font-medium text-red-700">{actionError}</p>
+				{/if}
+				Today: {data.summary.tripsToday} deliveries
+			</div>
 		{/if}
 
 		{#if $courierOnline}

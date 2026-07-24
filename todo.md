@@ -7,9 +7,10 @@
 - [x] Maps disabled for testing
 - [x] Wire request card to live offer data
 - [x] Implement accept and decline actions
+- [x] Courier request refresh and backend-backed tracking
+- [x] Add real edit profile flow
+- [x] Replace earnings mockup with real data
+- [x] Restore pickup and delivery flows in the new UI
+- [x] Add loading and error states
 
 ## Still To Do
-- [ ] Add real edit profile flow
-- [ ] Replace earnings mockup with real data
-- [ ] Restore pickup and delivery flows in the new UI
-- [ ] Add loading and error states

@@ -30,6 +30,7 @@
   let etaText = 'Calculating…';
   let locationUnavailable = false;
   let confirming = false;
+  let actionError = '';
   let stopReporter: (() => void) | null = null;
 
   $: pickupPoint =
@@ -56,6 +57,7 @@
   async function confirmPickup() {
     if (confirming) return;
     confirming = true;
+    actionError = '';
     try {
       const response = await fetch('/api/courier/trip-status', {
         method: 'POST',
@@ -68,6 +70,8 @@
       }
 
       goto(`/courier/deliver?tripId=${encodeURIComponent(data.trip.id)}`);
+    } catch (error) {
+      actionError = error instanceof Error ? error.message : 'Unable to advance trip';
     } finally {
       confirming = false;
     }
@@ -164,6 +168,10 @@
 
     {#if data.trip.notes}
       <p class="rounded-2xl bg-neutral-50 px-3 py-2 text-sm text-ink-secondary">{data.trip.notes}</p>
+    {/if}
+
+    {#if actionError}
+      <p class="rounded-2xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{actionError}</p>
     {/if}
 
     <div class="flex items-center gap-3">
