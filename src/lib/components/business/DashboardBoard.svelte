@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { boardColumns, type MockTrip, type TripStatus } from '$lib/data/mock-trips';
+	import { boardColumns } from '$lib/data/mock-trips';
+	import type { DashboardTripRecord } from '$lib/server/dashboard-data';
 
-	export let trips: MockTrip[] = [];
-	export let deliveredToday: MockTrip[] = [];
+	type TripStatus = DashboardTripRecord['status'];
 
-	const dispatch = createEventDispatcher<{ select: MockTrip }>();
+	export let trips: DashboardTripRecord[] = [];
+	export let deliveredToday: DashboardTripRecord[] = [];
+
+	const dispatch = createEventDispatcher<{ select: DashboardTripRecord }>();
 
 	function columnTrips(key: TripStatus | 'delivered') {
 		if (key === 'delivered') return deliveredToday;

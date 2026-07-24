@@ -79,11 +79,27 @@ export const verifications = pgTable('verifications', {
 });
 
 // ---------------------------------------------------------------------------
+// Business profile — used by the dispatch UI to anchor the test business.
+// ---------------------------------------------------------------------------
+export const businessProfiles = pgTable('business_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  businessName: text('business_name').notNull(),
+  address: text('address').notNull(),
+  latitude: numeric('latitude', { precision: 10, scale: 6 }).notNull(),
+  longitude: numeric('longitude', { precision: 10, scale: 6 }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+// ---------------------------------------------------------------------------
 // YADA domain tables
 // ---------------------------------------------------------------------------
 export const courierProfiles = pgTable('courier_profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
+  userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   vehicleType: text('vehicle_type').notNull(),
@@ -96,10 +112,10 @@ export const courierProfiles = pgTable('courier_profiles', {
 
 export const deliveryRequests = pgTable('delivery_requests', {
   id: uuid('id').defaultRandom().primaryKey(),
-  businessId: uuid('business_id')
+  businessId: text('business_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  assignedCourierId: uuid('assigned_courier_id').references(() => users.id, {
+  assignedCourierId: text('assigned_courier_id').references(() => users.id, {
     onDelete: 'set null'
   }),
   status: tripStatusEnum('status').notNull().default('requested'),
@@ -118,7 +134,7 @@ export const tripEvents = pgTable('trip_events', {
   tripId: uuid('trip_id')
     .notNull()
     .references(() => deliveryRequests.id, { onDelete: 'cascade' }),
-  actorId: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
+  actorId: text('actor_id').references(() => users.id, { onDelete: 'set null' }),
   eventType: text('event_type').notNull(),
   payload: text('payload'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()

@@ -4,14 +4,18 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import Tabs from '$lib/components/ui/Tabs.svelte';
-	import { historyTrips, type MockTrip } from '$lib/data/mock-trips';
+	import type { DashboardTripRecord } from '$lib/server/dashboard-data';
+
+	export let data: {
+		historyTrips: DashboardTripRecord[];
+	};
 
 	let tab = 'history';
 	let statusFilter = 'all';
 	let search = '';
-	let selected: MockTrip | null = null;
+	let selected: DashboardTripRecord | null = null;
 
-	$: filtered = historyTrips.filter((trip) => {
+	$: filtered = data.historyTrips.filter((trip) => {
 		const statusOk = statusFilter === 'all' || trip.status === statusFilter;
 		const q = search.trim().toLowerCase();
 		const searchOk =
@@ -28,7 +32,7 @@
 		goto('/request');
 	}
 
-	function openDetails(trip: MockTrip) {
+	function openDetails(trip: DashboardTripRecord) {
 		selected = trip;
 	}
 

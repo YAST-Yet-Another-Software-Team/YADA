@@ -2,7 +2,23 @@
 	import RiderPin from '$lib/components/business/RiderPin.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
-	import { availableRiders, businessProfile } from '$lib/data/mock-trips';
+
+	export let data: {
+		businessProfile: {
+			businessName: string;
+			address: string;
+			mapX: number;
+			mapY: number;
+		} | null;
+		availableRiders: Array<{
+			id: string;
+			name: string;
+			vehicle: string;
+			distanceKm: number;
+			mapX: number;
+			mapY: number;
+		}>;
+	};
 
 	let searchedLocation: { lat: number; lng: number; address: string } | null = null;
 	let mapCenter: { lat: number; lng: number } | null = null;
@@ -31,7 +47,7 @@
 			</p>
 		</div>
 		<p class="font-mono-data text-sm text-ink-tertiary">
-			{availableRiders.length} riders online
+			{data.availableRiders.length} riders online
 		</p>
 	</div>
 
@@ -66,7 +82,7 @@
 			<!-- Business HQ -->
 			<div
 				class="absolute z-20 -translate-x-1/2 -translate-y-1/2"
-				style="left:{businessProfile.mapX}%; top:{businessProfile.mapY}%"
+					style="left:{data.businessProfile?.mapX ?? 48}%; top:{data.businessProfile?.mapY ?? 52}%"
 			>
 				<div class="flex flex-col items-center">
 					<div
@@ -77,12 +93,12 @@
 					<span
 						class="mt-1 max-w-[7rem] truncate rounded bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-ink shadow-xs"
 					>
-						{businessProfile.businessName}
+						{data.businessProfile?.businessName ?? 'Business'}
 					</span>
 				</div>
 			</div>
 
-			{#each availableRiders as rider (rider.id)}
+			{#each data.availableRiders as rider (rider.id)}
 				<div
 					class="absolute z-10 -translate-x-1/2 -translate-y-full"
 					style="left:{rider.mapX}%; top:{rider.mapY}%"
@@ -100,7 +116,7 @@
 	<aside class="rounded-lg border border-border bg-surface p-4 lg:hidden">
 		<h2 class="mb-3 text-sm font-semibold text-ink">Nearby riders</h2>
 		<ul class="space-y-2">
-			{#each availableRiders as rider (rider.id)}
+				{#each data.availableRiders as rider (rider.id)}
 				<li class="flex items-center justify-between text-sm">
 					<span class="font-semibold text-ink">{rider.name}</span>
 					<span class="text-ink-secondary">{rider.vehicle} · {rider.distanceKm} km</span>
