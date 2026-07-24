@@ -3,7 +3,6 @@
 	import { goto } from '$app/navigation';
 	import DashboardBoard from '$lib/components/business/DashboardBoard.svelte';
 	import DashboardTable from '$lib/components/business/DashboardTable.svelte';
-	import RiderPin from '$lib/components/business/RiderPin.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -21,8 +20,8 @@
 				email: string | null;
 				phone: string | null;
 				address: string;
-				mapX: number;
-				mapY: number;
+				lat: number;
+				lng: number;
 			} | null;
 		};
 	};
@@ -188,28 +187,54 @@
 			</div>
 
 			<div class="relative min-h-0 flex-1">
-				<MapBackdrop routeLabel={selected.status === 'en_route'}>
-					<!-- Business location -->
-					<div
-						class="absolute z-10 -translate-x-1/2 -translate-y-1/2"
-						style="left:{data.dashboard.businessProfile?.mapX ?? 48}%; top:{data.dashboard.businessProfile?.mapY ?? 52}%"
-					>
-						<div
-							class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-ink text-[10px] font-bold text-primary-on shadow-sm"
-							title={data.dashboard.businessProfile?.businessName ?? 'Business'}
-						>
-							HQ
-						</div>
-					</div>
-
-					{#if selected.rider && selected.mapX != null && selected.mapY != null}
-						<div
-							class="absolute z-10 -translate-x-1/2 -translate-y-full"
-							style="left:{selected.mapX}%; top:{selected.mapY}%"
-						>
-							<RiderPin label={selected.rider} size={40} accent={selected.status === 'en_route'} />
-						</div>
-					{:else}
+				<MapBackdrop
+					routeLabel={selected.status === 'en_route'}
+					showZone
+					center={selected.dropoffLat != null && selected.dropoffLng != null
+						? { lat: selected.dropoffLat, lng: selected.dropoffLng }
+						: data.dashboard.businessProfile
+							? {
+									lat: data.dashboard.businessProfile.lat,
+									lng: data.dashboard.businessProfile.lng
+								}
+							: null}
+					markers={[
+						...(data.dashboard.businessProfile
+							? [
+									{
+										id: 'hq',
+										lat: data.dashboard.businessProfile.lat,
+										lng: data.dashboard.businessProfile.lng,
+										label: data.dashboard.businessProfile.businessName,
+										role: 'business' as const
+									}
+								]
+							: []),
+						...(selected.pickupLat != null && selected.pickupLng != null
+							? [
+									{
+										id: 'pickup',
+										lat: selected.pickupLat,
+										lng: selected.pickupLng,
+										label: 'Pickup',
+										role: 'pickup' as const
+									}
+								]
+							: []),
+						...(selected.dropoffLat != null && selected.dropoffLng != null
+							? [
+									{
+										id: 'dropoff',
+										lat: selected.dropoffLat,
+										lng: selected.dropoffLng,
+										label: selected.destination,
+										role: 'dropoff' as const
+									}
+								]
+							: [])
+					]}
+				>
+					{#if !selected.rider}
 						<div
 							class="absolute left-1/2 top-[42%] z-10 -translate-x-1/2 rounded-md bg-surface px-3 py-2 text-sm text-ink-secondary shadow-sm"
 						>

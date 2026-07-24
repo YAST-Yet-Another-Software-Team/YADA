@@ -1,5 +1,13 @@
 import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
 
+/**
+ * Required Google Cloud APIs for YADA:
+ * - Maps JavaScript API
+ * - Places API (New) — PlaceAutocompleteElement
+ * - Geocoding API
+ * - Routes API
+ */
+
 let configuredApiKey: string | null = null;
 
 function configure(apiKey: string) {
@@ -27,4 +35,10 @@ export function loadGoogleMapsPlaces(apiKey: string) {
 export function loadGoogleMapsRoutes(apiKey: string) {
   configure(apiKey);
   return importLibrary('routes');
+}
+
+/** Places library including PlaceAutocompleteElement (Places API New). */
+export async function loadPlaceAutocompleteElement(apiKey: string) {
+  const places = await loadGoogleMapsPlaces(apiKey);
+  return places;
 }

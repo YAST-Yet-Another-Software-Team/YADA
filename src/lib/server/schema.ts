@@ -107,6 +107,7 @@ export const courierProfiles = pgTable('courier_profiles', {
   active: boolean('active').notNull().default(true),
   currentLatitude: numeric('current_latitude', { precision: 10, scale: 6 }),
   currentLongitude: numeric('current_longitude', { precision: 10, scale: 6 }),
+  lastLocationAt: timestamp('last_location_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 });
 
@@ -121,6 +122,12 @@ export const deliveryRequests = pgTable('delivery_requests', {
   status: tripStatusEnum('status').notNull().default('requested'),
   pickupAddress: text('pickup_address').notNull(),
   dropoffAddress: text('dropoff_address').notNull(),
+  pickupLatitude: numeric('pickup_latitude', { precision: 10, scale: 6 }),
+  pickupLongitude: numeric('pickup_longitude', { precision: 10, scale: 6 }),
+  dropoffLatitude: numeric('dropoff_latitude', { precision: 10, scale: 6 }),
+  dropoffLongitude: numeric('dropoff_longitude', { precision: 10, scale: 6 }),
+  pickupPlaceId: text('pickup_place_id'),
+  dropoffPlaceId: text('dropoff_place_id'),
   notes: text('notes'),
   estimatedDistanceKm: numeric('estimated_distance_km', { precision: 8, scale: 2 }),
   estimatedDurationMinutes: numeric('estimated_duration_minutes', { precision: 8, scale: 2 }),

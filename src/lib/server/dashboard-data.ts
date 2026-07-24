@@ -5,6 +5,7 @@ import { businessProfiles, courierProfiles, deliveryRequests, users } from './sc
 
 export type DashboardTripRecord = {
 	id: string;
+	rawId: string;
 	rider: string | null;
 	destination: string;
 	pickup: string | null;
@@ -12,18 +13,29 @@ export type DashboardTripRecord = {
 	status: 'searching' | 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled';
 	completedAt: string | null;
 	notes: string | null;
+	pickupLat?: number | null;
+	pickupLng?: number | null;
+	dropoffLat?: number | null;
+	dropoffLng?: number | null;
 	mapX?: number;
 	mapY?: number;
 };
 
 export type DispatchRiderRecord = {
 	id: string;
+	userId: string;
 	name: string;
 	vehicle: string;
 	distanceKm: number;
+	lat: number;
+	lng: number;
+	lastLocationAt: string | null;
+	stale: boolean;
 	mapX: number;
 	mapY: number;
 };
+
+const STALE_LOCATION_MS = 30_000;
 
 function toDashboardStatus(status: string) {
 	switch (status) {
@@ -59,14 +71,6 @@ function formatTime(value: Date | string | null | undefined) {
 	});
 }
 
-function deriveMapCoordinate(seed: string, offset: number) {
-	let hash = 0;
-	for (const char of seed) {
-		hash = (hash * 31 + char.charCodeAt(0)) % 9973;
-	}
-	return 20 + ((hash + offset) % 60);
-}
-
 export async function getDashboardTrips(ownerId?: string) {
 	if (!db) return { activeTrips: [], historyTrips: [], businessProfile: null };
 
@@ -78,6 +82,11 @@ export async function getDashboardTrips(ownerId?: string) {
 			status: deliveryRequests.status,
 			pickupAddress: deliveryRequests.pickupAddress,
 			dropoffAddress: deliveryRequests.dropoffAddress,
+			pickupLatitude: deliveryRequests.pickupLatitude,
+			pickupLongitude: deliveryRequests.pickupLongitude,
+			dropoffLatitude: deliveryRequests.dropoffLatitude,
+			dropoffLongitude: deliveryRequests.dropoffLongitude,
+			estimatedDurationMinutes: deliveryRequests.estimatedDurationMinutes,
 			notes: deliveryRequests.notes,
 			requestedAt: deliveryRequests.requestedAt,
 			acceptedAt: deliveryRequests.acceptedAt,
@@ -97,17 +106,23 @@ export async function getDashboardTrips(ownerId?: string) {
 		const baseId = formatTripId(record.id);
 		const status = toDashboardStatus(record.status);
 		const completedAt = record.completedAt ? formatTime(record.completedAt) : null;
+		const duration = record.estimatedDurationMinutes
+			? `${Math.round(Number(record.estimatedDurationMinutes))} min`
+			: null;
 		return {
 			id: baseId,
+			rawId: record.id,
 			rider: record.assignedCourierId ? 'Courier' : null,
 			destination: record.dropoffAddress,
 			pickup: record.pickupAddress,
-			eta: status === 'searching' || status === 'cancelled' ? null : '—',
+			eta: status === 'searching' || status === 'cancelled' ? null : duration,
 			status,
 			completedAt,
 			notes: record.notes,
-			mapX: deriveMapCoordinate(record.id, 8),
-			mapY: deriveMapCoordinate(record.id, 19)
+			pickupLat: record.pickupLatitude != null ? Number(record.pickupLatitude) : null,
+			pickupLng: record.pickupLongitude != null ? Number(record.pickupLongitude) : null,
+			dropoffLat: record.dropoffLatitude != null ? Number(record.dropoffLatitude) : null,
+			dropoffLng: record.dropoffLongitude != null ? Number(record.dropoffLongitude) : null
 		} satisfies DashboardTripRecord;
 	});
 
@@ -122,8 +137,8 @@ export async function getDashboardTrips(ownerId?: string) {
 				email: null,
 				phone: null,
 				address: businessProfileRow.address,
-				mapX: deriveMapCoordinate(`${businessProfileRow.userId}:${businessProfileRow.businessName}`, 12),
-				mapY: deriveMapCoordinate(`${businessProfileRow.address}:${businessProfileRow.userId}`, 27)
+				lat: Number(businessProfileRow.latitude),
+				lng: Number(businessProfileRow.longitude)
 			}
 			: null,
 		activeTrips,
@@ -145,31 +160,39 @@ export async function getAvailableRiders(ownerId?: string): Promise<DispatchRide
 			vehicleType: courierProfiles.vehicleType,
 			currentLatitude: courierProfiles.currentLatitude,
 			currentLongitude: courierProfiles.currentLongitude,
+			lastLocationAt: courierProfiles.lastLocationAt,
 			name: users.name
 		})
 		.from(courierProfiles)
 		.innerJoin(users, eq(courierProfiles.userId, users.id))
 		.where(eq(courierProfiles.active, true));
 
-	const businessLatitude = profile ? Number(profile.latitude) : 5.6037;
-	const businessLongitude = profile ? Number(profile.longitude) : -0.187;
+	const businessLatitude = profile ? Number(profile.latitude) : 6.6785;
+	const businessLongitude = profile ? Number(profile.longitude) : -1.5645;
 
 	return riders.map((rider, index) => {
-		const riderLatitude = Number(rider.currentLatitude ?? businessLatitude + 0.01 * index);
-		const riderLongitude = Number(rider.currentLongitude ?? businessLongitude + 0.01 * index);
+		const riderLatitude = Number(rider.currentLatitude ?? businessLatitude + 0.004 * (index + 1));
+		const riderLongitude = Number(rider.currentLongitude ?? businessLongitude + 0.003 * (index + 1));
 		const distanceKm = Math.max(
 			0.2,
 			Math.round(Math.hypot(riderLatitude - businessLatitude, riderLongitude - businessLongitude) * 111 * 10) /
 				10
 		);
+		const lastAt = rider.lastLocationAt ? new Date(rider.lastLocationAt).getTime() : 0;
+		const stale = !lastAt || Date.now() - lastAt > STALE_LOCATION_MS;
 
 		return {
 			id: rider.id,
+			userId: rider.userId,
 			name: rider.name,
 			vehicle: rider.vehicleType,
 			distanceKm,
-			mapX: deriveMapCoordinate(rider.id, 11 + index),
-			mapY: deriveMapCoordinate(rider.userId, 23 + index)
+			lat: riderLatitude,
+			lng: riderLongitude,
+			lastLocationAt: rider.lastLocationAt ? new Date(rider.lastLocationAt).toISOString() : null,
+			stale,
+			mapX: 50,
+			mapY: 50
 		};
 	});
 }
@@ -197,11 +220,22 @@ export async function seedTestBusinessUser() {
 	if (!existingBusinessProfile[0]) {
 		await db.insert(businessProfiles).values({
 			userId: businessUser.id,
-			businessName: 'Test Business',
-			address: '221 Baker St — Kitchen',
-			latitude: '48.000000',
-			longitude: '52.000000'
+			businessName: 'Ayeduase Kitchen',
+			address: 'Ayeduase Gate, near KNUST, Kumasi',
+			latitude: '6.678500',
+			longitude: '-1.564500'
 		});
+	} else {
+		await db
+			.update(businessProfiles)
+			.set({
+				businessName: 'Ayeduase Kitchen',
+				address: 'Ayeduase Gate, near KNUST, Kumasi',
+				latitude: '6.678500',
+				longitude: '-1.564500',
+				updatedAt: new Date()
+			})
+			.where(eq(businessProfiles.userId, businessUser.id));
 	}
 
 	const courierUser = (await db.select().from(users).where(eq(users.email, 'test-courier@yada.local')).limit(1))[0] ?? (await db.insert(users).values({
@@ -224,9 +258,20 @@ export async function seedTestBusinessUser() {
 			vehicleType: 'Motorbike',
 			rating: '4.90',
 			active: true,
-			currentLatitude: '5.603700',
-			currentLongitude: '-0.187000'
+			currentLatitude: '6.674500',
+			currentLongitude: '-1.571600',
+			lastLocationAt: new Date()
 		});
+	} else {
+		await db
+			.update(courierProfiles)
+			.set({
+				currentLatitude: '6.674500',
+				currentLongitude: '-1.571600',
+				lastLocationAt: new Date(),
+				updatedAt: new Date()
+			})
+			.where(eq(courierProfiles.userId, courierUser.id));
 	}
 
 	const seedTrips = [
@@ -234,8 +279,14 @@ export async function seedTestBusinessUser() {
 			id: 'seed-trip-1',
 			businessId: businessUser.id,
 			status: 'requested',
-			pickupAddress: '221 Baker St — Kitchen',
-			dropoffAddress: '88 Elm St',
+			pickupAddress: 'Ayeduase Gate, near KNUST, Kumasi',
+			dropoffAddress: 'KNUST Commercial Area, Kumasi',
+			pickupLatitude: '6.678500',
+			pickupLongitude: '-1.564500',
+			dropoffLatitude: '6.674500',
+			dropoffLongitude: '-1.571600',
+			estimatedDistanceKm: '1.20',
+			estimatedDurationMinutes: '6',
 			notes: 'Leave at reception',
 			requestedAt: new Date(Date.now() - 1000 * 60 * 18)
 		},
@@ -243,8 +294,14 @@ export async function seedTestBusinessUser() {
 			id: 'seed-trip-2',
 			businessId: businessUser.id,
 			status: 'accepted',
-			pickupAddress: '221 Baker St — Kitchen',
-			dropoffAddress: '14 Pine Ct',
+			pickupAddress: 'Ayeduase Gate, near KNUST, Kumasi',
+			dropoffAddress: 'Unity Hall, KNUST',
+			pickupLatitude: '6.678500',
+			pickupLongitude: '-1.564500',
+			dropoffLatitude: '6.679800',
+			dropoffLongitude: '-1.573200',
+			estimatedDistanceKm: '1.80',
+			estimatedDurationMinutes: '8',
 			notes: 'Call on arrival',
 			requestedAt: new Date(Date.now() - 1000 * 60 * 35),
 			assignedCourierId: courierUser.id
@@ -253,8 +310,14 @@ export async function seedTestBusinessUser() {
 			id: 'seed-trip-3',
 			businessId: businessUser.id,
 			status: 'completed',
-			pickupAddress: '221 Baker St — Kitchen',
-			dropoffAddress: '12 River Rd',
+			pickupAddress: 'Ayeduase Gate, near KNUST, Kumasi',
+			dropoffAddress: 'Ayeduase New Site',
+			pickupLatitude: '6.678500',
+			pickupLongitude: '-1.564500',
+			dropoffLatitude: '6.682000',
+			dropoffLongitude: '-1.560000',
+			estimatedDistanceKm: '0.90',
+			estimatedDurationMinutes: '5',
 			notes: 'Delivered to front desk',
 			requestedAt: new Date(Date.now() - 1000 * 60 * 92),
 			completedAt: new Date(Date.now() - 1000 * 60 * 12),
@@ -271,6 +334,12 @@ export async function seedTestBusinessUser() {
 				status: trip.status as 'requested' | 'accepted' | 'completed',
 				pickupAddress: trip.pickupAddress,
 				dropoffAddress: trip.dropoffAddress,
+				pickupLatitude: trip.pickupLatitude,
+				pickupLongitude: trip.pickupLongitude,
+				dropoffLatitude: trip.dropoffLatitude,
+				dropoffLongitude: trip.dropoffLongitude,
+				estimatedDistanceKm: trip.estimatedDistanceKm,
+				estimatedDurationMinutes: trip.estimatedDurationMinutes,
 				notes: trip.notes,
 				requestedAt: trip.requestedAt,
 				completedAt: trip.completedAt ?? null

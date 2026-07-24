@@ -1,43 +1,47 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import {
-		loadGoogleMapsGeocoding,
-		loadGoogleMapsRoutes
-	} from '$lib/maps/google-maps-loader';
-
-	type LocationPoint = {
-		lat: number;
-		lng: number;
-	};
+	import { reverseGeocode } from '$lib/maps/geocode-client';
+	import { computeDrivingRoute } from '$lib/maps/routing';
+	import { containsPoint, KUMASI_CENTER, type LatLng } from '$lib/geo/service-area';
+	import { geoErrorMessage, type GeoErrorCode } from '$lib/geo/errors';
 
 	type LocationMode = 'pickup' | 'dropoff';
 
 	type RouteSummary = {
 		distanceText: string;
 		durationText: string;
+		distanceKm: number | null;
+		durationMinutes: number | null;
+		path: LatLng[];
 		status: 'idle' | 'loading' | 'ready' | 'error';
+		error?: string;
 	};
 
-	let pickup = 'Current location';
+	let pickup = '';
 	let dropoff = '';
+	let pickupPlaceId: string | undefined;
+	let dropoffPlaceId: string | undefined;
 	let distance = 'fastest';
 	let activeLocation: LocationMode = 'dropoff';
-	let pickupPoint: LocationPoint | null = null;
-	let dropoffPoint: LocationPoint | null = null;
-	let mapCenter: LocationPoint | null = null;
+	let pickupPoint: LatLng | null = null;
+	let dropoffPoint: LatLng | null = null;
+	let mapCenter: LatLng | null = KUMASI_CENTER;
 	let pickupLoading = true;
+	let submitting = false;
+	let zoneError = '';
 	let routeSummary: RouteSummary = {
 		distanceText: '—',
 		durationText: '—',
+		distanceKm: null,
+		durationMinutes: null,
+		path: [],
 		status: 'idle'
 	};
-	let routePolyline: google.maps.Polyline | null = null;
-	let routeMarkers: google.maps.Marker[] = [];
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
@@ -48,50 +52,26 @@
 		{ value: 'any', label: 'Any available' }
 	];
 
-	function getUserLocation(): Promise<LocationPoint | null> {
-		if (!navigator.geolocation) {
-			return Promise.resolve(null);
-		}
+	$: canSubmit =
+		Boolean(pickupPoint && dropoffPoint && dropoff.trim() && pickup.trim()) &&
+		containsPoint(pickupPoint!) &&
+		containsPoint(dropoffPoint!) &&
+		!submitting &&
+		routeSummary.status !== 'loading';
 
+	function getUserLocation(): Promise<LatLng | null> {
+		if (!navigator.geolocation) return Promise.resolve(null);
 		return new Promise((resolve) => {
 			navigator.geolocation.getCurrentPosition(
-				(position) => {
+				(position) =>
 					resolve({
 						lat: position.coords.latitude,
 						lng: position.coords.longitude
-					});
-				},
+					}),
 				() => resolve(null),
-				{
-					enableHighAccuracy: true,
-					timeout: 6000,
-					maximumAge: 60_000
-				}
+				{ enableHighAccuracy: true, timeout: 6000, maximumAge: 60_000 }
 			);
 		});
-	}
-
-	function normalizeLocation(place: google.maps.places.PlaceResult | null): LocationPoint | null {
-		if (!place?.geometry?.location) {
-			return null;
-		}
-
-		return {
-			lat: place.geometry.location.lat(),
-			lng: place.geometry.location.lng()
-		};
-	}
-
-	async function reverseGeocode(point: LocationPoint): Promise<string | null> {
-		if (!googleMapsApiKey) {
-			return null;
-		}
-
-		const geocodingLibrary = await loadGoogleMapsGeocoding(googleMapsApiKey);
-		const geocoder = new geocodingLibrary.Geocoder();
-		const response = await geocoder.geocode({ location: point });
-
-		return response.results[0]?.formatted_address ?? null;
 	}
 
 	async function syncRoutePreview() {
@@ -99,62 +79,36 @@
 			routeSummary = {
 				distanceText: '—',
 				durationText: '—',
+				distanceKm: null,
+				durationMinutes: null,
+				path: [],
 				status: 'idle'
 			};
 			return;
 		}
 
-		routeSummary = { ...routeSummary, status: 'loading' };
+		routeSummary = { ...routeSummary, status: 'loading', error: undefined };
 
 		try {
-			const routesLibrary = await loadGoogleMapsRoutes(googleMapsApiKey);
-			const routeApi = (routesLibrary as unknown as { Route?: { computeRoutes: (request: unknown) => Promise<{ routes: Array<unknown> }> } }).Route;
-
-			if (!routeApi) {
-				throw new Error('Routes API is unavailable');
-			}
-
-			const response = await routeApi.computeRoutes({
-				origin: pickupPoint,
-				destination: dropoffPoint,
-				travelMode: 'DRIVING',
-				fields: ['legs', 'path']
-			});
-
-			const route = response.routes[0] as {
-				legs?: Array<{ distance?: { text?: string }; duration?: { text?: string } }>;
-				path?: google.maps.LatLngLiteral[];
-				createPolylines?: () => google.maps.Polyline[];
-			} | undefined;
-
-			if (!route?.legs?.length) {
-				throw new Error('No route returned');
-			}
-
+			const route = await computeDrivingRoute(googleMapsApiKey, pickupPoint, dropoffPoint);
 			routeSummary = {
-				distanceText: route.legs?.[0]?.distance?.text ?? '—',
-				durationText: route.legs?.[0]?.duration?.text ?? '—',
+				distanceText: route.distanceText,
+				durationText: route.durationText,
+				distanceKm: route.distanceKm,
+				durationMinutes: route.durationMinutes,
+				path: route.path,
 				status: 'ready'
 			};
-
-			if (routePolyline) {
-				routePolyline.setMap(null);
-			}
-			routeMarkers.forEach((marker) => marker.setMap(null));
-			routeMarkers = [];
-
-			routePolyline = new google.maps.Polyline({
-				path: route.path ?? [],
-				strokeColor: '#ef4444',
-				strokeOpacity: 0.9,
-				strokeWeight: 4
-			});
 		} catch (error) {
-			console.error('Unable to compute route.', error);
+			const code = (error as { code?: GeoErrorCode }).code ?? 'unavailable';
 			routeSummary = {
 				distanceText: 'Unavailable',
 				durationText: 'Unavailable',
-				status: 'error'
+				distanceKm: null,
+				durationMinutes: null,
+				path: [],
+				status: 'error',
+				error: geoErrorMessage(code)
 			};
 		}
 	}
@@ -164,62 +118,162 @@
 		const location = await getUserLocation();
 
 		if (!location) {
+			pickupPoint = { ...KUMASI_CENTER };
+			pickup = 'Ayeduase / KNUST (default)';
+			mapCenter = pickupPoint;
+			pickupLoading = false;
+			return;
+		}
+
+		if (!containsPoint(location)) {
+			zoneError = geoErrorMessage('out_of_zone');
+			pickupPoint = { ...KUMASI_CENTER };
+			pickup = 'Ayeduase Gate, near KNUST, Kumasi';
+			mapCenter = pickupPoint;
 			pickupLoading = false;
 			return;
 		}
 
 		pickupPoint = location;
-		pickup = (await reverseGeocode(location)) ?? 'Current location';
+		mapCenter = location;
+		const reverse = await reverseGeocode(location);
+		pickup = reverse.ok ? reverse.result.address : 'Current location';
 		pickupLoading = false;
 		void syncRoutePreview();
 	}
 
-	function handleMapPick(event: CustomEvent<LocationPoint>) {
+	function handleMapPick(event: CustomEvent<LatLng>) {
+		const point = event.detail;
+		const inZone = containsPoint(point);
+		if (!inZone) {
+			zoneError = geoErrorMessage('out_of_zone');
+			return;
+		}
+		zoneError = '';
+
 		if (activeLocation === 'pickup') {
-			pickupPoint = event.detail;
-			mapCenter = pickupPoint;
+			pickupPoint = point;
+			mapCenter = point;
 			void (async () => {
-				pickup = (await reverseGeocode(event.detail)) ?? pickup;
+				const reverse = await reverseGeocode(point);
+				pickup = reverse.ok ? reverse.result.address : pickup;
 				void syncRoutePreview();
 			})();
 			return;
 		}
 
-		dropoffPoint = event.detail;
-		mapCenter = dropoffPoint;
+		dropoffPoint = point;
+		mapCenter = point;
 		void (async () => {
-			dropoff = (await reverseGeocode(event.detail)) ?? dropoff;
+			const reverse = await reverseGeocode(point);
+			dropoff = reverse.ok ? reverse.result.address : dropoff;
 			void syncRoutePreview();
 		})();
 	}
 
-	function handlePickupSelect(event: CustomEvent<{ address: string; lat: number; lng: number }>) {
+	function handlePickupSelect(
+		event: CustomEvent<{ address: string; lat: number; lng: number; placeId?: string; inZone: boolean }>
+	) {
+		if (!event.detail.inZone) {
+			zoneError = geoErrorMessage('out_of_zone');
+			pickupPoint = null;
+			return;
+		}
+		zoneError = '';
 		pickupPoint = { lat: event.detail.lat, lng: event.detail.lng };
 		pickup = event.detail.address;
+		pickupPlaceId = event.detail.placeId;
 		mapCenter = pickupPoint;
 		void syncRoutePreview();
 	}
 
-	function handleDropoffSelect(event: CustomEvent<{ address: string; lat: number; lng: number }>) {
+	function handleDropoffSelect(
+		event: CustomEvent<{ address: string; lat: number; lng: number; placeId?: string; inZone: boolean }>
+	) {
+		if (!event.detail.inZone) {
+			zoneError = geoErrorMessage('out_of_zone');
+			dropoffPoint = null;
+			return;
+		}
+		zoneError = '';
 		dropoffPoint = { lat: event.detail.lat, lng: event.detail.lng };
 		dropoff = event.detail.address;
+		dropoffPlaceId = event.detail.placeId;
 		mapCenter = dropoffPoint;
 		void syncRoutePreview();
+	}
+
+	function handleGeoError(event: CustomEvent<{ code: GeoErrorCode; message: string }>) {
+		zoneError = event.detail.message;
+	}
+
+	async function findRider() {
+		if (!canSubmit || !pickupPoint || !dropoffPoint) return;
+		submitting = true;
+
+		try {
+			const response = await fetch('/api/trips', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					pickupAddress: pickup,
+					dropoffAddress: dropoff,
+					pickupLat: pickupPoint.lat,
+					pickupLng: pickupPoint.lng,
+					dropoffLat: dropoffPoint.lat,
+					dropoffLng: dropoffPoint.lng,
+					pickupPlaceId,
+					dropoffPlaceId,
+					estimatedDistanceKm: routeSummary.distanceKm,
+					estimatedDurationMinutes: routeSummary.durationMinutes
+				})
+			});
+
+			const data = await response.json();
+			const tripPayload = {
+				id: data.trip?.id ?? `local-${Date.now()}`,
+				pickupAddress: pickup,
+				dropoffAddress: dropoff,
+				pickupLat: pickupPoint.lat,
+				pickupLng: pickupPoint.lng,
+				dropoffLat: dropoffPoint.lat,
+				dropoffLng: dropoffPoint.lng,
+				estimatedDistanceKm: routeSummary.distanceKm,
+				estimatedDurationMinutes: routeSummary.durationMinutes,
+				routePath: routeSummary.path
+			};
+			sessionStorage.setItem('yada:active-trip', JSON.stringify(tripPayload));
+
+			if (!response.ok && response.status !== 401) {
+				zoneError = data.message ?? 'Could not save trip — continuing with local preview.';
+			}
+
+			goto(`/matching?trip=${encodeURIComponent(tripPayload.id)}`);
+		} finally {
+			submitting = false;
+		}
 	}
 
 	onMount(() => {
 		void setPickupFromLocation();
 	});
 
-	onDestroy(() => {
-		routePolyline?.setMap(null);
-		routeMarkers.forEach((marker) => marker.setMap(null));
-	});
-
-	function findRider() {
-		if (!dropoff.trim()) return;
-		goto('/matching');
-	}
+	$: mapMarkers = [
+		...(pickupPoint
+			? [{ id: 'pickup', lat: pickupPoint.lat, lng: pickupPoint.lng, label: 'Pickup', role: 'pickup' as const }]
+			: []),
+		...(dropoffPoint
+			? [
+					{
+						id: 'dropoff',
+						lat: dropoffPoint.lat,
+						lng: dropoffPoint.lng,
+						label: 'Dropoff',
+						role: 'dropoff' as const
+					}
+				]
+			: [])
+	];
 </script>
 
 <svelte:head>
@@ -265,35 +319,45 @@
 
 			<p class="text-xs text-ink-tertiary">
 				{#if pickupLoading}
-					Using your browser location for pickup…
+					Resolving pickup in Kumasi (KNUST/Ayeduase)…
 				{:else}
-					Click the map to place pickup or dropoff, then switch between the two targets as needed.
+					Addresses must be inside the KNUST / Ayeduase delivery zone.
 				{/if}
 			</p>
+
+			{#if zoneError}
+				<p class="rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{zoneError}</p>
+			{/if}
 
 			<AddressAutocomplete
 				label="Pickup (defaults to your location)"
 				bind:value={pickup}
 				iconColor="text-primary"
 				on:select={handlePickupSelect}
+				on:error={handleGeoError}
 			/>
 
 			<AddressAutocomplete
 				label="Dropoff"
-				placeholder="Customer address"
+				placeholder="Customer address in KNUST / Ayeduase"
 				bind:value={dropoff}
 				iconColor="text-secondary"
 				on:select={handleDropoffSelect}
+				on:error={handleGeoError}
 			/>
 
 			<div class="grid gap-2 rounded-lg border border-border bg-bg px-4 py-3 text-sm text-ink-secondary">
 				<p>
 					<span class="font-semibold text-ink">Route:</span>
-					{routeSummary.distanceText} · {routeSummary.durationText}
+					{#if routeSummary.status === 'loading'}
+						Calculating…
+					{:else}
+						{routeSummary.distanceText} · {routeSummary.durationText}
+					{/if}
 				</p>
-				<p>
-					Type an address and pick a result from autocomplete, or keep using the map to place the pins.
-				</p>
+				{#if routeSummary.error}
+					<p class="text-red-600">{routeSummary.error}</p>
+				{/if}
 			</div>
 
 			<Select label="Rider distance" options={distanceOptions} bind:value={distance} />
@@ -302,31 +366,10 @@
 				<MapBackdrop
 					routeLabel
 					interactive
+					showZone
 					center={mapCenter}
-					markers={[
-						...(pickupPoint
-							? [
-								{
-									id: 'pickup',
-									lat: pickupPoint.lat,
-									lng: pickupPoint.lng,
-									label: 'Pickup',
-									accent: false
-								}
-							]
-							: []),
-						...(dropoffPoint
-							? [
-								{
-									id: 'dropoff',
-									lat: dropoffPoint.lat,
-									lng: dropoffPoint.lng,
-									label: 'Dropoff',
-									accent: true
-								}
-							]
-							: [])
-					]}
+					markers={mapMarkers}
+					polylinePath={routeSummary.path}
 					on:pick={handleMapPick}
 				/>
 			</div>
@@ -336,15 +379,14 @@
 					variant="primary"
 					size="lg"
 					fullWidth
-					disabled={!dropoff.trim()}
+					disabled={!canSubmit}
 					on:click={findRider}
 				>
-					Find a rider
+					{submitting ? 'Saving…' : 'Find a rider'}
 				</Button>
 			</div>
 		</div>
 
-		<!-- Desktop: route preview fills remaining space (wireframe-style) -->
 		<aside
 			class="relative hidden min-h-[320px] flex-1 flex-col border-l border-border bg-surface lg:flex"
 		>
@@ -353,8 +395,10 @@
 				<p class="mt-1 text-sm text-ink-secondary">
 					{#if routeSummary.status === 'ready'}
 						Est. distance {routeSummary.distanceText} · Est. time {routeSummary.durationText}
+					{:else if routeSummary.status === 'loading'}
+						Calculating driving route…
 					{:else}
-						Select pickup & dropoff to preview route
+						Select pickup & dropoff inside KNUST / Ayeduase
 					{/if}
 				</p>
 			</div>
@@ -362,31 +406,10 @@
 				<MapBackdrop
 					routeLabel
 					interactive
+					showZone
 					center={mapCenter}
-					markers={[
-						...(pickupPoint
-							? [
-								{
-									id: 'pickup',
-									lat: pickupPoint.lat,
-									lng: pickupPoint.lng,
-									label: 'Pickup',
-									accent: false
-								}
-							]
-							: []),
-						...(dropoffPoint
-							? [
-								{
-									id: 'dropoff',
-									lat: dropoffPoint.lat,
-									lng: dropoffPoint.lng,
-									label: 'Dropoff',
-									accent: true
-								}
-							]
-							: [])
-					]}
+					markers={mapMarkers}
+					polylinePath={routeSummary.path}
 					on:pick={handleMapPick}
 				/>
 			</div>

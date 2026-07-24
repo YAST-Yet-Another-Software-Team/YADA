@@ -1,0 +1,21 @@
+{
+  "type": "Feature",
+  "properties": {
+    "name": "YADA KNUST / Ayeduase delivery zone",
+    "city": "Kumasi",
+    "center": { "lat": 6.6745, "lng": -1.5716 },
+    "defaultZoom": 14
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [-1.595, 6.655],
+        [-1.545, 6.655],
+        [-1.545, 6.705],
+        [-1.595, 6.705],
+        [-1.595, 6.655]
+      ]
+    ]
+  }
+}

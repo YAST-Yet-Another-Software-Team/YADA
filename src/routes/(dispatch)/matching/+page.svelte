@@ -1,15 +1,52 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
+	import { KUMASI_CENTER } from '$lib/geo/service-area';
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
+	let center = KUMASI_CENTER;
+	let markers: Array<{ id: string; lat: number; lng: number; label?: string; role?: 'pickup' | 'dropoff' }> =
+		[];
 
 	onMount(() => {
+		const tripId = $page.url.searchParams.get('trip');
+		const raw = sessionStorage.getItem('yada:active-trip');
+		if (raw) {
+			try {
+				const trip = JSON.parse(raw) as {
+					pickupLat: number;
+					pickupLng: number;
+					dropoffLat: number;
+					dropoffLng: number;
+				};
+				center = { lat: trip.pickupLat, lng: trip.pickupLng };
+				markers = [
+					{
+						id: 'pickup',
+						lat: trip.pickupLat,
+						lng: trip.pickupLng,
+						label: 'Pickup',
+						role: 'pickup'
+					},
+					{
+						id: 'dropoff',
+						lat: trip.dropoffLat,
+						lng: trip.dropoffLng,
+						label: 'Dropoff',
+						role: 'dropoff'
+					}
+				];
+			} catch {
+				// ignore
+			}
+		}
+
 		timer = setTimeout(() => {
-			goto('/tracking');
+			goto(tripId ? `/tracking?trip=${encodeURIComponent(tripId)}` : '/tracking');
 		}, 2200);
 	});
 
@@ -31,20 +68,14 @@
 	class="relative flex min-h-[calc(100svh-3.25rem)] flex-col lg:min-h-[calc(100svh-58px-3rem)] lg:overflow-hidden lg:rounded-lg lg:border lg:border-border"
 >
 	<div class="relative min-h-[45svh] flex-1 lg:min-h-0">
-		<MapBackdrop>
-			<div
-				class="absolute left-1/2 top-[42%] h-[18px] w-[18px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary"
-				style="box-shadow: 0 0 0 8px var(--color-primary-subtle);"
-			></div>
-		</MapBackdrop>
+		<MapBackdrop showZone {center} {markers} />
 	</div>
 
-	<div
-		class="z-10 flex flex-col items-center gap-4 rounded-t-xl border-t border-border bg-surface px-6 py-8 text-center shadow-lg lg:absolute lg:bottom-0 lg:left-0 lg:right-0 lg:rounded-none lg:border-0 lg:shadow-md"
+	<aside
+		class="z-10 flex flex-col gap-4 rounded-t-xl border-t border-border bg-surface p-6 shadow-lg lg:mx-auto lg:mb-8 lg:w-full lg:max-w-md lg:rounded-xl lg:border"
 	>
 		<StatusPill status="searching" />
-		<h1 class="text-xl font-semibold text-ink">Finding a rider near you</h1>
-		<p class="text-sm text-ink-secondary">This usually takes under a minute.</p>
-		<Button variant="ghost" on:click={cancel}>Cancel request</Button>
-	</div>
+		<p class="text-sm text-ink-secondary">Matching a nearby motor rider in KNUST / Ayeduase…</p>
+		<Button variant="ghost" size="sm" on:click={cancel}>Cancel</Button>
+	</aside>
 </div>
