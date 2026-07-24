@@ -26,14 +26,20 @@
 	let isResetting = false;
 
 	function destinationFor(userRole: string | null | undefined) {
-		return userRole === 'courier' ? '/courier/home' : '/dashboard';
+		const normalizedRole = String(userRole ?? '').toLowerCase();
+		return normalizedRole === 'courier' ? '/courier/home' : '/dashboard';
+	}
+
+	function resolveUserRole(user: { role?: string | null } | null | undefined) {
+		return typeof user?.role === 'string' ? user.role : null;
 	}
 
 	onMount(async () => {
 		try {
 			const session = await auth.syncSession();
+			const sessionRole = resolveUserRole(session as { role?: string | null } | null | undefined);
 			if (session) {
-				window.location.replace(destinationFor(session.role));
+				window.location.replace(destinationFor(sessionRole ?? session.role));
 				return;
 			}
 		} catch {
@@ -64,7 +70,7 @@
 			}
 
 			const user = await auth.signIn(email, password, rememberMe);
-			window.location.replace(destinationFor(user?.role));
+			window.location.replace(destinationFor(resolveUserRole(user as { role?: string | null } | null | undefined) ?? user?.role));
 		} catch {
 			// Keep the page calm — no technical error text.
 		} finally {

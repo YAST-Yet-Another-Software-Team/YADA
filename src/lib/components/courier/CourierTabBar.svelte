@@ -36,40 +36,80 @@
 </script>
 
 <nav
-	class="z-20 flex shrink-0 items-stretch border-t border-border bg-surface"
+	class="z-20 shrink-0 border-t border-border bg-surface px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1.5 shadow-[0_-2px_10px_rgba(0,0,0,0.03)]"
 	aria-label="Courier"
 >
-	{#each tabs as tab}
-		{@const active = isActive(tab.match)}
-		<a
-			href={tab.href}
-			aria-current={active ? 'page' : undefined}
-			class="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold transition-colors {active
-				? 'text-primary'
-				: 'text-ink-tertiary hover:text-ink-secondary'}"
-		>
-			<span class="inline-flex h-6 w-6 items-center justify-center">
-				{#if tab.icon === 'home'}
-					<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"
-						><path d="m3 10 9-7 9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></svg
+	<div class="mx-auto flex max-w-md items-stretch">
+		{#each tabs as tab}
+			{@const active = isActive(tab.match)}
+			<a
+				href={tab.href}
+				aria-current={active ? 'page' : undefined}
+				class="group relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-semibold transition-colors {active
+					? 'text-primary'
+					: 'text-ink-tertiary hover:text-ink-secondary'}"
+			>
+				<span
+					class="flex h-8 w-11 items-center justify-center rounded-full transition-all duration-200 ease-out {active
+						? 'scale-100 bg-primary-subtle'
+						: 'scale-90 bg-transparent group-active:scale-95 group-active:bg-neutral-100'}"
+				>
+					<span
+						class="inline-flex h-5 w-5 items-center justify-center transition-transform duration-200 {active
+							? '-translate-y-px'
+							: ''}"
 					>
-				{:else if tab.icon === 'orders'}
-					<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"
-						><path d="M6 2h12l2 7H4L6 2Z" /><path d="M4 9v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9" /><path
-							d="M10 14h4"
-						/></svg
-					>
-				{:else if tab.icon === 'trips'}
-					<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"
-						><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg
-					>
-				{:else}
-					<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"
-						><path d="M19 21a7 7 0 0 0-14 0" /><circle cx="12" cy="8" r="4" /></svg
-					>
-				{/if}
-			</span>
-			{tab.label}
-		</a>
-	{/each}
+						{#if tab.icon === 'home'}
+							<svg
+								viewBox="0 0 24 24"
+								class="h-5 w-5"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								><path d="m3 10 9-7 9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></svg
+							>
+						{:else if tab.icon === 'orders'}
+							<svg
+								viewBox="0 0 24 24"
+								class="h-5 w-5"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								><path d="M6 2h12l2 7H4L6 2Z" /><path
+									d="M4 9v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"
+								/><path d="M10 14h4" /></svg
+							>
+						{:else if tab.icon === 'trips'}
+							<svg
+								viewBox="0 0 24 24"
+								class="h-5 w-5"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg
+							>
+						{:else}
+							<svg
+								viewBox="0 0 24 24"
+								class="h-5 w-5"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								><path d="M19 21a7 7 0 0 0-14 0" /><circle cx="12" cy="8" r="4" /></svg
+							>
+						{/if}
+					</span>
+				</span>
+				<span class="transition-opacity {active ? 'opacity-100' : 'opacity-90'}">{tab.label}</span>
+			</a>
+		{/each}
+	</div>
 </nav>
