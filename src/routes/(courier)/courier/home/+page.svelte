@@ -159,11 +159,13 @@
 						<p class="mt-0.5 text-xs text-ink-secondary">
 							{data.activeTrip.pickupAddress} → {data.activeTrip.dropoffAddress}
 						</p>
-					{:else if currentRequest}
-						<p class="mt-2 text-sm font-semibold text-ink">{currentRequest.businessName}</p>
-						<p class="mt-0.5 text-xs text-ink-secondary">
-							{currentRequest.pickupAddress} → {currentRequest.dropoffAddress}
+					{:else if data.pendingRequests.length > 0}
+						<p class="mt-2 text-sm font-semibold text-ink">
+							{data.pendingRequests.length} delivery request{data.pendingRequests.length === 1
+								? ''
+								: 's'}
 						</p>
+						<p class="mt-0.5 text-xs text-ink-secondary">Review offers below to accept a trip</p>
 					{:else}
 						<p class="mt-2 text-sm font-semibold text-ink">Waiting for a delivery request…</p>
 						<p class="mt-0.5 text-xs text-ink-secondary">
@@ -203,31 +205,47 @@
 					<Button variant="primary" size="sm" on:click={openActiveTrip}>Continue trip</Button>
 				</div>
 			</div>
-		{:else if $courierOnline && currentRequest}
-			<div class="rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
-				<div class="flex items-center justify-between gap-3">
-					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
-							New request
-						</p>
-						<p class="text-sm font-semibold text-ink">{currentRequest.businessName}</p>
+		{:else if $courierOnline && data.pendingRequests.length > 0}
+			<div
+				class="max-h-[42vh] space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/95 p-2 shadow-sm backdrop-blur-sm"
+			>
+				<p class="px-2 pt-1 text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+					Requests ({data.pendingRequests.length})
+				</p>
+				{#each data.pendingRequests as request (request.id)}
+					<div class="rounded-xl bg-bg/80 px-3 py-3">
+						<div class="flex items-start justify-between gap-3">
+							<div class="min-w-0 flex-1">
+								<p class="truncate text-sm font-semibold text-ink">{request.businessName}</p>
+								<p class="mt-0.5 text-xs text-ink-secondary">
+									{request.pickupAddress} → {request.dropoffAddress}
+								</p>
+								{#if request.notes}
+									<p class="mt-1 line-clamp-2 text-xs text-ink-tertiary">{request.notes}</p>
+								{/if}
+							</div>
+							<Button
+								variant="primary"
+								size="sm"
+								disabled={acceptingId === request.id}
+								on:click={() => acceptRequest(request.id)}
+							>
+								{acceptingId === request.id ? '…' : 'Accept'}
+							</Button>
+						</div>
 					</div>
-					<Button
-						variant="primary"
-						size="sm"
-						disabled={acceptingId === currentRequest.id}
-						on:click={() => acceptRequest(currentRequest.id)}
-					>
-						{acceptingId === currentRequest.id ? 'Accepting…' : 'Accept'}
-					</Button>
-				</div>
+				{/each}
 			</div>
 		{:else if $courierOnline}
 			<p class="text-center text-sm text-ink-secondary">Today: {data.summary.tripsToday} deliveries</p>
 		{/if}
 
 		{#if $courierOnline}
-			<Button variant="ghost" size="lg" fullWidth on:click={goOffline}>Go offline</Button>
+			{#if data.pendingRequests.length === 0 || data.activeTrip}
+				<Button variant="ghost" size="lg" fullWidth on:click={goOffline}>Go offline</Button>
+			{:else}
+				<Button variant="ghost" size="sm" fullWidth on:click={goOffline}>Go offline</Button>
+			{/if}
 		{:else}
 			<Button variant="primary" size="lg" fullWidth on:click={goOnline}>Go online</Button>
 		{/if}

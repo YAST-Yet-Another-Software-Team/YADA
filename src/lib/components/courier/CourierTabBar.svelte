@@ -35,6 +35,10 @@
 	];
 
 	$: path = $page.url.pathname;
+	$: activeIndex = Math.max(
+		0,
+		tabs.findIndex((tab) => tab.match.some((m) => path === m || path.startsWith(`${m}/`)))
+	);
 
 	function isActive(match: string[]) {
 		return match.some((m) => path === m || path.startsWith(`${m}/`));
@@ -45,20 +49,26 @@
 	class="z-20 shrink-0 border-t border-border bg-surface px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1.5 shadow-[0_-2px_10px_rgba(0,0,0,0.03)]"
 	aria-label="Courier"
 >
-	<div class="mx-auto flex max-w-md items-stretch">
+	<div class="relative mx-auto flex max-w-md items-stretch">
+		<span
+			class="pointer-events-none absolute top-1.5 h-8 rounded-full bg-primary/15 transition-[left] duration-300 ease-out"
+			style="width: calc(100% / {tabs.length} - 1.25rem); left: calc({activeIndex} * (100% / {tabs.length}) + 0.625rem);"
+			aria-hidden="true"
+		></span>
+
 		{#each tabs as tab}
 			{@const active = isActive(tab.match)}
 			<a
 				href={tab.href}
 				aria-current={active ? 'page' : undefined}
-				class="group relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-semibold transition-colors {active
+				class="group relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-semibold transition-colors duration-200 {active
 					? 'text-primary'
 					: 'text-ink-tertiary hover:text-ink-secondary'}"
 			>
 				<span
-					class="flex h-8 w-11 items-center justify-center rounded-full transition-all duration-200 ease-out {active
-						? 'scale-100 bg-primary-subtle'
-						: 'scale-90 bg-transparent group-active:scale-95 group-active:bg-neutral-100'}"
+					class="flex h-8 w-11 items-center justify-center rounded-full transition-transform duration-200 ease-out {active
+						? 'scale-100'
+						: 'scale-90 group-active:scale-95'}"
 				>
 					<span
 						class="inline-flex h-5 w-5 items-center justify-center transition-transform duration-200 {active
