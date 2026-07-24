@@ -189,7 +189,6 @@
 			<div class="relative min-h-0 flex-1">
 				<MapBackdrop
 					routeLabel={selected.status === 'en_route'}
-					showZone
 					center={selected.dropoffLat != null && selected.dropoffLng != null
 						? { lat: selected.dropoffLat, lng: selected.dropoffLng }
 						: data.dashboard.businessProfile

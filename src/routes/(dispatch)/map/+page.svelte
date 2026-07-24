@@ -43,15 +43,20 @@
 	let unsub: (() => void) | null = null;
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
+	let mapZoom: number | null = null;
+
 	function handleSearchSelect(
 		event: CustomEvent<{ address: string; lat: number; lng: number; inZone?: boolean }>
 	) {
+		if (event.detail.inZone === false) return;
+
 		searchedLocation = {
 			address: event.detail.address,
 			lat: event.detail.lat,
 			lng: event.detail.lng
 		};
 		mapCenter = { lat: event.detail.lat, lng: event.detail.lng };
+		mapZoom = 17;
 	}
 
 	async function refreshEta(rider: { id: string; lat: number; lng: number }) {
@@ -155,22 +160,26 @@
 	</div>
 
 	<div
-		class="relative min-h-[420px] flex-1 overflow-hidden rounded-lg border border-border bg-surface lg:min-h-[calc(100svh-58px-8rem)]"
+		class="relative min-h-[420px] flex-1 overflow-visible rounded-lg border border-border bg-surface lg:min-h-[calc(100svh-58px-8rem)]"
 	>
-		<div class="absolute left-4 right-4 top-4 z-30 max-w-md shadow-lg sm:left-6">
-			<AddressAutocomplete
-				placeholder="Search KNUST / Ayeduase address..."
-				bind:value={searchValue}
-				on:select={handleSearchSelect}
-			/>
+		<div class="absolute left-4 right-4 top-4 z-40 max-w-md sm:left-6">
+			<div class="rounded-md bg-surface/95 shadow-lg backdrop-blur-sm">
+				<AddressAutocomplete
+					placeholder="Search KNUST / Ayeduase address..."
+					bind:value={searchValue}
+					on:select={handleSearchSelect}
+				/>
+			</div>
 		</div>
 
-		<MapBackdrop
-			showZone
-			center={mapCenter}
-			markers={markers}
-			locationUnavailable={liveRiders.some((r) => r.stale)}
-		/>
+		<div class="absolute inset-0 overflow-hidden rounded-lg">
+			<MapBackdrop
+				center={mapCenter}
+				zoom={mapZoom}
+				markers={markers}
+				locationUnavailable={liveRiders.some((r) => r.stale)}
+			/>
+		</div>
 	</div>
 
 	<aside class="rounded-lg border border-border bg-surface p-4 lg:hidden">

@@ -3,18 +3,25 @@ import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 import type { Handle } from '@sveltejs/kit';
 
+const AUTH_BASE = '/api/auth';
+
+function isAuthRequest(pathname: string) {
+  return pathname === AUTH_BASE || pathname.startsWith(`${AUTH_BASE}/`);
+}
+
 // ---------------------------------------------------------------------------
 // SvelteKit server hook
 //
-// svelteKitHandler intercepts all /api/auth/* requests and delegates them to
-// Better Auth automatically (sign-in, sign-out, OAuth callback, session, etc.)
-// For every other route, it resolves normally and populates event.locals with
-// the current session so page/layout server loads can read it.
-// The `building` flag prevents execution during `vite build`.
+// Better Auth's svelteKitHandler matches on origin+path; that 404s when the
+// browser uses 127.0.0.1 while BETTER_AUTH_URL is localhost (or vice versa).
+// We short-circuit /api/auth/* by pathname first, then fall through to
+// svelteKitHandler / resolve for everything else.
 // ---------------------------------------------------------------------------
 export const handle: Handle = async ({ event, resolve }) => {
-  // Populate locals with the session on every request so any
-  // +page.server.ts or +layout.server.ts can do event.locals.user.
+  if (!building && isAuthRequest(event.url.pathname)) {
+    return auth.handler(event.request);
+  }
+
   const session = await auth.api.getSession({ headers: event.request.headers });
 
   event.locals.session = session?.session ?? null;
@@ -34,4 +41,3 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   return svelteKitHandler({ event, resolve, auth, building });
 };
-

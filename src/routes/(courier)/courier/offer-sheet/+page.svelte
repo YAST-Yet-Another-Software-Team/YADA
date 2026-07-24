@@ -55,7 +55,6 @@
 	<div class="relative min-h-[50%] flex-1 opacity-80">
 		<MapBackdrop
 			routeLabel
-			showZone
 			center={KUMASI_CENTER}
 			markers={[
 				{ id: 'pickup', lat: pickup.lat, lng: pickup.lng, label: 'Pickup', role: 'pickup' },

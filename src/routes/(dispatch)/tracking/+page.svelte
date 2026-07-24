@@ -198,7 +198,6 @@
 
 		<MapBackdrop
 			routeLabel
-			showZone
 			center={riderPoint ?? (trip ? { lat: trip.dropoffLat, lng: trip.dropoffLng } : KUMASI_CENTER)}
 			markers={markers}
 			polylinePath={routePath}
