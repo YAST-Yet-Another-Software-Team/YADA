@@ -101,7 +101,6 @@
 	<div class="relative min-h-[45%] flex-1">
 		<MapBackdrop
 			routeLabel
-			showZone
 			center={riderPoint ?? KUMASI_CENTER}
 			followId="rider"
 			locationUnavailable={locationUnavailable}

@@ -68,7 +68,7 @@
 	class="relative flex min-h-[calc(100svh-3.25rem)] flex-col lg:min-h-[calc(100svh-58px-3rem)] lg:overflow-hidden lg:rounded-lg lg:border lg:border-border"
 >
 	<div class="relative min-h-[45svh] flex-1 lg:min-h-0">
-		<MapBackdrop showZone {center} {markers} />
+		<MapBackdrop {center} {markers} />
 	</div>
 
 	<aside

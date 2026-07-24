@@ -31,6 +31,7 @@
 	let pickupPoint: LatLng | null = null;
 	let dropoffPoint: LatLng | null = null;
 	let mapCenter: LatLng | null = KUMASI_CENTER;
+	let mapZoom: number | null = null;
 	let pickupLoading = true;
 	let submitting = false;
 	let zoneError = '';
@@ -154,6 +155,7 @@
 		if (activeLocation === 'pickup') {
 			pickupPoint = point;
 			mapCenter = point;
+			mapZoom = 16;
 			void (async () => {
 				const reverse = await reverseGeocode(point);
 				pickup = reverse.ok ? reverse.result.address : pickup;
@@ -164,6 +166,7 @@
 
 		dropoffPoint = point;
 		mapCenter = point;
+		mapZoom = 16;
 		void (async () => {
 			const reverse = await reverseGeocode(point);
 			dropoff = reverse.ok ? reverse.result.address : dropoff;
@@ -184,6 +187,7 @@
 		pickup = event.detail.address;
 		pickupPlaceId = event.detail.placeId;
 		mapCenter = pickupPoint;
+		mapZoom = 16;
 		void syncRoutePreview();
 	}
 
@@ -200,6 +204,7 @@
 		dropoff = event.detail.address;
 		dropoffPlaceId = event.detail.placeId;
 		mapCenter = dropoffPoint;
+		mapZoom = 16;
 		void syncRoutePreview();
 	}
 
@@ -291,9 +296,9 @@
 	</div>
 
 	<div
-		class="flex flex-1 flex-col lg:min-h-[calc(100svh-58px-3rem)] lg:flex-row lg:overflow-hidden lg:rounded-lg lg:border lg:border-border lg:bg-surface"
+		class="flex flex-1 flex-col overflow-visible lg:min-h-[calc(100svh-58px-3rem)] lg:flex-row lg:overflow-visible lg:rounded-lg lg:border lg:border-border lg:bg-surface"
 	>
-		<div class="flex w-full flex-col gap-4 p-4 lg:w-[380px] lg:shrink-0 lg:gap-5 lg:p-8">
+		<div class="relative z-20 flex w-full flex-col gap-4 overflow-visible p-4 lg:w-[380px] lg:shrink-0 lg:gap-5 lg:p-8">
 			<h1 class="hidden text-xl font-semibold text-ink lg:block">New delivery request</h1>
 
 			<div class="flex gap-2 rounded-lg border border-border bg-surface p-1 text-sm">
@@ -366,8 +371,8 @@
 				<MapBackdrop
 					routeLabel
 					interactive
-					showZone
 					center={mapCenter}
+					zoom={mapZoom}
 					markers={mapMarkers}
 					polylinePath={routeSummary.path}
 					on:pick={handleMapPick}
@@ -406,8 +411,8 @@
 				<MapBackdrop
 					routeLabel
 					interactive
-					showZone
 					center={mapCenter}
+					zoom={mapZoom}
 					markers={mapMarkers}
 					polylinePath={routeSummary.path}
 					on:pick={handleMapPick}
