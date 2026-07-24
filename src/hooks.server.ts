@@ -22,22 +22,27 @@ export const handle: Handle = async ({ event, resolve }) => {
     return auth.handler(event.request);
   }
 
-  const session = await auth.api.getSession({ headers: event.request.headers });
+  try {
+    const session = await auth.api.getSession({ headers: event.request.headers });
 
-  event.locals.session = session?.session ?? null;
-  event.locals.user = session?.user
-    ? {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email ?? null,
-        phone: (session.user as Record<string, unknown>).phoneNumber as string | null,
-        role: ((session.user as Record<string, unknown>).role as string | null) as
-          | 'business'
-          | 'courier'
-          | 'admin',
-        image: session.user.image ?? null
-      }
-    : null;
+    event.locals.session = session?.session ?? null;
+    event.locals.user = session?.user
+      ? {
+          id: session.user.id,
+          name: session.user.name,
+          email: session.user.email ?? null,
+          phone: (session.user as Record<string, unknown>).phoneNumber as string | null,
+          role: ((session.user as Record<string, unknown>).role as string | null) as
+            | 'business'
+            | 'courier'
+            | 'admin',
+          image: session.user.image ?? null
+        }
+      : null;
+  } catch {
+    event.locals.session = null;
+    event.locals.user = null;
+  }
 
   return svelteKitHandler({ event, resolve, auth, building });
 };

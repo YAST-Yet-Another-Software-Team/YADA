@@ -13,7 +13,7 @@ let configuredApiKey: string | null = null;
 
 function configure(apiKey: string) {
   if (!MAPS_ENABLED) {
-    throw new Error('Maps are temporarily disabled (VITE_MAPS_ENABLED=false).');
+    throw new Error('Maps are disabled for this environment.');
   }
   if (configuredApiKey !== apiKey) {
     setOptions({ key: apiKey, v: 'weekly' });

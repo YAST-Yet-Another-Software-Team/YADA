@@ -1,6 +1,8 @@
 /**
- * Flip to `true` when Google Maps key + HTTP referrers are ready again.
- * When false, MapBackdrop and Places autocomplete stay on placeholders.
+ * Maps are enabled when a Maps key is present, unless explicitly disabled.
+ * This keeps the app ready to use the Google Maps flow again as soon as the key is configured.
  */
-export const MAPS_ENABLED =
-	(import.meta.env.VITE_MAPS_ENABLED ?? 'false').toLowerCase() === 'true';
+export const MAPS_ENABLED = (
+	import.meta.env.VITE_MAPS_ENABLED ??
+	(import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? 'true' : 'false')
+).toLowerCase() === 'true';
