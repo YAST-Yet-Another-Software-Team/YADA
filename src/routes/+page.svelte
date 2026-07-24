@@ -1,119 +1,169 @@
 <script lang="ts">
-  const pillars = [
-    {
-      title: 'Request a courier',
-      description: 'Set pickup and drop-off, see ETA, and send the request from one screen.'
-    },
-    {
-      title: 'Match a rider',
-      description: 'Nearby available couriers get the offer. You see who accepted and when they arrive.'
-    },
-    {
-      title: 'Track the trip',
-      description: 'Follow live status from accepted through delivered — no phone chain required.'
-    }
-  ];
+	import BrandLogo from '$lib/components/BrandLogo.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
+	import { auth } from '$lib/stores/auth';
+	import { onMount } from 'svelte';
 
-  const lifecycle = [
-    'requested',
-    'accepted',
-    'courier arriving',
-    'arrived',
-    'in progress',
-    'completed / cancelled'
-  ];
+	type Role = 'business' | 'courier';
+	type Mode = 'sign-in' | 'sign-up';
+
+	let mode: Mode = 'sign-in';
+	let role: Role = 'business';
+	let name = '';
+	let phone = '';
+	let email = '';
+	let password = '';
+	let isLoading = true;
+	let isSubmitting = false;
+
+	function destinationFor(userRole: string | null | undefined) {
+		return userRole === 'courier' ? '/courier/home' : '/dashboard';
+	}
+
+	onMount(async () => {
+		try {
+			const session = await auth.syncSession();
+			if (session) {
+				window.location.replace(destinationFor(session.role));
+				return;
+			}
+		} catch {
+			// Stay on sign-in if session check fails.
+		} finally {
+			isLoading = false;
+		}
+	});
+
+	async function submitAuth() {
+		if (isSubmitting || isLoading) return;
+		isSubmitting = true;
+
+		try {
+			if (mode === 'sign-up') {
+				const displayName =
+					name.trim() ||
+					(role === 'business' ? email.split('@')[0] || 'Business user' : 'Courier');
+				await auth.signUp(
+					email,
+					password,
+					displayName,
+					role === 'courier' ? phone : undefined
+				);
+				// Prefer selected signup role for first landing; session role used on later logins.
+				window.location.replace(destinationFor(role));
+				return;
+			}
+
+			const user = await auth.signIn(email, password);
+			window.location.replace(destinationFor(user?.role));
+		} catch {
+			// Keep the page calm — no technical error text.
+		} finally {
+			isSubmitting = false;
+		}
+	}
+
+	$: canSubmit =
+		email.trim().includes('@') &&
+		password.trim().length >= 6 &&
+		(mode === 'sign-in' ||
+			(name.trim().length > 1 && (role === 'business' || phone.trim().length > 6)));
 </script>
 
 <svelte:head>
-  <title>YADA | Motor courier dispatch</title>
-  <meta
-    name="description"
-    content="YADA helps Favorie request, match, and track motor couriers — locate and track only, no payments."
-  />
+	<title>Sign in | YADA</title>
+	<meta name="description" content="Sign in to YADA." />
 </svelte:head>
 
-<main class="min-h-screen bg-bg">
-  <section class="mx-auto flex min-h-[100svh] max-w-3xl flex-col justify-center px-6 py-16 sm:px-8">
-    <div class="mb-2">
-      <a href="/" class="inline-flex" aria-label="YADA home">
-        <img
-          src="/yada-logo.png"
-          alt="YADA by favorie"
-          class="h-20 w-auto rounded-md object-contain object-left sm:h-24"
-        />
-      </a>
-    </div>
+<div class="flex min-h-svh flex-col items-center justify-center bg-bg px-6 py-12">
+	<div class="w-full max-w-md">
+		<div class="mb-8 text-center">
+			<div class="flex justify-center">
+				<BrandLogo href="/" size="md" />
+			</div>
+			<h1 class="mt-4 text-2xl font-semibold text-ink">
+				{mode === 'sign-up' ? 'Create your account' : 'Welcome back'}
+			</h1>
+			<p class="mt-2 text-base text-ink-secondary">
+				{mode === 'sign-up'
+					? 'Choose how you use YADA, then set up your account.'
+					: 'Sign in to continue.'}
+			</p>
+		</div>
 
-    <h1 class="mt-4 max-w-xl text-balance text-2xl font-semibold leading-snug text-ink sm:text-3xl">
-      Find a rider to deliver your order.
-    </h1>
+		<form
+			class="flex flex-col gap-4 rounded-lg border border-border bg-surface p-6 shadow-sm sm:p-8"
+			on:submit|preventDefault={submitAuth}
+		>
+			{#if mode === 'sign-up'}
+				<div>
+					<div class="grid grid-cols-2 gap-2 rounded-md bg-surface-sunken p-1">
+						<button
+							type="button"
+							class="rounded-sm px-3 py-2.5 text-sm font-semibold transition {role === 'business'
+								? 'bg-surface text-ink shadow-xs'
+								: 'text-ink-secondary hover:text-ink'}"
+							on:click={() => (role = 'business')}
+						>
+							Business
+						</button>
+						<button
+							type="button"
+							class="rounded-sm px-3 py-2.5 text-sm font-semibold transition {role === 'courier'
+								? 'bg-surface text-ink shadow-xs'
+								: 'text-ink-secondary hover:text-ink'}"
+							on:click={() => (role = 'courier')}
+						>
+							Courier
+						</button>
+					</div>
+				</div>
 
-    <p class="mt-4 max-w-lg text-lg leading-normal text-ink-secondary">
-      Motor courier dispatch for Favorie — request, match, and track riders. No payment info needed.
-    </p>
+				{#if role === 'business'}
+					<Input label="Business name" type="text" placeholder="Favorie Kitchen" bind:value={name} />
+				{:else}
+					<Input label="Full name" type="text" placeholder="Kwame Asante" bind:value={name} />
+					<Input label="Phone number" type="tel" placeholder="(555) 000-0000" bind:value={phone} />
+				{/if}
+			{/if}
 
-    <div class="mt-8 flex flex-wrap gap-3">
-      <a
-        href="/auth"
-        class="inline-flex items-center justify-center rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-on transition duration-200 hover:bg-primary-hover active:scale-[0.98] active:bg-primary-active"
-      >
-        Open business dispatch
-      </a>
-      <a
-        href="/courier/auth"
-        class="inline-flex items-center justify-center rounded-md border border-border bg-surface px-5 py-3 text-sm font-semibold text-ink transition duration-200 hover:border-border-strong hover:bg-primary-subtle"
-      >
-        Courier sign in
-      </a>
-      <a
-        href="#how-it-works"
-        class="inline-flex items-center justify-center rounded-md border border-transparent px-5 py-3 text-sm font-semibold text-ink-secondary transition duration-200 hover:text-ink"
-      >
-        See how it works
-      </a>
-    </div>
-  </section>
+			<Input
+				label={mode === 'sign-up' && role === 'business' ? 'Work email' : 'Email'}
+				type="email"
+				placeholder={mode === 'sign-up' && role === 'business'
+					? 'name@restaurant.com'
+					: 'you@email.com'}
+				bind:value={email}
+			/>
+			<Input label="Password" type="password" placeholder="••••••••" bind:value={password} />
 
-  <section id="how-it-works" class="border-t border-border bg-surface">
-    <div class="mx-auto max-w-3xl px-6 py-16 sm:px-8">
-      <p class="text-xs font-semibold uppercase tracking-[0.12em] text-ink-tertiary">How it works</p>
-      <h2 class="mt-2 text-2xl font-semibold text-ink">Three steps, one dispatch flow</h2>
+			<Button
+				variant="primary"
+				size="lg"
+				fullWidth
+				type="submit"
+				disabled={isLoading || isSubmitting || !canSubmit}
+			>
+				{mode === 'sign-up' ? 'Create account' : 'Sign in'}
+			</Button>
 
-      <ol class="mt-10 space-y-8">
-        {#each pillars as pillar, i}
-          <li class="flex gap-4">
-            <span
-              class="font-mono-data flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-subtle text-sm font-semibold text-primary"
-            >
-              {i + 1}
-            </span>
-            <div>
-              <h3 class="text-lg font-semibold text-ink">{pillar.title}</h3>
-              <p class="mt-1 text-base leading-normal text-ink-secondary">{pillar.description}</p>
-            </div>
-          </li>
-        {/each}
-      </ol>
-    </div>
-  </section>
+			<div class="flex items-center justify-center gap-2 text-sm text-ink-secondary">
+				<span>{mode === 'sign-up' ? 'Already have an account?' : 'Need an account?'}</span>
+				<button
+					type="button"
+					class="font-semibold text-primary underline-offset-2 hover:underline"
+					on:click={() => {
+						mode = mode === 'sign-up' ? 'sign-in' : 'sign-up';
+					}}
+				>
+					{mode === 'sign-up' ? 'Sign in' : 'Create one'}
+				</button>
+			</div>
+		</form>
 
-  <section id="lifecycle" class="border-t border-border bg-bg">
-    <div class="mx-auto max-w-3xl px-6 py-16 sm:px-8">
-      <p class="text-xs font-semibold uppercase tracking-[0.12em] text-ink-tertiary">Lifecycle</p>
-      <h2 class="mt-2 text-2xl font-semibold text-ink">Trip state machine</h2>
-      <p class="mt-3 max-w-xl text-base leading-normal text-ink-secondary">
-        Every delivery moves through a fixed set of states so business and courier stay aligned.
-      </p>
-
-      <div class="mt-8 flex flex-wrap gap-2">
-        {#each lifecycle as state}
-          <span
-            class="rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-ink-secondary"
-          >
-            {state}
-          </span>
-        {/each}
-      </div>
-    </div>
-  </section>
-</main>
+		<p class="mt-6 text-center text-xs text-ink-tertiary">
+			No payment info needed — YADA only locates and tracks riders.
+		</p>
+	</div>
+</div>

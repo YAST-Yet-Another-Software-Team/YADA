@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { auth } from '$lib/stores/auth';
 	import { courierOnline } from '$lib/stores/courier-online';
 	import { onMount } from 'svelte';
 
@@ -20,7 +20,7 @@
 
 	function signOut() {
 		courierOnline.goOffline();
-		goto('/courier/auth');
+		void auth.signOut('/');
 	}
 </script>
 

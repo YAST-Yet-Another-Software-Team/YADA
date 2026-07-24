@@ -18,7 +18,7 @@ export const tripStatusEnum = pgEnum('trip_status', [
 // Extra YADA fields (phoneNumber, role) are carried as additionalFields.
 // ---------------------------------------------------------------------------
 export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
@@ -33,8 +33,8 @@ export const users = pgTable('users', {
 // Better Auth — sessions table
 // ---------------------------------------------------------------------------
 export const sessions = pgTable('sessions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
+  id: text('id').primaryKey(),
+  userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   token: text('token').notNull().unique(),
@@ -49,8 +49,8 @@ export const sessions = pgTable('sessions', {
 // Better Auth — accounts table (for OAuth provider links, e.g. Google)
 // ---------------------------------------------------------------------------
 export const accounts = pgTable('accounts', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
+  id: text('id').primaryKey(),
+  userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   accountId: text('account_id').notNull(),
@@ -70,7 +70,7 @@ export const accounts = pgTable('accounts', {
 // Better Auth — verifications table (email/OTP verification tokens)
 // ---------------------------------------------------------------------------
 export const verifications = pgTable('verifications', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),
   value: text('value').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),

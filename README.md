@@ -59,8 +59,12 @@ YADA is a web application that streamlines on-demand motor courier delivery for 
 - Real Time Communication: Socket.IO
 - Location service: google maps
 - Database: PostgreSQL Neon, PostGIS, Drizzle ORM
-- Authentication: Better Auth, OAuth
+- Authentication: Better Auth
 - Deployment: Cloudflare, Railway/Render
+
+____________________________
+- npx ngrok http 3000
+- for texting BetterAuth
 ____________________________
 
 ## System Architecture
@@ -130,6 +134,20 @@ npm install
 cp .env.example .env
 
 # For Google Maps, set VITE_GOOGLE_MAPS_API_KEY to a browser-restricted key.
+
+# Better Auth requires these in your .env:
+# BETTER_AUTH_SECRET
+# BETTER_AUTH_URL
+# DATABASE_URL
+
+# To test auth locally:
+# 1. Run npm run dev
+# 2. Open /auth for business login or /courier/auth for courier signup/login
+# 3. Sign in or sign up with a real email + password
+# 4. Confirm you get redirected to /dashboard or /courier/home
+# 5. Refresh the page and verify the session persists
+# 6. Open /api/auth/get-session in the browser to confirm the session payload is returned
+# 7. Use the sign-out action and verify the session clears
 
 # Run database migrations (PostgreSQL)
 npm run db:migrate

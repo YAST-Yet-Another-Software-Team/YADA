@@ -5,6 +5,8 @@
   export let type: 'text' | 'tel' | 'email' | 'password' = 'text';
   export let disabled = false;
   export let id = `input-${Math.random().toString(36).slice(2, 9)}`;
+  export let inputRef: HTMLInputElement | null = null;
+  export let autocomplete: any = undefined;
 </script>
 
 <label class="flex w-full flex-col gap-1.5" for={id}>
@@ -22,7 +24,13 @@
       {type}
       {placeholder}
       {disabled}
+      {autocomplete}
+      bind:this={inputRef}
       bind:value
+      on:input
+      on:focus
+      on:blur
+      on:keydown
       class="w-full border-0 bg-transparent text-base text-ink outline-none placeholder:text-ink-disabled"
     />
   </div>

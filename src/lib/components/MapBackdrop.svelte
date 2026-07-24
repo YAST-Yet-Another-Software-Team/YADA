@@ -131,6 +131,12 @@
     });
   }
 
+  export let center: { lat: number; lng: number } | null = null;
+
+  $: if (mapState === 'ready' && map && center) {
+    map.panTo(center);
+  }
+
   $: if (mapState === 'ready') {
     syncMarkers();
   }

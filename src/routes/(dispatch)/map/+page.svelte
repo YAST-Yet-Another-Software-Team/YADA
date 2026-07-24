@@ -1,7 +1,21 @@
 <script lang="ts">
 	import RiderPin from '$lib/components/business/RiderPin.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
+	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
 	import { availableRiders, businessProfile } from '$lib/data/mock-trips';
+
+	let searchedLocation: { lat: number; lng: number; address: string } | null = null;
+	let mapCenter: { lat: number; lng: number } | null = null;
+	let searchValue = '';
+
+	function handleSearchSelect(event: CustomEvent<{ address: string; lat: number; lng: number }>) {
+		searchedLocation = {
+			address: event.detail.address,
+			lat: event.detail.lat,
+			lng: event.detail.lng
+		};
+		mapCenter = { lat: event.detail.lat, lng: event.detail.lng };
+	}
 </script>
 
 <svelte:head>
@@ -24,7 +38,31 @@
 	<div
 		class="relative min-h-[420px] flex-1 overflow-hidden rounded-lg border border-border bg-surface lg:min-h-[calc(100svh-58px-8rem)]"
 	>
-		<MapBackdrop>
+		<!-- Floating Autocomplete Search Bar -->
+		<div class="absolute left-4 right-4 top-4 z-30 max-w-md shadow-lg sm:left-6">
+			<AddressAutocomplete
+				placeholder="Search any place or address on map..."
+				bind:value={searchValue}
+				on:select={handleSearchSelect}
+			/>
+		</div>
+
+		<MapBackdrop
+			center={mapCenter}
+			markers={[
+				...(searchedLocation
+					? [
+						{
+							id: 'searched',
+							lat: searchedLocation.lat,
+							lng: searchedLocation.lng,
+							label: searchedLocation.address,
+							accent: true
+						}
+					]
+					: [])
+			]}
+		>
 			<!-- Business HQ -->
 			<div
 				class="absolute z-20 -translate-x-1/2 -translate-y-1/2"

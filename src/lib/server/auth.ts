@@ -1,9 +1,11 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { dash } from '@better-auth/infra';
 import { betterAuth } from 'better-auth';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
 
 import { db } from './db';
+import { appEnv } from './env';
 import * as schema from './schema';
 
 // ---------------------------------------------------------------------------
@@ -29,15 +31,23 @@ export const auth = betterAuth({
     }
   }),
 
-  secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:5173',
+  secret: appEnv.authSecret,
+  baseURL: appEnv.authUrl,
 
-  socialProviders: {
-    google: {
-      clientId: process.env.OAUTH_GOOGLE_CLIENT_ID ?? '',
-      clientSecret: process.env.OAUTH_GOOGLE_CLIENT_SECRET ?? ''
-    }
+  emailAndPassword: {
+    enabled: true
   },
+
+  ...(appEnv.oauthGoogleClientId && appEnv.oauthGoogleClientSecret
+    ? {
+        socialProviders: {
+          google: {
+            clientId: appEnv.oauthGoogleClientId,
+            clientSecret: appEnv.oauthGoogleClientSecret
+          }
+        }
+      }
+    : {}),
 
   user: {
     // Map BA's default 'image' field to our column name is already handled
@@ -58,7 +68,7 @@ export const auth = betterAuth({
   },
 
   // sveltekitCookies must be last — it finalises Set-Cookie during server actions.
-  plugins: [sveltekitCookies(getRequestEvent)]
+  plugins: [dash(), sveltekitCookies(getRequestEvent)]
 });
 
 // ---------------------------------------------------------------------------
@@ -73,4 +83,4 @@ export interface SessionUser {
   phone: string | null;
   role: AuthRole;
   image: string | null;
-}
+}
