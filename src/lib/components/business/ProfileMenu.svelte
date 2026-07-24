@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { auth } from '$lib/stores/auth';
 
 	const dispatch = createEventDispatcher<{ close: void }>();
 
@@ -26,7 +26,7 @@
 	function signOut(e: MouseEvent) {
 		e.stopPropagation();
 		dispatch('close');
-		goto('/auth');
+		void auth.signOut('/');
 	}
 
 	onMount(() => {
