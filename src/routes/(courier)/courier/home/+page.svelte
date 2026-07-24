@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { onDestroy, onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import Button from '$lib/components/ui/Button.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
@@ -43,9 +43,18 @@
 	};
 
 	let acceptingId: string | null = null;
+	let decliningId: string | null = null;
+	let refreshTimer: ReturnType<typeof setInterval> | undefined;
 
 	onMount(() => {
 		courierOnline.hydrate();
+		refreshTimer = setInterval(() => {
+			void invalidateAll();
+		}, 5000);
+	});
+
+	onDestroy(() => {
+		if (refreshTimer) clearInterval(refreshTimer);
 	});
 
 	$: currentRequest = data.pendingRequests[0] ?? null;
@@ -90,6 +99,27 @@
 			}
 		} finally {
 			acceptingId = null;
+		}
+	}
+
+	async function declineRequest(requestId: string) {
+		if (decliningId || !$courierOnline) return;
+
+		decliningId = requestId;
+		try {
+			const response = await fetch('/api/courier/decline-trip', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tripId: requestId })
+			});
+
+			if (!response.ok) {
+				throw new Error('Unable to decline request');
+			}
+
+			goto('/courier/home');
+		} finally {
+			decliningId = null;
 		}
 	}
 
@@ -205,21 +235,37 @@
 			</div>
 		{:else if $courierOnline && currentRequest}
 			<div class="rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
-				<div class="flex items-center justify-between gap-3">
+				<div class="flex items-start justify-between gap-3">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
 							New request
 						</p>
 						<p class="text-sm font-semibold text-ink">{currentRequest.businessName}</p>
+						<p class="mt-0.5 text-xs text-ink-secondary">
+							{currentRequest.pickupAddress} → {currentRequest.dropoffAddress}
+						</p>
+						{#if currentRequest.notes}
+							<p class="mt-1 text-xs text-ink-tertiary">{currentRequest.notes}</p>
+						{/if}
 					</div>
-					<Button
-						variant="primary"
-						size="sm"
-						disabled={acceptingId === currentRequest.id}
-						on:click={() => acceptRequest(currentRequest.id)}
-					>
-						{acceptingId === currentRequest.id ? 'Accepting…' : 'Accept'}
-					</Button>
+					<div class="flex items-center gap-2">
+						<Button
+							variant="ghost"
+							size="sm"
+							disabled={decliningId === currentRequest.id}
+							on:click={() => declineRequest(currentRequest.id)}
+						>
+							{decliningId === currentRequest.id ? 'Declining…' : 'Decline'}
+						</Button>
+						<Button
+							variant="primary"
+							size="sm"
+							disabled={acceptingId === currentRequest.id}
+							on:click={() => acceptRequest(currentRequest.id)}
+						>
+							{acceptingId === currentRequest.id ? 'Accepting…' : 'Accept'}
+						</Button>
+					</div>
 				</div>
 			</div>
 		{:else if $courierOnline}
