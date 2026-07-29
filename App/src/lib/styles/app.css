@@ -1,8 +1,8 @@
 /* Single source of truth: Design System tokens (must precede other rules) */
-@import url('../../../Design System/tokens/colors.css');
-@import url('../../../Design System/tokens/typography.css');
-@import url('../../../Design System/tokens/spacing.css');
-@import url('../../../Design System/tokens/base.css');
+@import url('../../../../Design System/tokens/colors.css');
+@import url('../../../../Design System/tokens/typography.css');
+@import url('../../../../Design System/tokens/spacing.css');
+@import url('../../../../Design System/tokens/base.css');
 
 @tailwind base;
 @tailwind components;
