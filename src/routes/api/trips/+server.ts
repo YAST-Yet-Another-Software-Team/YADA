@@ -8,6 +8,9 @@ import { assertInZone, containsPoint } from '$lib/geo/service-area';
 import { GeoError, geoErrorMessage } from '$lib/geo/errors';
 import { appEnv } from '$lib/server/env';
 
+const uuidPattern =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 type CreateTripBody = {
 	pickupAddress?: string;
 	dropoffAddress?: string;
@@ -130,6 +133,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 	const tripId = url.searchParams.get('id');
 	if (!tripId) {
+		return json(
+			{ ok: false, code: 'invalid_request', message: geoErrorMessage('invalid_request') },
+			{ status: 400 }
+		);
+	}
+
+	if (!uuidPattern.test(tripId)) {
 		return json(
 			{ ok: false, code: 'invalid_request', message: geoErrorMessage('invalid_request') },
 			{ status: 400 }

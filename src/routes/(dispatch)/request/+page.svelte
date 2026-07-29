@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import { getCurrentDeviceLocation, startDeviceLocationWatcher } from '$lib/geo/device-location';
 	import { reverseGeocode } from '$lib/maps/geocode-client';
 	import { computeDrivingRoute } from '$lib/maps/routing';
 	import { containsPoint, KUMASI_CENTER, type LatLng } from '$lib/geo/service-area';
@@ -21,12 +22,14 @@
 	let activeLocation: LocationMode = 'dropoff';
 	let pickupPoint: LatLng | null = null;
 	let dropoffPoint: LatLng | null = null;
-	let mapCenter: LatLng | null = KUMASI_CENTER;
+	let mapCenter: LatLng | null = null;
 	let mapZoom: number | null = null;
 	let submitting = false;
 	let zoneError = '';
 	let estimatedDistanceKm: number | null = null;
 	let estimatedDurationMinutes: number | null = null;
+	let stopDeviceWatcher: (() => void) | null = null;
+	let pickupAutoFollow = true;
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
@@ -42,21 +45,6 @@
 		containsPoint(pickupPoint!) &&
 		containsPoint(dropoffPoint!) &&
 		!submitting;
-
-	function getUserLocation(): Promise<LatLng | null> {
-		if (!navigator.geolocation) return Promise.resolve(null);
-		return new Promise((resolve) => {
-			navigator.geolocation.getCurrentPosition(
-				(position) =>
-					resolve({
-						lat: position.coords.latitude,
-						lng: position.coords.longitude
-					}),
-				() => resolve(null),
-				{ enableHighAccuracy: true, timeout: 6000, maximumAge: 60_000 }
-			);
-		});
-	}
 
 	async function refreshEstimatesQuietly() {
 		if (!pickupPoint || !dropoffPoint || !googleMapsApiKey) {
@@ -84,6 +72,7 @@
 		mapZoom = 16;
 
 		if (mode === 'pickup') {
+			pickupAutoFollow = false;
 			pickupPoint = point;
 			pickupPlaceId = placeId;
 			if (address) pickup = address;
@@ -105,16 +94,25 @@
 	}
 
 	async function setPickupFromLocation() {
-		const location = await getUserLocation();
-		const point = location && containsPoint(location) ? location : { ...KUMASI_CENTER };
-		await applyPoint(
-			'pickup',
-			point,
-			location && containsPoint(location) ? undefined : 'Ayeduase Gate, near KNUST, Kumasi'
-		);
-		if (location && !containsPoint(location)) {
-			zoneError = '';
+		const location = await getCurrentDeviceLocation();
+		if (!location) {
+			mapCenter = KUMASI_CENTER;
+			return;
 		}
+
+		mapCenter = location;
+		mapZoom = 16;
+		pickupPoint = location;
+		const reverse = await reverseGeocode(location);
+		pickup = reverse.ok ? reverse.result.address : pickup;
+		pickupPlaceId = undefined;
+
+		if (!containsPoint(location)) {
+			zoneError = geoErrorMessage('out_of_zone');
+			return;
+		}
+
+		zoneError = '';
 	}
 
 	function handleMapPick(event: CustomEvent<LatLng>) {
@@ -208,7 +206,26 @@
 	}
 
 	onMount(() => {
+		stopDeviceWatcher = startDeviceLocationWatcher({
+			onUpdate: (location) => {
+				mapCenter = location;
+				if (pickupAutoFollow) {
+					pickupPoint = location;
+					void (async () => {
+						const reverse = await reverseGeocode(location);
+						pickup = reverse.ok ? reverse.result.address : pickup;
+					})();
+				}
+			},
+			onError: () => {
+				if (!mapCenter) mapCenter = KUMASI_CENTER;
+			}
+		});
 		void setPickupFromLocation();
+	});
+
+	onDestroy(() => {
+		stopDeviceWatcher?.();
 	});
 
 	$: mapMarkers = [

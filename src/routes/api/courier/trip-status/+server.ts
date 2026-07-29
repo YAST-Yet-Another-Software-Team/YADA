@@ -11,6 +11,9 @@ const NEXT_STATUS: Record<string, 'courier_arriving' | 'in_progress' | 'complete
   complete: 'completed'
 };
 
+const uuidPattern =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export const POST: RequestHandler = async ({ request, locals }) => {
   if (!locals.user) {
     return json({ ok: false, message: 'Sign in required.' }, { status: 401 });
@@ -27,6 +30,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const action = typeof body?.action === 'string' ? body.action : null;
 
   if (!tripId || !action || !NEXT_STATUS[action]) {
+    return json({ ok: false, message: 'Trip id and action required.' }, { status: 400 });
+  }
+
+  if (!uuidPattern.test(tripId)) {
     return json({ ok: false, message: 'Trip id and action required.' }, { status: 400 });
   }
 

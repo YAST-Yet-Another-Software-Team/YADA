@@ -2,6 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
+	import { startDeviceLocationWatcher } from '$lib/geo/device-location';
 	import { KUMASI_CENTER } from '$lib/geo/service-area';
 	import { computeDrivingRoute } from '$lib/maps/routing';
 	import {
@@ -37,6 +38,7 @@
 		data.businessProfile != null
 			? { lat: data.businessProfile.lat, lng: data.businessProfile.lng }
 			: KUMASI_CENTER;
+	let stopDeviceWatcher: (() => void) | null = null;
 	let searchValue = '';
 	let liveRiders = [...data.availableRiders];
 	let etaByRider: Record<string, string> = {};
@@ -94,6 +96,16 @@
 	}
 
 	onMount(() => {
+		if (!data.businessProfile) {
+			stopDeviceWatcher = startDeviceLocationWatcher({
+				onUpdate: (location) => {
+					mapCenter = location;
+				},
+				onError: () => {
+					mapCenter = mapCenter ?? KUMASI_CENTER;
+				}
+			});
+		}
 		joinDispatchRiders();
 		unsub = onRiderLocation(applyLiveLocation);
 		for (const rider of liveRiders) {
@@ -103,6 +115,7 @@
 
 	onDestroy(() => {
 		unsub?.();
+		stopDeviceWatcher?.();
 		leaveDispatchRiders();
 	});
 
