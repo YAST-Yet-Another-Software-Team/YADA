@@ -1,5 +1,5 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
 
 import { appEnv } from './env';
 import * as schema from './schema';
@@ -8,7 +8,10 @@ if (!appEnv.databaseUrl || appEnv.databaseUrl.includes('[user]') || appEnv.datab
 	throw new Error('DATABASE_URL is not configured. Set it to your real Neon connection string before running Better Auth.');
 }
 
-const sql = neon(appEnv.databaseUrl);
+const pool = new Pool({
+	connectionString: appEnv.databaseUrl,
+	ssl: appEnv.databaseUrl.includes('sslmode=require') ? { rejectUnauthorized: false } : undefined
+});
 
-export const db = sql ? drizzle({ client: sql, schema }) : null;
-export const databasePool = sql;
+export const db = drizzle({ client: pool, schema });
+export const databasePool = pool;
