@@ -53,16 +53,19 @@ async function syncSession() {
     }
 
     const payload = (await response.json()) as {
-      data?: { user?: Parameters<typeof mapUser>[0] } | null;
+      user?: Parameters<typeof mapUser>[0] | null;
+      data?: { user?: Parameters<typeof mapUser>[0] | null } | null;
     };
 
+    const currentUser = payload.user ?? payload.data?.user ?? null;
+
     set({
-      user: mapUser(payload.data?.user ?? null),
+      user: mapUser(currentUser),
       isLoading: false,
       error: null
     });
 
-    return mapUser(payload.data?.user ?? null);
+    return mapUser(currentUser);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load session.';
     set({ user: null, isLoading: false, error: message });
@@ -70,21 +73,30 @@ async function syncSession() {
   }
 }
 
-async function signIn(email: string, password: string) {
+async function signIn(email: string, password: string, rememberMe = false) {
   update((state) => ({ ...state, isLoading: true, error: null }));
 
   try {
     const response = await fetch('/api/auth/sign-in/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, rememberMe })
     });
 
     if (!response.ok) {
       throw new Error('Unable to sign in.');
     }
 
-    return await syncSession();
+    const payload = (await response.json()) as {
+      user?: Parameters<typeof mapUser>[0] | null;
+      data?: { user?: Parameters<typeof mapUser>[0] | null } | null;
+    };
+
+    const currentUser = payload.user ?? payload.data?.user ?? null;
+    const mappedUser = mapUser(currentUser);
+
+    set({ user: mappedUser, isLoading: false, error: null });
+    return mappedUser;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to sign in.';
     update((state) => ({ ...state, isLoading: false, error: message }));
@@ -92,21 +104,87 @@ async function signIn(email: string, password: string) {
   }
 }
 
-async function signUp(email: string, password: string, name: string, phone?: string) {
+async function requestPasswordReset(email: string) {
+  update((state) => ({ ...state, isLoading: true, error: null }));
+
+  try {
+    const redirectTo =
+      typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : '/reset-password';
+
+    const response = await fetch('/api/auth/forget-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, redirectTo })
+    });
+
+    if (!response.ok) {
+      throw new Error('Unable to send password reset email.');
+    }
+
+    return await response.json();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to send password reset email.';
+    update((state) => ({ ...state, isLoading: false, error: message }));
+    throw error;
+  } finally {
+    update((state) => ({ ...state, isLoading: false }));
+  }
+}
+
+async function resetPassword(token: string, newPassword: string) {
+  update((state) => ({ ...state, isLoading: true, error: null }));
+
+  try {
+    const response = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    });
+
+    if (!response.ok) {
+      throw new Error('Unable to reset password.');
+    }
+
+    return await response.json();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to reset password.';
+    update((state) => ({ ...state, isLoading: false, error: message }));
+    throw error;
+  } finally {
+    update((state) => ({ ...state, isLoading: false }));
+  }
+}
+
+async function signUp(
+  email: string,
+  password: string,
+  name: string,
+  phone?: string,
+  role: 'business' | 'courier' | 'admin' = 'business'
+) {
   update((state) => ({ ...state, isLoading: true, error: null }));
 
   try {
     const response = await fetch('/api/auth/sign-up/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, phoneNumber: phone })
+      body: JSON.stringify({ email, password, name, phoneNumber: phone, role })
     });
 
     if (!response.ok) {
       throw new Error('Unable to sign up.');
     }
 
-    return await syncSession();
+    const payload = (await response.json()) as {
+      user?: Parameters<typeof mapUser>[0] | null;
+      data?: { user?: Parameters<typeof mapUser>[0] | null } | null;
+    };
+
+    const currentUser = payload.user ?? payload.data?.user ?? null;
+    const mappedUser = mapUser(currentUser);
+
+    set({ user: mappedUser, isLoading: false, error: null });
+    return mappedUser;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to sign up.';
     update((state) => ({ ...state, isLoading: false, error: message }));
@@ -124,10 +202,92 @@ async function signOut(returnTo = '/') {
   }
 }
 
+async function updateProfile(fields: { name?: string; phone?: string }) {
+  update((state) => ({ ...state, isLoading: true, error: null }));
+
+  try {
+    const body: Record<string, string> = {};
+    if (fields.name !== undefined) body.name = fields.name.trim();
+    if (fields.phone !== undefined) body.phoneNumber = fields.phone.trim();
+
+    const response = await fetch('/api/auth/update-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        error?: { message?: string };
+      } | null;
+      throw new Error(
+        payload?.message || payload?.error?.message || 'Unable to update profile.'
+      );
+    }
+
+    const payload = (await response.json()) as {
+      user?: Parameters<typeof mapUser>[0] | null;
+      data?: { user?: Parameters<typeof mapUser>[0] | null } | null;
+    };
+
+    const currentUser = payload.user ?? payload.data?.user ?? null;
+    const mappedUser = mapUser(currentUser) ?? (await syncSession());
+
+    if (!mappedUser) {
+      throw new Error('Unable to update profile.');
+    }
+
+    set({ user: mappedUser, isLoading: false, error: null });
+    return mappedUser;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to update profile.';
+    update((state) => ({ ...state, isLoading: false, error: message }));
+    throw error;
+  }
+}
+
+async function changePassword(currentPassword: string, newPassword: string) {
+  update((state) => ({ ...state, isLoading: true, error: null }));
+
+  try {
+    const response = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentPassword,
+        newPassword,
+        revokeOtherSessions: false
+      })
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        error?: { message?: string };
+      } | null;
+      throw new Error(
+        payload?.message || payload?.error?.message || 'Unable to change password.'
+      );
+    }
+
+    update((state) => ({ ...state, isLoading: false, error: null }));
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to change password.';
+    update((state) => ({ ...state, isLoading: false, error: message }));
+    throw error;
+  }
+}
+
 export const auth = {
   subscribe,
   syncSession,
   signIn,
   signUp,
-  signOut
+  signOut,
+  updateProfile,
+  changePassword,
+  requestPasswordReset,
+  resetPassword
 };

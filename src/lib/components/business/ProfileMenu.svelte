@@ -8,13 +8,12 @@
 
 	export let open = false;
 
-	const profile = {
-		name: 'Jordan Mensah',
-		businessName: 'Favorie Kitchen',
-		email: 'jordan@favorie.com',
-		phone: '+233 24 555 0142',
-		address: '221 Baker St — Kitchen'
-	};
+	$: user = $auth.user;
+	$: initials = (user?.name || 'Y').split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() || 'Y';
+	$: displayName = user?.name || 'YADA user';
+	$: businessName = user?.role === 'courier' ? 'Courier workspace' : 'Business workspace';
+	$: email = user?.email || 'No email on file';
+	$: phone = user?.phone || 'No phone on file';
 
 	function onDocClick(e: MouseEvent) {
 		const target = e.target as HTMLElement | null;
@@ -47,24 +46,24 @@
 		role="menu"
 	>
 		<div class="mb-3 flex items-center gap-3 border-b border-border pb-3">
-			<Avatar initials="JM" size={40} />
+			<Avatar initials={initials} size={40} />
 			<div>
-				<p class="text-sm font-semibold text-ink">{profile.name}</p>
-				<p class="text-xs text-ink-secondary">{profile.businessName}</p>
+				<p class="text-sm font-semibold text-ink">{displayName}</p>
+				<p class="text-xs text-ink-secondary">{businessName}</p>
 			</div>
 		</div>
 		<dl class="mb-4 space-y-2.5 text-sm">
 			<div>
 				<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Email</dt>
-				<dd class="text-ink">{profile.email}</dd>
+				<dd class="text-ink">{email}</dd>
 			</div>
 			<div>
 				<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Phone</dt>
-				<dd class="text-ink">{profile.phone}</dd>
+				<dd class="text-ink">{phone}</dd>
 			</div>
 			<div>
-				<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Address</dt>
-				<dd class="text-ink">{profile.address}</dd>
+				<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Role</dt>
+				<dd class="text-ink">{user?.role ?? 'business'}</dd>
 			</div>
 		</dl>
 		<div class="border-t border-border pt-3">

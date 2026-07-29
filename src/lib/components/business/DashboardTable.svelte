@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
-	import type { MockTrip } from '$lib/data/mock-trips';
+	import type { DashboardTripRecord } from '$lib/server/dashboard-data';
 
-	export let trips: MockTrip[] = [];
+	export let trips: DashboardTripRecord[] = [];
 
-	const dispatch = createEventDispatcher<{ select: MockTrip }>();
+	const dispatch = createEventDispatcher<{ select: DashboardTripRecord }>();
 </script>
 
 <div class="overflow-x-auto rounded-lg border border-border bg-surface">

@@ -3,27 +3,36 @@
 	import { goto } from '$app/navigation';
 	import DashboardBoard from '$lib/components/business/DashboardBoard.svelte';
 	import DashboardTable from '$lib/components/business/DashboardTable.svelte';
-	import RiderPin from '$lib/components/business/RiderPin.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
-	import {
-		activeTrips,
-		businessProfile,
-		dashboardStats,
-		historyTrips,
-		type MockTrip
-	} from '$lib/data/mock-trips';
+	import type { DashboardTripRecord } from '$lib/server/dashboard-data';
 	import { dashboardView } from '$lib/stores/dashboard-view';
 
-	let selected: MockTrip | null = null;
+	export let data: {
+		dashboard: {
+			activeTrips: DashboardTripRecord[];
+			historyTrips: DashboardTripRecord[];
+			businessProfile: {
+				name: string;
+				businessName: string;
+				email: string | null;
+				phone: string | null;
+				address: string;
+				lat: number;
+				lng: number;
+			} | null;
+		};
+	};
+
+	let selected: DashboardTripRecord | null = null;
 
 	onMount(() => {
 		dashboardView.hydrate();
 	});
 
-	$: deliveredToday = historyTrips.filter((t) => t.status === 'delivered').slice(0, 2);
+	$: deliveredToday = data.dashboard.historyTrips.filter((t) => t.status === 'delivered').slice(0, 2);
 
 	function newRequest() {
 		goto('/request');
@@ -33,7 +42,7 @@
 		dashboardView.set(view);
 	}
 
-	function selectTrip(trip: MockTrip) {
+	function selectTrip(trip: DashboardTripRecord) {
 		selected = trip;
 	}
 
@@ -87,28 +96,30 @@
 				Active deliveries
 			</p>
 			<p class="font-mono-data mt-2 text-2xl font-bold text-ink lg:text-[26px]">
-				{dashboardStats.activeDeliveries}
+				{data.dashboard.activeTrips.length}
 			</p>
 		</div>
 		<div class="hidden rounded-lg border border-border bg-surface p-4 shadow-xs lg:block">
 			<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
 				Avg. pickup time
 			</p>
-			<p class="font-mono-data mt-2 text-[26px] font-bold text-ink">{dashboardStats.avgPickupTime}</p>
+			<p class="font-mono-data mt-2 text-[26px] font-bold text-ink">
+				{data.dashboard.activeTrips.length > 0 ? 'Live' : '—'}
+			</p>
 		</div>
 		<div class="rounded-lg border border-border bg-surface p-4 shadow-xs">
 			<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
 				Delivered today
 			</p>
 			<p class="font-mono-data mt-2 text-2xl font-bold text-ink lg:text-[26px]">
-				{dashboardStats.deliveredToday}
+				{data.dashboard.historyTrips.filter((t) => t.status === 'delivered').length}
 			</p>
 		</div>
 	</div>
 
 	<section class="flex flex-col gap-3 lg:hidden">
 		<h2 class="text-base font-semibold text-ink">Active requests</h2>
-		{#each activeTrips as trip (trip.id)}
+		{#each data.dashboard.activeTrips as trip (trip.id)}
 			<button type="button" class="w-full text-left" on:click={() => selectTrip(trip)}>
 				<Card>
 					<div class="flex items-center justify-between gap-3">
@@ -133,10 +144,10 @@
 				<h2 class="text-base font-semibold text-ink">Active requests</h2>
 				<p class="text-sm text-ink-tertiary">Click a row to see the rider on the map</p>
 			</div>
-			<DashboardTable trips={activeTrips} on:select={(e) => selectTrip(e.detail)} />
+			<DashboardTable trips={data.dashboard.activeTrips} on:select={(e) => selectTrip(e.detail)} />
 		{:else}
 			<DashboardBoard
-				trips={activeTrips}
+				trips={data.dashboard.activeTrips}
 				{deliveredToday}
 				on:select={(e) => selectTrip(e.detail)}
 			/>
@@ -176,28 +187,53 @@
 			</div>
 
 			<div class="relative min-h-0 flex-1">
-				<MapBackdrop routeLabel={selected.status === 'en_route'}>
-					<!-- Business location -->
-					<div
-						class="absolute z-10 -translate-x-1/2 -translate-y-1/2"
-						style="left:{businessProfile.mapX}%; top:{businessProfile.mapY}%"
-					>
-						<div
-							class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-ink text-[10px] font-bold text-primary-on shadow-sm"
-							title={businessProfile.businessName}
-						>
-							HQ
-						</div>
-					</div>
-
-					{#if selected.rider && selected.mapX != null && selected.mapY != null}
-						<div
-							class="absolute z-10 -translate-x-1/2 -translate-y-full"
-							style="left:{selected.mapX}%; top:{selected.mapY}%"
-						>
-							<RiderPin label={selected.rider} size={40} accent={selected.status === 'en_route'} />
-						</div>
-					{:else}
+				<MapBackdrop
+					routeLabel={selected.status === 'en_route'}
+					center={selected.dropoffLat != null && selected.dropoffLng != null
+						? { lat: selected.dropoffLat, lng: selected.dropoffLng }
+						: data.dashboard.businessProfile
+							? {
+									lat: data.dashboard.businessProfile.lat,
+									lng: data.dashboard.businessProfile.lng
+								}
+							: null}
+					markers={[
+						...(data.dashboard.businessProfile
+							? [
+									{
+										id: 'hq',
+										lat: data.dashboard.businessProfile.lat,
+										lng: data.dashboard.businessProfile.lng,
+										label: data.dashboard.businessProfile.businessName,
+										role: 'business' as const
+									}
+								]
+							: []),
+						...(selected.pickupLat != null && selected.pickupLng != null
+							? [
+									{
+										id: 'pickup',
+										lat: selected.pickupLat,
+										lng: selected.pickupLng,
+										label: 'Pickup',
+										role: 'pickup' as const
+									}
+								]
+							: []),
+						...(selected.dropoffLat != null && selected.dropoffLng != null
+							? [
+									{
+										id: 'dropoff',
+										lat: selected.dropoffLat,
+										lng: selected.dropoffLng,
+										label: selected.destination,
+										role: 'dropoff' as const
+									}
+								]
+							: [])
+					]}
+				>
+					{#if !selected.rider}
 						<div
 							class="absolute left-1/2 top-[42%] z-10 -translate-x-1/2 rounded-md bg-surface px-3 py-2 text-sm text-ink-secondary shadow-sm"
 						>
@@ -220,7 +256,7 @@
 				{/if}
 				<p class="text-ink-secondary">
 					<span class="font-semibold text-ink">Pickup:</span>
-					{selected.pickup ?? businessProfile.address}
+					{selected.pickup ?? data.dashboard.businessProfile?.address ?? '—'}
 				</p>
 			</div>
 		</aside>

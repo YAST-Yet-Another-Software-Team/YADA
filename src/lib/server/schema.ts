@@ -79,11 +79,27 @@ export const verifications = pgTable('verifications', {
 });
 
 // ---------------------------------------------------------------------------
+// Business profile — used by the dispatch UI to anchor the test business.
+// ---------------------------------------------------------------------------
+export const businessProfiles = pgTable('business_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  businessName: text('business_name').notNull(),
+  address: text('address').notNull(),
+  latitude: numeric('latitude', { precision: 10, scale: 6 }).notNull(),
+  longitude: numeric('longitude', { precision: 10, scale: 6 }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+// ---------------------------------------------------------------------------
 // YADA domain tables
 // ---------------------------------------------------------------------------
 export const courierProfiles = pgTable('courier_profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
+  userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   vehicleType: text('vehicle_type').notNull(),
@@ -91,20 +107,27 @@ export const courierProfiles = pgTable('courier_profiles', {
   active: boolean('active').notNull().default(true),
   currentLatitude: numeric('current_latitude', { precision: 10, scale: 6 }),
   currentLongitude: numeric('current_longitude', { precision: 10, scale: 6 }),
+  lastLocationAt: timestamp('last_location_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 });
 
 export const deliveryRequests = pgTable('delivery_requests', {
   id: uuid('id').defaultRandom().primaryKey(),
-  businessId: uuid('business_id')
+  businessId: text('business_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  assignedCourierId: uuid('assigned_courier_id').references(() => users.id, {
+  assignedCourierId: text('assigned_courier_id').references(() => users.id, {
     onDelete: 'set null'
   }),
   status: tripStatusEnum('status').notNull().default('requested'),
   pickupAddress: text('pickup_address').notNull(),
   dropoffAddress: text('dropoff_address').notNull(),
+  pickupLatitude: numeric('pickup_latitude', { precision: 10, scale: 6 }),
+  pickupLongitude: numeric('pickup_longitude', { precision: 10, scale: 6 }),
+  dropoffLatitude: numeric('dropoff_latitude', { precision: 10, scale: 6 }),
+  dropoffLongitude: numeric('dropoff_longitude', { precision: 10, scale: 6 }),
+  pickupPlaceId: text('pickup_place_id'),
+  dropoffPlaceId: text('dropoff_place_id'),
   notes: text('notes'),
   estimatedDistanceKm: numeric('estimated_distance_km', { precision: 8, scale: 2 }),
   estimatedDurationMinutes: numeric('estimated_duration_minutes', { precision: 8, scale: 2 }),
@@ -118,7 +141,7 @@ export const tripEvents = pgTable('trip_events', {
   tripId: uuid('trip_id')
     .notNull()
     .references(() => deliveryRequests.id, { onDelete: 'cascade' }),
-  actorId: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
+  actorId: text('actor_id').references(() => users.id, { onDelete: 'set null' }),
   eventType: text('event_type').notNull(),
   payload: text('payload'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()

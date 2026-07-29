@@ -1,38 +1,147 @@
 <script lang="ts">
+	import { goto, invalidateAll } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { fade } from 'svelte/transition';
 	import Button from '$lib/components/ui/Button.svelte';
+	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import { courierOnline } from '$lib/stores/courier-online';
+	import { KUMASI_CENTER } from '$lib/geo/service-area';
 
-	let timer: ReturnType<typeof setTimeout> | undefined;
+	export let data: {
+		profile: { name: string; initials: string };
+		activeTrip: {
+			id: string;
+			status: 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled' | 'searching';
+			businessName: string;
+			pickupAddress: string;
+			dropoffAddress: string;
+			pickupLat: number | null;
+			pickupLng: number | null;
+			dropoffLat: number | null;
+			dropoffLng: number | null;
+			notes: string | null;
+			estimatedPayout: number;
+		} | null;
+		pendingRequests: Array<{
+			id: string;
+			businessName: string;
+			pickupAddress: string;
+			dropoffAddress: string;
+			pickupLat: number | null;
+			pickupLng: number | null;
+			dropoffLat: number | null;
+			dropoffLng: number | null;
+			notes: string | null;
+		}>;
+		summary: {
+			walletBalance: number;
+			completedTrips: number;
+			tripsToday: number;
+			totalDistanceKm: number;
+			activeTrips: number;
+		};
+	};
+
+	let acceptingId: string | null = null;
+	let decliningId: string | null = null;
+	let actionError = '';
+	let refreshTimer: ReturnType<typeof setInterval> | undefined;
 
 	onMount(() => {
 		courierOnline.hydrate();
+		refreshTimer = setInterval(() => {
+			void invalidateAll();
+		}, 5000);
 	});
 
 	onDestroy(() => {
-		if (timer) clearTimeout(timer);
+		if (refreshTimer) clearInterval(refreshTimer);
 	});
+
+	$: currentRequest = data.pendingRequests[0] ?? null;
+	$: heroTrip = data.activeTrip ?? currentRequest;
+	$: pickupPoint =
+		heroTrip?.pickupLat != null && heroTrip?.pickupLng != null
+			? { lat: heroTrip.pickupLat, lng: heroTrip.pickupLng }
+			: KUMASI_CENTER;
+	$: dropoffPoint =
+		heroTrip?.dropoffLat != null && heroTrip?.dropoffLng != null
+			? { lat: heroTrip.dropoffLat, lng: heroTrip.dropoffLng }
+			: null;
+	$: routePath = pickupPoint && dropoffPoint ? [pickupPoint, dropoffPoint] : [];
+	$: statusLabel = !$courierOnline
+		? 'Offline'
+		: data.activeTrip
+			? data.activeTrip.status === 'en_route'
+				? 'On the way'
+				: data.activeTrip.status === 'arrived'
+					? 'Arrived'
+					: 'Active trip'
+			: 'Online';
+
+	async function acceptRequest(requestId: string) {
+		if (acceptingId || !$courierOnline) return;
+
+		acceptingId = requestId;
+		actionError = '';
+		try {
+			const response = await fetch('/api/courier/accept-trip', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tripId: requestId })
+			});
+
+			if (!response.ok) {
+				throw new Error('Unable to accept request');
+			}
+
+			const payload = await response.json();
+			if (payload.ok) {
+				goto(`/courier/pickup?tripId=${encodeURIComponent(payload.tripId)}`);
+			}
+		} catch (error) {
+			actionError = error instanceof Error ? error.message : 'Unable to accept request';
+		} finally {
+			acceptingId = null;
+		}
+	}
+
+	async function declineRequest(requestId: string) {
+		if (decliningId || !$courierOnline) return;
+
+		decliningId = requestId;
+		actionError = '';
+		try {
+			const response = await fetch('/api/courier/decline-trip', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tripId: requestId })
+			});
+
+			if (!response.ok) {
+				throw new Error('Unable to decline request');
+			}
+
+			goto('/courier/home');
+		} catch (error) {
+			actionError = error instanceof Error ? error.message : 'Unable to decline request';
+		} finally {
+			decliningId = null;
+		}
+	}
+
+	function openActiveTrip() {
+		if (!data.activeTrip) return;
+		const route = data.activeTrip.status === 'en_route' ? '/courier/deliver' : '/courier/pickup';
+		goto(`${route}?tripId=${encodeURIComponent(data.activeTrip.id)}`);
+	}
 
 	function goOnline() {
 		courierOnline.goOnline();
 	}
 
 	function goOffline() {
-		if (timer) clearTimeout(timer);
 		courierOnline.goOffline();
-	}
-
-	function simulateSheet() {
-		if (!$courierOnline) return;
-		if (timer) clearTimeout(timer);
-		goto('/courier/offer-sheet');
-	}
-
-	function simulateFull() {
-		if (!$courierOnline) return;
-		if (timer) clearTimeout(timer);
-		goto('/courier/offer');
 	}
 </script>
 
@@ -40,101 +149,154 @@
 	<title>Home | YADA Courier</title>
 </svelte:head>
 
-<div class="flex flex-1 flex-col bg-bg">
-	<div class="flex items-center justify-between px-4 py-3">
-		<p class="text-sm font-semibold text-ink">Kwame A.</p>
-		{#if $courierOnline}
-			<span
-				class="inline-flex items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1 text-xs font-semibold text-primary"
-			>
-				<span class="h-2 w-2 rounded-full bg-primary animate-yada-pulse"></span>
-				Online
-			</span>
-		{:else}
-			<span
-				class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-ink-tertiary"
-			>
-				<span class="h-2 w-2 rounded-full bg-neutral-400"></span>
-				Offline
-			</span>
-		{/if}
-	</div>
+<div class="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
+	<div class="absolute inset-0">
+		<MapBackdrop
+			routeLabel={!!$courierOnline && !!heroTrip}
+			center={$courierOnline ? pickupPoint : KUMASI_CENTER}
+			markers={$courierOnline && heroTrip
+				? [
+						{
+							id: 'pickup',
+							lat: pickupPoint.lat,
+							lng: pickupPoint.lng,
+							label: 'Pickup',
+							role: 'pickup'
+						},
+						...(dropoffPoint
+							? [
+									{
+										id: 'dropoff',
+										lat: dropoffPoint.lat,
+										lng: dropoffPoint.lng,
+										label: 'Dropoff',
+										role: 'dropoff' as const
+									}
+								]
+							: [])
+					]
+				: []}
+			polylinePath={$courierOnline ? routePath : []}
+		/>
 
-	{#if !$courierOnline}
-		<div class="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+		<div class="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-4">
 			<div
-				class="flex h-[120px] w-[120px] items-center justify-center rounded-full border-2 border-dashed border-neutral-300"
+				class="pointer-events-auto max-w-sm rounded-xl border border-border bg-surface/95 px-4 py-3 text-center shadow-md backdrop-blur-sm"
+				in:fade={{ duration: 160 }}
 			>
-				<svg
-					viewBox="0 0 24 24"
-					class="h-12 w-12 text-ink-tertiary"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="1.5"
-				>
-					<path d="M5 17h14" />
-					<path d="M7 17V9l5-4 5 4v8" />
-					<circle cx="8.5" cy="17" r="1.5" />
-					<circle cx="15.5" cy="17" r="1.5" />
-				</svg>
-			</div>
-			<h1 class="text-lg font-bold text-ink">You're offline</h1>
-			<p class="max-w-xs text-sm text-ink-secondary">
-				Go online when you're ready to receive delivery requests from nearby businesses.
-			</p>
-			<div class="w-full max-w-xs pt-2">
-				<Button variant="primary" size="lg" fullWidth on:click={goOnline}>Go online</Button>
+				{#if $courierOnline}
+					<span
+						class="inline-flex items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1 text-xs font-semibold text-primary"
+					>
+						<span class="h-2 w-2 rounded-full bg-primary animate-yada-pulse"></span>
+						{statusLabel}
+					</span>
+					{#if data.activeTrip}
+						<p class="mt-2 text-sm font-semibold text-ink">{data.activeTrip.businessName}</p>
+						<p class="mt-0.5 text-xs text-ink-secondary">
+							{data.activeTrip.pickupAddress} → {data.activeTrip.dropoffAddress}
+						</p>
+					{:else if data.pendingRequests.length > 0}
+						<p class="mt-2 text-sm font-semibold text-ink">
+							{data.pendingRequests.length} delivery request{data.pendingRequests.length === 1
+								? ''
+								: 's'}
+						</p>
+						<p class="mt-0.5 text-xs text-ink-secondary">Review offers below to accept a trip</p>
+					{:else}
+						<p class="mt-2 text-sm font-semibold text-ink">Waiting for a delivery request…</p>
+						<p class="mt-0.5 text-xs text-ink-secondary">
+							Stay nearby — businesses call riders based on distance
+						</p>
+					{/if}
+				{:else}
+					<span
+						class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-ink-tertiary"
+					>
+						<span class="h-2 w-2 rounded-full bg-neutral-400"></span>
+						Offline
+					</span>
+					<p class="mt-2 text-sm font-semibold text-ink">You're offline</p>
+					<p class="mt-0.5 text-xs text-ink-secondary">
+						Go online when you're ready to receive delivery requests
+					</p>
+				{/if}
 			</div>
 		</div>
-	{:else}
-		<div class="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-			<div
-				class="flex h-[120px] w-[120px] items-center justify-center rounded-full border-2 border-dashed border-neutral-300"
-			>
-				<div
-					class="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-neutral-200"
-				>
-					<div
-						class="flex h-11 w-11 items-center justify-center rounded-full bg-primary-subtle text-primary animate-yada-pulse"
-					>
-						<svg
-							viewBox="0 0 24 24"
-							class="h-5 w-5"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
+	</div>
+
+	<div
+		class="relative z-10 mt-auto space-y-3 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pb-3 pt-10"
+	>
+		{#if $courierOnline && data.activeTrip}
+			<div class="rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
+				<div class="flex items-center justify-between gap-3">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+							Active trip
+						</p>
+						<p class="font-mono-data text-sm font-bold text-primary">
+							${data.activeTrip.estimatedPayout.toFixed(2)}
+						</p>
+					</div>
+					<Button variant="primary" size="sm" on:click={openActiveTrip}>Continue trip</Button>
+				</div>
+			</div>
+		{:else if $courierOnline && currentRequest}
+			<div class="rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
+				{#if actionError}
+					<p class="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{actionError}</p>
+				{/if}
+				<div class="flex items-start justify-between gap-3">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+							New request
+						</p>
+						<p class="text-sm font-semibold text-ink">{currentRequest.businessName}</p>
+						<p class="mt-0.5 text-xs text-ink-secondary">
+							{currentRequest.pickupAddress} → {currentRequest.dropoffAddress}
+						</p>
+						{#if currentRequest.notes}
+							<p class="mt-1 text-xs text-ink-tertiary">{currentRequest.notes}</p>
+						{/if}
+					</div>
+					<div class="flex items-center gap-2">
+						<Button
+							variant="ghost"
+							size="sm"
+							disabled={decliningId === currentRequest.id}
+							on:click={() => declineRequest(currentRequest.id)}
 						>
-							<circle cx="12" cy="12" r="3" />
-							<circle cx="12" cy="12" r="8" />
-						</svg>
+							{decliningId === currentRequest.id ? 'Declining…' : 'Decline'}
+						</Button>
+						<Button
+							variant="primary"
+							size="sm"
+							disabled={acceptingId === currentRequest.id}
+							on:click={() => acceptRequest(currentRequest.id)}
+						>
+							{acceptingId === currentRequest.id ? 'Accepting…' : 'Accept'}
+						</Button>
 					</div>
 				</div>
 			</div>
+		{:else if $courierOnline}
+			<div class="rounded-2xl border border-border bg-surface/95 p-3 text-center text-sm text-ink-secondary shadow-sm backdrop-blur-sm">
+				{#if actionError}
+					<p class="mb-2 rounded-xl bg-red-50 px-3 py-2 text-left text-xs font-medium text-red-700">{actionError}</p>
+				{/if}
+				Today: {data.summary.tripsToday} deliveries
+			</div>
+		{/if}
 
-			<h1 class="text-lg font-bold text-ink">Waiting for a delivery request…</h1>
-			<p class="max-w-xs text-sm text-ink-secondary">
-				Stay nearby — businesses call riders based on distance
-			</p>
-
-			<button
-				type="button"
-				class="mt-2 text-sm font-semibold text-primary underline-offset-2 hover:underline"
-				on:click={simulateSheet}
-			>
-				Simulate request
-			</button>
-			<button
-				type="button"
-				class="text-xs font-medium text-ink-tertiary underline-offset-2 hover:text-ink-secondary hover:underline"
-				on:click={simulateFull}
-			>
-				Try full-screen offer
-			</button>
-		</div>
-
-		<div class="border-t border-border px-6 py-4">
-			<p class="mb-3 text-sm text-ink-secondary">Today: 3 deliveries</p>
-			<Button variant="ghost" fullWidth on:click={goOffline}>Go offline</Button>
-		</div>
-	{/if}
+		{#if $courierOnline}
+			{#if data.pendingRequests.length === 0 || data.activeTrip}
+				<Button variant="ghost" size="lg" fullWidth on:click={goOffline}>Go offline</Button>
+			{:else}
+				<Button variant="ghost" size="sm" fullWidth on:click={goOffline}>Go offline</Button>
+			{/if}
+		{:else}
+			<Button variant="primary" size="lg" fullWidth on:click={goOnline}>Go online</Button>
+		{/if}
+	</div>
 </div>

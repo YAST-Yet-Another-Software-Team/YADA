@@ -1,43 +1,32 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import {
-		loadGoogleMapsGeocoding,
-		loadGoogleMapsRoutes
-	} from '$lib/maps/google-maps-loader';
-
-	type LocationPoint = {
-		lat: number;
-		lng: number;
-	};
+	import { reverseGeocode } from '$lib/maps/geocode-client';
+	import { computeDrivingRoute } from '$lib/maps/routing';
+	import { containsPoint, KUMASI_CENTER, type LatLng } from '$lib/geo/service-area';
+	import { geoErrorMessage, type GeoErrorCode } from '$lib/geo/errors';
 
 	type LocationMode = 'pickup' | 'dropoff';
 
-	type RouteSummary = {
-		distanceText: string;
-		durationText: string;
-		status: 'idle' | 'loading' | 'ready' | 'error';
-	};
-
-	let pickup = 'Current location';
+	let pickup = '';
 	let dropoff = '';
+	let pickupPlaceId: string | undefined;
+	let dropoffPlaceId: string | undefined;
 	let distance = 'fastest';
+	/** Which address field map clicks / focus update (no visible toggle). */
 	let activeLocation: LocationMode = 'dropoff';
-	let pickupPoint: LocationPoint | null = null;
-	let dropoffPoint: LocationPoint | null = null;
-	let mapCenter: LocationPoint | null = null;
-	let pickupLoading = true;
-	let routeSummary: RouteSummary = {
-		distanceText: '—',
-		durationText: '—',
-		status: 'idle'
-	};
-	let routePolyline: google.maps.Polyline | null = null;
-	let routeMarkers: google.maps.Marker[] = [];
+	let pickupPoint: LatLng | null = null;
+	let dropoffPoint: LatLng | null = null;
+	let mapCenter: LatLng | null = KUMASI_CENTER;
+	let mapZoom: number | null = null;
+	let submitting = false;
+	let zoneError = '';
+	let estimatedDistanceKm: number | null = null;
+	let estimatedDurationMinutes: number | null = null;
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
@@ -48,185 +37,205 @@
 		{ value: 'any', label: 'Any available' }
 	];
 
-	function getUserLocation(): Promise<LocationPoint | null> {
-		if (!navigator.geolocation) {
-			return Promise.resolve(null);
-		}
+	$: canSubmit =
+		Boolean(pickupPoint && dropoffPoint && dropoff.trim() && pickup.trim()) &&
+		containsPoint(pickupPoint!) &&
+		containsPoint(dropoffPoint!) &&
+		!submitting;
 
+	function getUserLocation(): Promise<LatLng | null> {
+		if (!navigator.geolocation) return Promise.resolve(null);
 		return new Promise((resolve) => {
 			navigator.geolocation.getCurrentPosition(
-				(position) => {
+				(position) =>
 					resolve({
 						lat: position.coords.latitude,
 						lng: position.coords.longitude
-					});
-				},
+					}),
 				() => resolve(null),
-				{
-					enableHighAccuracy: true,
-					timeout: 6000,
-					maximumAge: 60_000
-				}
+				{ enableHighAccuracy: true, timeout: 6000, maximumAge: 60_000 }
 			);
 		});
 	}
 
-	function normalizeLocation(place: google.maps.places.PlaceResult | null): LocationPoint | null {
-		if (!place?.geometry?.location) {
-			return null;
-		}
-
-		return {
-			lat: place.geometry.location.lat(),
-			lng: place.geometry.location.lng()
-		};
-	}
-
-	async function reverseGeocode(point: LocationPoint): Promise<string | null> {
-		if (!googleMapsApiKey) {
-			return null;
-		}
-
-		const geocodingLibrary = await loadGoogleMapsGeocoding(googleMapsApiKey);
-		const geocoder = new geocodingLibrary.Geocoder();
-		const response = await geocoder.geocode({ location: point });
-
-		return response.results[0]?.formatted_address ?? null;
-	}
-
-	async function syncRoutePreview() {
+	async function refreshEstimatesQuietly() {
 		if (!pickupPoint || !dropoffPoint || !googleMapsApiKey) {
-			routeSummary = {
-				distanceText: '—',
-				durationText: '—',
-				status: 'idle'
-			};
+			estimatedDistanceKm = null;
+			estimatedDurationMinutes = null;
 			return;
 		}
-
-		routeSummary = { ...routeSummary, status: 'loading' };
-
 		try {
-			const routesLibrary = await loadGoogleMapsRoutes(googleMapsApiKey);
-			const routeApi = (routesLibrary as unknown as { Route?: { computeRoutes: (request: unknown) => Promise<{ routes: Array<unknown> }> } }).Route;
-
-			if (!routeApi) {
-				throw new Error('Routes API is unavailable');
-			}
-
-			const response = await routeApi.computeRoutes({
-				origin: pickupPoint,
-				destination: dropoffPoint,
-				travelMode: 'DRIVING',
-				fields: ['legs', 'path']
-			});
-
-			const route = response.routes[0] as {
-				legs?: Array<{ distance?: { text?: string }; duration?: { text?: string } }>;
-				path?: google.maps.LatLngLiteral[];
-				createPolylines?: () => google.maps.Polyline[];
-			} | undefined;
-
-			if (!route?.legs?.length) {
-				throw new Error('No route returned');
-			}
-
-			routeSummary = {
-				distanceText: route.legs?.[0]?.distance?.text ?? '—',
-				durationText: route.legs?.[0]?.duration?.text ?? '—',
-				status: 'ready'
-			};
-
-			if (routePolyline) {
-				routePolyline.setMap(null);
-			}
-			routeMarkers.forEach((marker) => marker.setMap(null));
-			routeMarkers = [];
-
-			routePolyline = new google.maps.Polyline({
-				path: route.path ?? [],
-				strokeColor: '#ef4444',
-				strokeOpacity: 0.9,
-				strokeWeight: 4
-			});
-		} catch (error) {
-			console.error('Unable to compute route.', error);
-			routeSummary = {
-				distanceText: 'Unavailable',
-				durationText: 'Unavailable',
-				status: 'error'
-			};
+			const route = await computeDrivingRoute(googleMapsApiKey, pickupPoint, dropoffPoint);
+			estimatedDistanceKm = route.distanceKm;
+			estimatedDurationMinutes = route.durationMinutes;
+		} catch {
+			estimatedDistanceKm = null;
+			estimatedDurationMinutes = null;
 		}
+	}
+
+	async function applyPoint(mode: LocationMode, point: LatLng, address?: string, placeId?: string) {
+		if (!containsPoint(point)) {
+			zoneError = geoErrorMessage('out_of_zone');
+			return;
+		}
+		zoneError = '';
+		mapCenter = point;
+		mapZoom = 16;
+
+		if (mode === 'pickup') {
+			pickupPoint = point;
+			pickupPlaceId = placeId;
+			if (address) pickup = address;
+			else {
+				const reverse = await reverseGeocode(point);
+				pickup = reverse.ok ? reverse.result.address : pickup;
+			}
+		} else {
+			dropoffPoint = point;
+			dropoffPlaceId = placeId;
+			if (address) dropoff = address;
+			else {
+				const reverse = await reverseGeocode(point);
+				dropoff = reverse.ok ? reverse.result.address : dropoff;
+			}
+		}
+
+		void refreshEstimatesQuietly();
 	}
 
 	async function setPickupFromLocation() {
-		pickupLoading = true;
 		const location = await getUserLocation();
+		const point = location && containsPoint(location) ? location : { ...KUMASI_CENTER };
+		await applyPoint(
+			'pickup',
+			point,
+			location && containsPoint(location) ? undefined : 'Ayeduase Gate, near KNUST, Kumasi'
+		);
+		if (location && !containsPoint(location)) {
+			zoneError = '';
+		}
+	}
 
-		if (!location) {
-			pickupLoading = false;
+	function handleMapPick(event: CustomEvent<LatLng>) {
+		void applyPoint(activeLocation, event.detail);
+	}
+
+	function handlePickupSelect(
+		event: CustomEvent<{ address: string; lat: number; lng: number; placeId?: string; inZone: boolean }>
+	) {
+		activeLocation = 'pickup';
+		if (!event.detail.inZone) {
+			zoneError = geoErrorMessage('out_of_zone');
+			pickupPoint = null;
 			return;
 		}
-
-		pickupPoint = location;
-		pickup = (await reverseGeocode(location)) ?? 'Current location';
-		pickupLoading = false;
-		void syncRoutePreview();
+		void applyPoint(
+			'pickup',
+			{ lat: event.detail.lat, lng: event.detail.lng },
+			event.detail.address,
+			event.detail.placeId
+		);
 	}
 
-	function handleMapPick(event: CustomEvent<LocationPoint>) {
-		if (activeLocation === 'pickup') {
-			pickupPoint = event.detail;
-			mapCenter = pickupPoint;
-			void (async () => {
-				pickup = (await reverseGeocode(event.detail)) ?? pickup;
-				void syncRoutePreview();
-			})();
+	function handleDropoffSelect(
+		event: CustomEvent<{ address: string; lat: number; lng: number; placeId?: string; inZone: boolean }>
+	) {
+		activeLocation = 'dropoff';
+		if (!event.detail.inZone) {
+			zoneError = geoErrorMessage('out_of_zone');
+			dropoffPoint = null;
 			return;
 		}
-
-		dropoffPoint = event.detail;
-		mapCenter = dropoffPoint;
-		void (async () => {
-			dropoff = (await reverseGeocode(event.detail)) ?? dropoff;
-			void syncRoutePreview();
-		})();
+		void applyPoint(
+			'dropoff',
+			{ lat: event.detail.lat, lng: event.detail.lng },
+			event.detail.address,
+			event.detail.placeId
+		);
 	}
 
-	function handlePickupSelect(event: CustomEvent<{ address: string; lat: number; lng: number }>) {
-		pickupPoint = { lat: event.detail.lat, lng: event.detail.lng };
-		pickup = event.detail.address;
-		mapCenter = pickupPoint;
-		void syncRoutePreview();
+	function handleGeoError(event: CustomEvent<{ code: GeoErrorCode; message: string }>) {
+		zoneError = event.detail.message;
 	}
 
-	function handleDropoffSelect(event: CustomEvent<{ address: string; lat: number; lng: number }>) {
-		dropoffPoint = { lat: event.detail.lat, lng: event.detail.lng };
-		dropoff = event.detail.address;
-		mapCenter = dropoffPoint;
-		void syncRoutePreview();
+	async function findRider() {
+		if (!canSubmit || !pickupPoint || !dropoffPoint) return;
+		submitting = true;
+
+		try {
+			await refreshEstimatesQuietly();
+
+			const response = await fetch('/api/trips', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					pickupAddress: pickup,
+					dropoffAddress: dropoff,
+					pickupLat: pickupPoint.lat,
+					pickupLng: pickupPoint.lng,
+					dropoffLat: dropoffPoint.lat,
+					dropoffLng: dropoffPoint.lng,
+					pickupPlaceId,
+					dropoffPlaceId,
+					estimatedDistanceKm,
+					estimatedDurationMinutes
+				})
+			});
+
+			const data = await response.json();
+			const tripPayload = {
+				id: data.trip?.id ?? `local-${Date.now()}`,
+				pickupAddress: pickup,
+				dropoffAddress: dropoff,
+				pickupLat: pickupPoint.lat,
+				pickupLng: pickupPoint.lng,
+				dropoffLat: dropoffPoint.lat,
+				dropoffLng: dropoffPoint.lng,
+				estimatedDistanceKm,
+				estimatedDurationMinutes
+			};
+			sessionStorage.setItem('yada:active-trip', JSON.stringify(tripPayload));
+
+			if (!response.ok && response.status !== 401) {
+				zoneError = data.message ?? 'Could not save trip — continuing with local preview.';
+			}
+
+			goto(`/matching?trip=${encodeURIComponent(tripPayload.id)}`);
+		} finally {
+			submitting = false;
+		}
 	}
 
 	onMount(() => {
 		void setPickupFromLocation();
 	});
 
-	onDestroy(() => {
-		routePolyline?.setMap(null);
-		routeMarkers.forEach((marker) => marker.setMap(null));
-	});
-
-	function findRider() {
-		if (!dropoff.trim()) return;
-		goto('/matching');
-	}
+	$: mapMarkers = [
+		...(pickupPoint
+			? [{ id: 'pickup', lat: pickupPoint.lat, lng: pickupPoint.lng, label: 'Pickup', role: 'pickup' as const }]
+			: []),
+		...(dropoffPoint
+			? [
+					{
+						id: 'dropoff',
+						lat: dropoffPoint.lat,
+						lng: dropoffPoint.lng,
+						label: 'Dropoff',
+						role: 'dropoff' as const
+					}
+				]
+			: [])
+	];
 </script>
 
 <svelte:head>
 	<title>New request | YADA</title>
 </svelte:head>
 
-<div class="flex h-full min-h-[calc(100svh-3.25rem)] flex-col lg:min-h-[calc(100svh-58px-3rem)]">
+<div
+	class="flex h-full min-h-[calc(100svh-3.25rem)] flex-col lg:min-h-[calc(100svh-58px-3rem)] lg:overflow-hidden lg:rounded-lg lg:border lg:border-border lg:bg-surface"
+>
 	<div class="flex items-center gap-3 border-b border-border px-4 py-3 lg:hidden">
 		<a href="/dashboard" class="text-ink" aria-label="Back">
 			<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"
@@ -236,159 +245,74 @@
 		<h1 class="text-lg font-semibold text-ink">New request</h1>
 	</div>
 
-	<div
-		class="flex flex-1 flex-col lg:min-h-[calc(100svh-58px-3rem)] lg:flex-row lg:overflow-hidden lg:rounded-lg lg:border lg:border-border lg:bg-surface"
-	>
-		<div class="flex w-full flex-col gap-4 p-4 lg:w-[380px] lg:shrink-0 lg:gap-5 lg:p-8">
-			<h1 class="hidden text-xl font-semibold text-ink lg:block">New delivery request</h1>
-
-			<div class="flex gap-2 rounded-lg border border-border bg-surface p-1 text-sm">
-				<button
-					type="button"
-					class="flex-1 rounded-md px-3 py-2 font-semibold transition-colors {activeLocation === 'pickup'
-						? 'bg-primary text-primary-on'
-						: 'text-ink-secondary hover:bg-primary-subtle'}"
-					on:click={() => (activeLocation = 'pickup')}
-				>
-					Set pickup on map
-				</button>
-				<button
-					type="button"
-					class="flex-1 rounded-md px-3 py-2 font-semibold transition-colors {activeLocation === 'dropoff'
-						? 'bg-primary text-primary-on'
-						: 'text-ink-secondary hover:bg-primary-subtle'}"
-					on:click={() => (activeLocation = 'dropoff')}
-				>
-					Set dropoff on map
-				</button>
-			</div>
-
-			<p class="text-xs text-ink-tertiary">
-				{#if pickupLoading}
-					Using your browser location for pickup…
-				{:else}
-					Click the map to place pickup or dropoff, then switch between the two targets as needed.
-				{/if}
-			</p>
-
-			<AddressAutocomplete
-				label="Pickup (defaults to your location)"
-				bind:value={pickup}
-				iconColor="text-primary"
-				on:select={handlePickupSelect}
+	<div class="flex min-h-0 flex-1 flex-col lg:flex-row">
+		<!-- Map on top in portrait; right pane in landscape -->
+		<div class="relative order-1 min-h-[52svh] flex-1 lg:order-2 lg:min-h-0">
+			<MapBackdrop
+				interactive
+				center={mapCenter}
+				zoom={mapZoom}
+				markers={mapMarkers}
+				on:pick={handleMapPick}
 			/>
+		</div>
 
-			<AddressAutocomplete
-				label="Dropoff"
-				placeholder="Customer address"
-				bind:value={dropoff}
-				iconColor="text-secondary"
-				on:select={handleDropoffSelect}
-			/>
-
-			<div class="grid gap-2 rounded-lg border border-border bg-bg px-4 py-3 text-sm text-ink-secondary">
-				<p>
-					<span class="font-semibold text-ink">Route:</span>
-					{routeSummary.distanceText} · {routeSummary.durationText}
-				</p>
-				<p>
-					Type an address and pick a result from autocomplete, or keep using the map to place the pins.
+		<!-- Request controls below in portrait; left pane in landscape -->
+		<aside
+			class="relative z-20 order-2 flex w-full shrink-0 flex-col gap-5 overflow-visible border-t border-border bg-surface p-4 lg:order-1 lg:w-[320px] lg:overflow-y-auto lg:border-r lg:border-t-0 lg:p-6"
+		>
+			<div class="hidden lg:block">
+				<h1 class="text-xl font-semibold text-ink">New delivery request</h1>
+				<p class="mt-1 text-sm text-ink-secondary">
+					Search addresses or tap the map to place pins.
 				</p>
 			</div>
 
-			<Select label="Rider distance" options={distanceOptions} bind:value={distance} />
+			{#if zoneError}
+				<p class="rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{zoneError}</p>
+			{/if}
 
-			<div class="relative h-[160px] overflow-hidden rounded-lg border border-border lg:hidden">
-				<MapBackdrop
-					routeLabel
-					interactive
-					center={mapCenter}
-					markers={[
-						...(pickupPoint
-							? [
-								{
-									id: 'pickup',
-									lat: pickupPoint.lat,
-									lng: pickupPoint.lng,
-									label: 'Pickup',
-									accent: false
-								}
-							]
-							: []),
-						...(dropoffPoint
-							? [
-								{
-									id: 'dropoff',
-									lat: dropoffPoint.lat,
-									lng: dropoffPoint.lng,
-									label: 'Dropoff',
-									accent: true
-								}
-							]
-							: [])
-					]}
-					on:pick={handleMapPick}
-				/>
-			</div>
+			<section class="space-y-2">
+				<p class="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Pickup</p>
+				<div on:focusin={() => (activeLocation = 'pickup')}>
+					<AddressAutocomplete
+						placeholder="Business / pickup address"
+						bind:value={pickup}
+						iconColor="text-primary"
+						on:select={handlePickupSelect}
+						on:error={handleGeoError}
+					/>
+				</div>
+			</section>
+
+			<section class="space-y-2">
+				<p class="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Dropoff</p>
+				<div on:focusin={() => (activeLocation = 'dropoff')}>
+					<AddressAutocomplete
+						placeholder="Customer delivery address"
+						bind:value={dropoff}
+						iconColor="text-secondary"
+						on:select={handleDropoffSelect}
+						on:error={handleGeoError}
+					/>
+				</div>
+			</section>
+
+			<section class="space-y-2">
+				<p class="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Dispatch</p>
+				<Select label="Rider distance" options={distanceOptions} bind:value={distance} />
+			</section>
 
 			<div class="mt-auto pt-2">
 				<Button
 					variant="primary"
 					size="lg"
 					fullWidth
-					disabled={!dropoff.trim()}
+					disabled={!canSubmit}
 					on:click={findRider}
 				>
-					Find a rider
+					{submitting ? 'Saving…' : 'Find a rider'}
 				</Button>
-			</div>
-		</div>
-
-		<!-- Desktop: route preview fills remaining space (wireframe-style) -->
-		<aside
-			class="relative hidden min-h-[320px] flex-1 flex-col border-l border-border bg-surface lg:flex"
-		>
-			<div class="border-b border-border px-5 py-4">
-				<h2 class="font-semibold text-ink">Route preview</h2>
-				<p class="mt-1 text-sm text-ink-secondary">
-					{#if routeSummary.status === 'ready'}
-						Est. distance {routeSummary.distanceText} · Est. time {routeSummary.durationText}
-					{:else}
-						Select pickup & dropoff to preview route
-					{/if}
-				</p>
-			</div>
-			<div class="relative min-h-0 flex-1">
-				<MapBackdrop
-					routeLabel
-					interactive
-					center={mapCenter}
-					markers={[
-						...(pickupPoint
-							? [
-								{
-									id: 'pickup',
-									lat: pickupPoint.lat,
-									lng: pickupPoint.lng,
-									label: 'Pickup',
-									accent: false
-								}
-							]
-							: []),
-						...(dropoffPoint
-							? [
-								{
-									id: 'dropoff',
-									lat: dropoffPoint.lat,
-									lng: dropoffPoint.lng,
-									label: 'Dropoff',
-									accent: true
-								}
-							]
-							: [])
-					]}
-					on:pick={handleMapPick}
-				/>
 			</div>
 		</aside>
 	</div>
