@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-import { appEnv } from '$lib/server/env';
+import { env } from '$env/dynamic/private';
 import { GeoError, geoErrorMessage, mapGoogleStatusToGeoError } from '$lib/geo/errors';
 import {
 	forwardCacheKey,
@@ -20,13 +20,14 @@ async function geocodeForward(address: string): Promise<CachedGeocode> {
 	const cached = serverGeocodeCache.get(key);
 	if (cached) return cached;
 
-	if (!appEnv.googleMapsApiKey) {
+	const apiKey = env.GOOGLE_MAPS_API_KEY;
+	if (!apiKey) {
 		throw new GeoError('unavailable', 'GOOGLE_MAPS_API_KEY is not configured.');
 	}
 
 	const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
 	url.searchParams.set('address', address);
-	url.searchParams.set('key', appEnv.googleMapsApiKey);
+	url.searchParams.set('key', apiKey);
 	url.searchParams.set('region', 'gh');
 	url.searchParams.set('bounds', '6.655,-1.595|6.705,-1.545');
 

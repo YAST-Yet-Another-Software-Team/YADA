@@ -1,9 +1,11 @@
 import type { Server as HttpServer } from 'node:http';
 import type { Server as HttpsServer } from 'node:https';
 import { Server } from 'socket.io';
+import { env } from '$env/dynamic/private';
 
-import { appEnv } from './env';
 import { setIo } from './socket-instance';
+
+const socketCorsOrigin = env.SOCKET_CORS_ORIGIN ?? 'http://localhost:5173';
 
 export type RiderLocationPayload = {
   courierId?: string;
@@ -18,7 +20,7 @@ export function createRealtimeServer(server: HttpServer | HttpsServer) {
   const io = new Server(server, {
     path: '/socket.io',
     cors: {
-      origin: appEnv.socketCorsOrigin === '*' ? true : appEnv.socketCorsOrigin,
+      origin: socketCorsOrigin === '*' ? true : socketCorsOrigin,
       credentials: true
     }
   });

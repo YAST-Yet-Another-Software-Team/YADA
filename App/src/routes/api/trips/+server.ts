@@ -6,7 +6,7 @@ import { db } from '$lib/server/db';
 import { deliveryRequests, tripEvents } from '$lib/server/schema';
 import { assertInZone, containsPoint } from '$lib/geo/service-area';
 import { GeoError, geoErrorMessage } from '$lib/geo/errors';
-import { appEnv } from '$lib/server/env';
+import { env } from '$env/dynamic/private';
 
 const uuidPattern =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -92,7 +92,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			payload: JSON.stringify({
 				pickup: { lat: pickupLat, lng: pickupLng },
 				dropoff: { lat: dropoffLat, lng: dropoffLng },
-				mapsKeyConfigured: Boolean(appEnv.googleMapsApiKey)
+				mapsKeyConfigured: Boolean(env.GOOGLE_MAPS_API_KEY)
 			})
 		});
 
