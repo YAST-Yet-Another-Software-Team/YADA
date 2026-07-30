@@ -17,6 +17,18 @@ const trustedOrigins = [
     .filter(Boolean)
 ];
 
+/**
+ * Roles a user may pick for themselves at sign-up. `admin` is deliberately absent —
+ * it can only be granted out of band, never through the auth API.
+ */
+const SELF_ASSIGNABLE_ROLES = ['business', 'courier'] as const;
+
+function normalizeSignUpRole(role: unknown) {
+  return SELF_ASSIGNABLE_ROLES.includes(role as (typeof SELF_ASSIGNABLE_ROLES)[number])
+    ? (role as (typeof SELF_ASSIGNABLE_ROLES)[number])
+    : 'business';
+}
+
 export const auth = betterAuth({
   database: drizzleAdapter(db!, {
     provider: 'pg',
@@ -49,16 +61,37 @@ export const auth = betterAuth({
 
   user: {
     additionalFields: {
+      // `input: false` means Better Auth never takes `role` from a request body:
+      // on sign-up it substitutes the defaultValue below (the create hook then
+      // applies the requested role), and on POST /update-user it rejects the
+      // request outright. Without this, any client could sign up — or promote
+      // itself — as `admin`.
       role: {
         type: 'string',
         defaultValue: 'business',
         required: false,
-        input: true
+        input: false
       },
       phoneNumber: {
         type: 'string',
         required: false,
         input: true
+      }
+    }
+  },
+
+  databaseHooks: {
+    user: {
+      create: {
+        // `role` is stripped from the request body by `input: false`, so the
+        // sign-up form's choice is re-applied here — clamped to a role a user is
+        // allowed to give themselves. Social sign-ups carry no role and default
+        // to business.
+        before: async (user, context) => {
+          const requestedRole = (context?.body as { role?: unknown } | undefined)?.role;
+
+          return { data: { ...user, role: normalizeSignUpRole(requestedRole) } };
+        }
       }
     }
   },

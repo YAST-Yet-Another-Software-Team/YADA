@@ -151,6 +151,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		return json({ ok: false, code: 'no_results', message: 'Trip not found.' }, { status: 404 });
 	}
 
+	// Scope the trip to its participants — a valid session alone must not grant
+	// read access to another business's delivery, addresses included.
+	const isParticipant =
+		trip.businessId === locals.user.id || trip.assignedCourierId === locals.user.id;
+	if (!isParticipant && locals.user.role !== 'admin') {
+		return json({ ok: false, code: 'no_results', message: 'Trip not found.' }, { status: 404 });
+	}
+
 	const pickupLat = trip.pickupLatitude != null ? Number(trip.pickupLatitude) : null;
 	const pickupLng = trip.pickupLongitude != null ? Number(trip.pickupLongitude) : null;
 	const dropoffLat = trip.dropoffLatitude != null ? Number(trip.dropoffLatitude) : null;

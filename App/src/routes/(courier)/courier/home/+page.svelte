@@ -8,46 +8,50 @@
 	import { courierOnline } from '$lib/stores/courier-online';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 
-	export let data: {
-		profile: { name: string; initials: string };
-		activeTrip: {
-			id: string;
-			status: 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled' | 'searching';
-			businessName: string;
-			pickupAddress: string;
-			dropoffAddress: string;
-			pickupLat: number | null;
-			pickupLng: number | null;
-			dropoffLat: number | null;
-			dropoffLng: number | null;
-			notes: string | null;
-			estimatedPayout: number;
-		} | null;
-		pendingRequests: Array<{
-			id: string;
-			businessName: string;
-			pickupAddress: string;
-			dropoffAddress: string;
-			pickupLat: number | null;
-			pickupLng: number | null;
-			dropoffLat: number | null;
-			dropoffLng: number | null;
-			notes: string | null;
-		}>;
-		summary: {
-			walletBalance: number;
-			completedTrips: number;
-			tripsToday: number;
-			totalDistanceKm: number;
-			activeTrips: number;
+	let {
+		data
+	}: {
+		data: {
+			profile: { name: string; initials: string };
+			activeTrip: {
+				id: string;
+				status: 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled' | 'searching';
+				businessName: string;
+				pickupAddress: string;
+				dropoffAddress: string;
+				pickupLat: number | null;
+				pickupLng: number | null;
+				dropoffLat: number | null;
+				dropoffLng: number | null;
+				notes: string | null;
+				estimatedPayout: number;
+			} | null;
+			pendingRequests: Array<{
+				id: string;
+				businessName: string;
+				pickupAddress: string;
+				dropoffAddress: string;
+				pickupLat: number | null;
+				pickupLng: number | null;
+				dropoffLat: number | null;
+				dropoffLng: number | null;
+				notes: string | null;
+			}>;
+			summary: {
+				walletBalance: number;
+				completedTrips: number;
+				tripsToday: number;
+				totalDistanceKm: number;
+				activeTrips: number;
+			};
 		};
-	};
+	} = $props();
 
-	let acceptingId: string | null = null;
-	let decliningId: string | null = null;
-	let actionError = '';
+	let acceptingId = $state<string | null>(null);
+	let decliningId = $state<string | null>(null);
+	let actionError = $state('');
 	let refreshTimer: ReturnType<typeof setInterval> | undefined;
-	let deviceCenter: { lat: number; lng: number } | null = null;
+	let deviceCenter = $state<{ lat: number; lng: number } | null>(null);
 	let stopDeviceWatcher: (() => void) | null = null;
 
 	onMount(() => {
@@ -70,26 +74,30 @@
 		stopDeviceWatcher?.();
 	});
 
-	$: currentRequest = data.pendingRequests[0] ?? null;
-	$: heroTrip = data.activeTrip ?? currentRequest;
-	$: pickupPoint =
+	const currentRequest = $derived(data.pendingRequests[0] ?? null);
+	const heroTrip = $derived(data.activeTrip ?? currentRequest);
+	const pickupPoint = $derived(
 		heroTrip?.pickupLat != null && heroTrip?.pickupLng != null
 			? { lat: heroTrip.pickupLat, lng: heroTrip.pickupLng }
-			: KUMASI_CENTER;
-	$: dropoffPoint =
+			: KUMASI_CENTER
+	);
+	const dropoffPoint = $derived(
 		heroTrip?.dropoffLat != null && heroTrip?.dropoffLng != null
 			? { lat: heroTrip.dropoffLat, lng: heroTrip.dropoffLng }
-			: null;
-	$: routePath = pickupPoint && dropoffPoint ? [pickupPoint, dropoffPoint] : [];
-	$: statusLabel = !$courierOnline
-		? 'Offline'
-		: data.activeTrip
-			? data.activeTrip.status === 'en_route'
-				? 'On the way'
-				: data.activeTrip.status === 'arrived'
-					? 'Arrived'
-					: 'Active trip'
-			: 'Online';
+			: null
+	);
+	const routePath = $derived(pickupPoint && dropoffPoint ? [pickupPoint, dropoffPoint] : []);
+	const statusLabel = $derived(
+		!$courierOnline
+			? 'Offline'
+			: data.activeTrip
+				? data.activeTrip.status === 'en_route'
+					? 'On the way'
+					: data.activeTrip.status === 'arrived'
+						? 'Arrived'
+						: 'Active trip'
+				: 'Online'
+	);
 
 	async function acceptRequest(requestId: string) {
 		if (acceptingId || !$courierOnline) return;

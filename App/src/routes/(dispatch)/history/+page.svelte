@@ -6,27 +6,33 @@
 	import Tabs from '$lib/components/ui/Tabs.svelte';
 	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
 
-	export let data: {
-		historyTrips: DashboardTripRecord[];
-	};
+	let {
+		data
+	}: {
+		data: {
+			historyTrips: DashboardTripRecord[];
+		};
+	} = $props();
 
-	let tab = 'history';
-	let statusFilter = 'all';
-	let search = '';
-	let selected: DashboardTripRecord | null = null;
+	let tab = $state('history');
+	let statusFilter = $state('all');
+	let search = $state('');
+	let selected = $state<DashboardTripRecord | null>(null);
 
-	$: filtered = data.historyTrips.filter((trip) => {
-		const statusOk = statusFilter === 'all' || trip.status === statusFilter;
-		const q = search.trim().toLowerCase();
-		const searchOk =
-			!q ||
-			trip.id.toLowerCase().includes(q) ||
-			trip.destination.toLowerCase().includes(q) ||
-			(trip.rider?.toLowerCase().includes(q) ?? false);
-		return statusOk && searchOk;
-	});
+	const filtered = $derived(
+		data.historyTrips.filter((trip) => {
+			const statusOk = statusFilter === 'all' || trip.status === statusFilter;
+			const q = search.trim().toLowerCase();
+			const searchOk =
+				!q ||
+				trip.id.toLowerCase().includes(q) ||
+				trip.destination.toLowerCase().includes(q) ||
+				(trip.rider?.toLowerCase().includes(q) ?? false);
+			return statusOk && searchOk;
+		})
+	);
 
-	$: mobileList = tab === 'active' ? [] : filtered;
+	const mobileList = $derived(tab === 'active' ? [] : filtered);
 
 	function requestNew() {
 		goto('/request');

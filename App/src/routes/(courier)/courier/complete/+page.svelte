@@ -3,18 +3,22 @@
   import Button from '$lib/components/ui/Button.svelte';
   import Card from '$lib/components/ui/Card.svelte';
 
-  export let data: {
-    trip: {
-      id: string;
-      businessName: string;
-      pickupAddress: string;
-      dropoffAddress: string;
-      completedAt: string | null;
-      estimatedDistanceKm: number | null;
-      estimatedPayout: number;
+  let {
+    data
+  }: {
+    data: {
+      trip: {
+        id: string;
+        businessName: string;
+        pickupAddress: string;
+        dropoffAddress: string;
+        completedAt: string | null;
+        estimatedDistanceKm: number | null;
+        estimatedPayout: number;
+      };
+      earningsLabel: string;
     };
-    earningsLabel: string;
-  };
+  } = $props();
 
   function backOnline() {
     goto('/courier/home');

@@ -8,9 +8,10 @@
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
-	let center = KUMASI_CENTER;
-	let markers: Array<{ id: string; lat: number; lng: number; label?: string; role?: 'pickup' | 'dropoff' }> =
-		[];
+	let center = $state(KUMASI_CENTER);
+	let markers = $state<
+		Array<{ id: string; lat: number; lng: number; label?: string; role?: 'pickup' | 'dropoff' }>
+	>([]);
 
 	onMount(() => {
 		const tripId = $page.url.searchParams.get('trip');

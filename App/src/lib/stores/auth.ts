@@ -1,14 +1,16 @@
 import { writable } from 'svelte/store';
 
+export type AuthUser = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  role: 'business' | 'courier' | 'admin';
+  image: string | null;
+};
+
 type SessionState = {
-  user: {
-    id: string;
-    name: string;
-    email: string | null;
-    phone: string | null;
-    role: 'business' | 'courier' | 'admin';
-    image: string | null;
-  } | null;
+  user: AuthUser | null;
   isLoading: boolean;
   error: string | null;
 };
@@ -39,6 +41,16 @@ function mapUser(user: {
         image: user.image ?? null
       }
     : null;
+}
+
+/**
+ * Seed the store from server-rendered session data (see routes/+layout.server.ts).
+ *
+ * Client-only by design: this store is module-scoped, so writing to it during SSR
+ * would share one request's user with every other in-flight render.
+ */
+function hydrate(user: SessionState['user']) {
+  set({ user, isLoading: false, error: null });
 }
 
 async function syncSession() {
@@ -282,6 +294,7 @@ async function changePassword(currentPassword: string, newPassword: string) {
 
 export const auth = {
   subscribe,
+  hydrate,
   syncSession,
   signIn,
   signUp,

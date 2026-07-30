@@ -1,9 +1,9 @@
 <script lang="ts">
 	import SettingsSubpage from '$lib/components/courier/SettingsSubpage.svelte';
 
-	let offers = true;
-	let status = true;
-	let tips = false;
+	let offers = $state(true);
+	let status = $state(true);
+	let tips = $state(false);
 </script>
 
 <svelte:head>

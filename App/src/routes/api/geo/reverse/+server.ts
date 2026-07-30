@@ -62,7 +62,13 @@ async function geocodeReverse(lat: number, lng: number): Promise<CachedGeocode> 
 	return entry;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	// This proxies Google Geocoding on the server key — an open endpoint is
+	// someone else's free geocoding at your billing account's expense.
+	if (!locals.user) {
+		return json({ ok: false, code: 'denied', message: 'Sign in required.' }, { status: 401 });
+	}
+
 	try {
 		const body = (await request.json()) as ReverseBody;
 		const lat = Number(body.lat);

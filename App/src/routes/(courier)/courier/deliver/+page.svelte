@@ -8,39 +8,45 @@
   import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
   import { startCourierLocationReporter } from '$lib/client/realtime/courier-location';
 
-  export let data: {
-    trip: {
-      id: string;
-      businessName: string;
-      pickupAddress: string;
-      dropoffAddress: string;
-      pickupLat: number | null;
-      pickupLng: number | null;
-      dropoffLat: number | null;
-      dropoffLng: number | null;
-      notes: string | null;
+  let {
+    data
+  }: {
+    data: {
+      trip: {
+        id: string;
+        businessName: string;
+        pickupAddress: string;
+        dropoffAddress: string;
+        pickupLat: number | null;
+        pickupLng: number | null;
+        dropoffLat: number | null;
+        dropoffLng: number | null;
+        notes: string | null;
+      };
     };
-  };
+  } = $props();
 
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
-  let riderPoint: LatLng | null = null;
-  let routePath: LatLng[] = [];
-  let etaText = 'Calculating…';
-  let locationUnavailable = false;
-  let completing = false;
-  let actionError = '';
+  let riderPoint = $state<LatLng | null>(null);
+  let routePath = $state<LatLng[]>([]);
+  let etaText = $state('Calculating…');
+  let locationUnavailable = $state(false);
+  let completing = $state(false);
+  let actionError = $state('');
   let stopReporter: (() => void) | null = null;
 
-  $: pickupPoint =
+  const pickupPoint = $derived(
     data.trip.pickupLat != null && data.trip.pickupLng != null
       ? { lat: data.trip.pickupLat, lng: data.trip.pickupLng }
-      : { lat: 6.6785, lng: -1.5645 };
+      : { lat: 6.6785, lng: -1.5645 }
+  );
 
-  $: dropoffPoint =
+  const dropoffPoint = $derived(
     data.trip.dropoffLat != null && data.trip.dropoffLng != null
       ? { lat: data.trip.dropoffLat, lng: data.trip.dropoffLng }
-      : { lat: 6.6745, lng: -1.5716 };
+      : { lat: 6.6745, lng: -1.5716 }
+  );
 
   async function updateRoute(from: LatLng, force = false) {
     if (!googleMapsApiKey) return;
@@ -118,7 +124,7 @@
       routeLabel
       center={riderPoint ?? KUMASI_CENTER}
       followId="rider"
-      locationUnavailable={locationUnavailable}
+      {locationUnavailable}
       polylinePath={routePath}
       markers={[
         {

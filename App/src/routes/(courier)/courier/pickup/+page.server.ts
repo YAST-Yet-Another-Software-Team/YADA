@@ -1,17 +1,15 @@
-import { error, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 
 import { getCourierTripById } from '$lib/server/data/courier';
 
-export async function load({ locals, url }) {
-  if (!locals.user?.id) {
-    throw error(401, 'You need to be signed in.');
-  }
+export async function load({ parent, url }) {
+  const { user } = await parent();
 
   const tripId = url.searchParams.get('tripId');
-  const trip = await getCourierTripById(locals.user.id, tripId);
+  const trip = await getCourierTripById(user.id, tripId);
 
   if (!trip) {
-    throw redirect(303, '/courier/home');
+    redirect(303, '/courier/home');
   }
 
   return { trip };

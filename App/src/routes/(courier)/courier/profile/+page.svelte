@@ -7,15 +7,21 @@
 
 	onMount(() => {
 		courierOnline.hydrate();
-		void auth.syncSession();
 	});
 
-	$: user = $auth.user;
-	$: initials = (user?.name || 'C').split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() || 'C';
-	$: profileName = user?.name || 'Courier';
-	$: profileEmail = user?.email || 'No email on file';
-	$: profilePhone = user?.phone || 'No phone on file';
-	$: vehicle = user?.role === 'courier' ? 'Bike' : 'Vehicle';
+	const user = $derived($auth.user);
+	const initials = $derived(
+		(user?.name || 'C')
+			.split(/\s+/)
+			.slice(0, 2)
+			.map((part) => part[0] || '')
+			.join('')
+			.toUpperCase() || 'C'
+	);
+	const profileName = $derived(user?.name || 'Courier');
+	const profileEmail = $derived(user?.email || 'No email on file');
+	const profilePhone = $derived(user?.phone || 'No phone on file');
+	const vehicle = $derived(user?.role === 'courier' ? 'Bike' : 'Vehicle');
 
 	function signOut() {
 		courierOnline.goOffline();
@@ -30,7 +36,7 @@
 <div class="flex flex-1 flex-col gap-5 bg-bg p-4">
 	<div class="flex items-start justify-between gap-3">
 		<div class="flex items-center gap-3">
-			<Avatar initials={initials} size={56} status={$courierOnline ? 'online' : null} />
+			<Avatar {initials} size={56} status={$courierOnline ? 'online' : null} />
 			<div>
 				<h1 class="text-xl font-semibold text-ink">{profileName}</h1>
 				<p class="text-sm text-ink-secondary">Courier · {vehicle}</p>

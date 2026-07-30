@@ -6,30 +6,34 @@
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import { courierOnline } from '$lib/stores/courier-online';
 
-  export let data: {
-    profile: { name: string; initials: string };
-    summary: {
-      completedTrips: number;
-      tripsToday: number;
-      totalDistanceKm: number;
-      activeTrips: number;
+  let {
+    data
+  }: {
+    data: {
+      profile: { name: string; initials: string };
+      summary: {
+        completedTrips: number;
+        tripsToday: number;
+        totalDistanceKm: number;
+        activeTrips: number;
+      };
+      historyTrips: Array<{
+        id: string;
+        businessName: string;
+        pickupAddress: string;
+        dropoffAddress: string;
+        completedAt: string | null;
+        requestedAt: string;
+        status: 'searching' | 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled';
+      }>;
     };
-    historyTrips: Array<{
-      id: string;
-      businessName: string;
-      pickupAddress: string;
-      dropoffAddress: string;
-      completedAt: string | null;
-      requestedAt: string;
-      status: 'searching' | 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled';
-    }>;
-  };
+  } = $props();
 
   onMount(() => {
     courierOnline.hydrate();
   });
 
-  $: totalTrips = data.summary.completedTrips + data.summary.activeTrips;
+  const totalTrips = $derived(data.summary.completedTrips + data.summary.activeTrips);
 </script>
 
 <svelte:head>

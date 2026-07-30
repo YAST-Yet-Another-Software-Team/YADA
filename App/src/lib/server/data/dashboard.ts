@@ -71,7 +71,7 @@ function formatTime(value: Date | string | null | undefined) {
 	});
 }
 
-export async function getDashboardTrips(ownerId?: string) {
+export async function getDashboardTrips(ownerId: string) {
 	if (!db) return { activeTrips: [], historyTrips: [], businessProfile: null };
 
 	const records = await db
@@ -95,14 +95,14 @@ export async function getDashboardTrips(ownerId?: string) {
 		})
 		.from(deliveryRequests)
 		.innerJoin(users, eq(deliveryRequests.businessId, users.id))
+		.where(eq(deliveryRequests.businessId, ownerId))
 		.orderBy(desc(deliveryRequests.requestedAt));
 
-	const filtered = ownerId ? records.filter((record) => record.businessId === ownerId) : records;
-	const businessProfileRow = ownerId
-		? (await db.select().from(businessProfiles).where(eq(businessProfiles.userId, ownerId)).limit(1))[0]
-		: null;
+	const businessProfileRow = (
+		await db.select().from(businessProfiles).where(eq(businessProfiles.userId, ownerId)).limit(1)
+	)[0];
 
-	const mapped = filtered.map((record) => {
+	const mapped = records.map((record) => {
 		const baseId = formatTripId(record.id);
 		const status = toDashboardStatus(record.status);
 		const completedAt = record.completedAt ? formatTime(record.completedAt) : null;
@@ -146,12 +146,12 @@ export async function getDashboardTrips(ownerId?: string) {
 	};
 }
 
-export async function getAvailableRiders(ownerId?: string): Promise<DispatchRiderRecord[]> {
+export async function getAvailableRiders(ownerId: string): Promise<DispatchRiderRecord[]> {
 	if (!db) return [];
 
-	const profile = ownerId
-		? (await db.select().from(businessProfiles).where(eq(businessProfiles.userId, ownerId)).limit(1))[0]
-		: null;
+	const profile = (
+		await db.select().from(businessProfiles).where(eq(businessProfiles.userId, ownerId)).limit(1)
+	)[0];
 
 	const riders = await db
 		.select({

@@ -13,21 +13,21 @@
 
 	type LocationMode = 'pickup' | 'dropoff';
 
-	let pickup = '';
-	let dropoff = '';
-	let pickupPlaceId: string | undefined;
-	let dropoffPlaceId: string | undefined;
-	let distance = 'fastest';
+	let pickup = $state('');
+	let dropoff = $state('');
+	let pickupPlaceId = $state<string | undefined>(undefined);
+	let dropoffPlaceId = $state<string | undefined>(undefined);
+	let distance = $state('fastest');
 	/** Which address field map clicks / focus update (no visible toggle). */
-	let activeLocation: LocationMode = 'dropoff';
-	let pickupPoint: LatLng | null = null;
-	let dropoffPoint: LatLng | null = null;
-	let mapCenter: LatLng | null = null;
-	let mapZoom: number | null = null;
-	let submitting = false;
-	let zoneError = '';
-	let estimatedDistanceKm: number | null = null;
-	let estimatedDurationMinutes: number | null = null;
+	let activeLocation = $state<LocationMode>('dropoff');
+	let pickupPoint = $state<LatLng | null>(null);
+	let dropoffPoint = $state<LatLng | null>(null);
+	let mapCenter = $state<LatLng | null>(null);
+	let mapZoom = $state<number | null>(null);
+	let submitting = $state(false);
+	let zoneError = $state('');
+	let estimatedDistanceKm = $state<number | null>(null);
+	let estimatedDurationMinutes = $state<number | null>(null);
 	let stopDeviceWatcher: (() => void) | null = null;
 	let pickupAutoFollow = true;
 
@@ -40,11 +40,12 @@
 		{ value: 'any', label: 'Any available' }
 	];
 
-	$: canSubmit =
+	const canSubmit = $derived(
 		Boolean(pickupPoint && dropoffPoint && dropoff.trim() && pickup.trim()) &&
-		containsPoint(pickupPoint!) &&
-		containsPoint(dropoffPoint!) &&
-		!submitting;
+			containsPoint(pickupPoint!) &&
+			containsPoint(dropoffPoint!) &&
+			!submitting
+	);
 
 	async function refreshEstimatesQuietly() {
 		if (!pickupPoint || !dropoffPoint || !googleMapsApiKey) {
@@ -228,7 +229,7 @@
 		stopDeviceWatcher?.();
 	});
 
-	$: mapMarkers = [
+	const mapMarkers = $derived([
 		...(pickupPoint
 			? [{ id: 'pickup', lat: pickupPoint.lat, lng: pickupPoint.lng, label: 'Pickup', role: 'pickup' as const }]
 			: []),
@@ -243,7 +244,7 @@
 					}
 				]
 			: [])
-	];
+	]);
 </script>
 
 <svelte:head>
@@ -291,7 +292,7 @@
 
 			<section class="space-y-2">
 				<p class="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Pickup</p>
-				<div on:focusin={() => (activeLocation = 'pickup')}>
+				<div onfocusin={() => (activeLocation = 'pickup')}>
 					<AddressAutocomplete
 						placeholder="Business / pickup address"
 						bind:value={pickup}
@@ -304,7 +305,7 @@
 
 			<section class="space-y-2">
 				<p class="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Dropoff</p>
-				<div on:focusin={() => (activeLocation = 'dropoff')}>
+				<div onfocusin={() => (activeLocation = 'dropoff')}>
 					<AddressAutocomplete
 						placeholder="Customer delivery address"
 						bind:value={dropoff}

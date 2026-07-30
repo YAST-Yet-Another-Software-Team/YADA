@@ -13,39 +13,48 @@
 	} from '$lib/client/realtime/client';
 	import { LOCATION_STALE_MS } from '$lib/client/realtime/courier-location';
 
-	export let data: {
-		businessProfile: {
-			businessName: string;
-			address: string;
-			lat: number;
-			lng: number;
-		} | null;
-		availableRiders: Array<{
-			id: string;
-			userId: string;
-			name: string;
-			vehicle: string;
-			distanceKm: number;
-			lat: number;
-			lng: number;
-			lastLocationAt: string | null;
-			stale: boolean;
-		}>;
+	type AvailableRider = {
+		id: string;
+		userId: string;
+		name: string;
+		vehicle: string;
+		distanceKm: number;
+		lat: number;
+		lng: number;
+		lastLocationAt: string | null;
+		stale: boolean;
 	};
 
-	let searchedLocation: { lat: number; lng: number; address: string } | null = null;
-	let mapCenter: { lat: number; lng: number } | null =
+	let {
+		data
+	}: {
+		data: {
+			businessProfile: {
+				businessName: string;
+				address: string;
+				lat: number;
+				lng: number;
+			} | null;
+			availableRiders: AvailableRider[];
+		};
+	} = $props();
+
+	let searchedLocation = $state<{ lat: number; lng: number; address: string } | null>(null);
+	// svelte-ignore state_referenced_locally — the map starts at the loaded HQ, then follows the user
+	let mapCenter = $state<{ lat: number; lng: number } | null>(
 		data.businessProfile != null
 			? { lat: data.businessProfile.lat, lng: data.businessProfile.lng }
-			: KUMASI_CENTER;
+			: KUMASI_CENTER
+	);
 	let stopDeviceWatcher: (() => void) | null = null;
-	let searchValue = '';
-	let liveRiders = [...data.availableRiders];
-	let etaByRider: Record<string, string> = {};
+	let searchValue = $state('');
+	// svelte-ignore state_referenced_locally — seeded from the load, then updated by realtime events
+	let liveRiders = $state<AvailableRider[]>([...data.availableRiders]);
+	let etaByRider = $state<Record<string, string>>({});
 	let unsub: (() => void) | null = null;
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
-	let mapZoom: number | null = null;
+	let mapZoom = $state<number | null>(null);
 
 	function handleSearchSelect(
 		detail: { address: string; lat: number; lng: number; inZone?: boolean }
@@ -119,7 +128,7 @@
 		leaveDispatchRiders();
 	});
 
-	$: markers = [
+	const markers = $derived([
 		...(data.businessProfile
 			? [
 					{
@@ -150,7 +159,7 @@
 					}
 				]
 			: [])
-	];
+	]);
 </script>
 
 <svelte:head>
@@ -189,7 +198,7 @@
 			<MapBackdrop
 				center={mapCenter}
 				zoom={mapZoom}
-				markers={markers}
+				{markers}
 				locationUnavailable={liveRiders.some((r) => r.stale)}
 			/>
 		</div>

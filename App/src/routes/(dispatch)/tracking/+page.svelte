@@ -31,15 +31,15 @@
 		routePath?: LatLng[];
 	};
 
-	let trip: ActiveTrip | null = null;
-	let riderPoint: LatLng | null = null;
-	let riderStale = false;
-	let etaText = '—';
-	let routePath: LatLng[] = [];
-	let locationUnavailable = false;
+	let trip = $state<ActiveTrip | null>(null);
+	let riderPoint = $state<LatLng | null>(null);
+	let riderStale = $state(false);
+	let etaText = $state('—');
+	let routePath = $state<LatLng[]>([]);
+	let locationUnavailable = $state(false);
 	let unsub: (() => void) | null = null;
 	let refreshTimer: ReturnType<typeof setInterval> | undefined;
-	let tripStatusLabel = 'Waiting';
+	let tripStatusLabel = $state('Waiting');
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
 	function isTemporaryTripId(tripId: string) {
@@ -202,36 +202,38 @@
 		if (refreshTimer) clearInterval(refreshTimer);
 	});
 
-	$: markers = trip
-		? [
-				{
-					id: 'pickup',
-					lat: trip.pickupLat,
-					lng: trip.pickupLng,
-					label: 'Pickup',
-					role: 'pickup' as const
-				},
-				{
-					id: 'dropoff',
-					lat: trip.dropoffLat,
-					lng: trip.dropoffLng,
-					label: trip.dropoffAddress,
-					role: 'dropoff' as const
-				},
-				...(riderPoint
-					? [
-							{
-								id: 'rider',
-								lat: riderPoint.lat,
-								lng: riderPoint.lng,
-								label: 'Rider',
-								role: 'rider' as const,
-								stale: riderStale
-							}
-						]
-					: [])
-			]
-		: [];
+	const markers = $derived(
+		trip
+			? [
+					{
+						id: 'pickup',
+						lat: trip.pickupLat,
+						lng: trip.pickupLng,
+						label: 'Pickup',
+						role: 'pickup' as const
+					},
+					{
+						id: 'dropoff',
+						lat: trip.dropoffLat,
+						lng: trip.dropoffLng,
+						label: trip.dropoffAddress,
+						role: 'dropoff' as const
+					},
+					...(riderPoint
+						? [
+								{
+									id: 'rider',
+									lat: riderPoint.lat,
+									lng: riderPoint.lng,
+									label: 'Rider',
+									role: 'rider' as const,
+									stale: riderStale
+								}
+							]
+						: [])
+				]
+			: []
+	);
 </script>
 
 <svelte:head>
@@ -253,10 +255,10 @@
 		<MapBackdrop
 			routeLabel
 			center={riderPoint ?? (trip ? { lat: trip.dropoffLat, lng: trip.dropoffLng } : KUMASI_CENTER)}
-			markers={markers}
+			{markers}
 			polylinePath={routePath}
 			followId="rider"
-			locationUnavailable={locationUnavailable}
+			{locationUnavailable}
 		/>
 	</div>
 

@@ -7,8 +7,8 @@
 	const THEME_KEY = 'yada.courierTheme';
 	const LANG_KEY = 'yada.courierLanguage';
 
-	let themeLabel = 'System';
-	let languageLabel = 'English';
+	let themeLabel = $state('System');
+	let languageLabel = $state('English');
 
 	onMount(() => {
 		const theme = localStorage.getItem(THEME_KEY);
