@@ -3,7 +3,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import { auth } from '$lib/stores/auth';
-	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
 
 	type Role = 'business' | 'courier';
@@ -16,7 +15,6 @@
 	let email = $state('');
 	let password = $state('');
 	let rememberMe = $state(false);
-	let isLoading = $state(true);
 	let isSubmitting = $state(false);
 
 	// Forgot-password mini flow
@@ -25,32 +23,13 @@
 	let resetSent = $state(false);
 	let isResetting = $state(false);
 
+	/** Mirrors homeFor() in $lib/server/auth-guard, which handles the server-side redirect. */
 	function destinationFor(userRole: string | null | undefined) {
-		const normalizedRole = String(userRole ?? '').toLowerCase();
-		return normalizedRole === 'courier' ? '/courier/home' : '/dashboard';
+		return userRole === 'courier' ? '/courier/home' : '/dashboard';
 	}
-
-	function resolveUserRole(user: { role?: string | null } | null | undefined) {
-		return typeof user?.role === 'string' ? user.role : null;
-	}
-
-	onMount(async () => {
-		try {
-			const session = await auth.syncSession();
-			const sessionRole = resolveUserRole(session as { role?: string | null } | null | undefined);
-			if (session) {
-				window.location.replace(destinationFor(sessionRole ?? session.role));
-				return;
-			}
-		} catch {
-			// Stay on sign-in if session check fails.
-		} finally {
-			isLoading = false;
-		}
-	});
 
 	async function submitAuth() {
-		if (isSubmitting || isLoading) return;
+		if (isSubmitting) return;
 		isSubmitting = true;
 
 		try {
@@ -70,7 +49,7 @@
 			}
 
 			const user = await auth.signIn(email, password, rememberMe);
-			window.location.replace(destinationFor(resolveUserRole(user as { role?: string | null } | null | undefined) ?? user?.role));
+			window.location.replace(destinationFor(user?.role));
 		} catch {
 			// Keep the page calm — no technical error text.
 		} finally {
@@ -306,7 +285,7 @@
 								size="lg"
 								fullWidth
 								type="submit"
-								disabled={isLoading || isSubmitting || !canSubmit}
+								disabled={isSubmitting || !canSubmit}
 							>
 								{mode === 'sign-up' ? 'Create account' : 'Login'}
 							</Button>

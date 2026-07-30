@@ -2,71 +2,69 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { and, eq } from 'drizzle-orm';
 
+import { apiError, requireApiUser } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
-import { deliveryRequests, tripEvents } from '$lib/server/db/schema';
+import { deliveryRequests } from '$lib/server/db/schema';
+import { recordStatusChange } from '$lib/server/data/trip-events';
+import type { TripStatus } from '$lib/shared/trip-status';
+import { isUuid } from '$lib/shared/uuid';
 
-const NEXT_STATUS: Record<string, 'courier_arriving' | 'in_progress' | 'completed'> = {
+/** The transitions a courier can drive from their trip screens. */
+const NEXT_STATUS = {
   arrive: 'courier_arriving',
   pickup: 'in_progress',
   complete: 'completed'
-};
+} as const satisfies Record<string, TripStatus>;
 
-const uuidPattern =
-	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+type TripAction = keyof typeof NEXT_STATUS;
+
+/** A pickup only makes sense once the courier is assigned and on the way. */
+const PICKUP_FROM: readonly TripStatus[] = ['accepted', 'courier_arriving', 'arrived'];
+
+function isTripAction(value: unknown): value is TripAction {
+  return typeof value === 'string' && value in NEXT_STATUS;
+}
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user) {
-    return json({ ok: false, message: 'Sign in required.' }, { status: 401 });
-  }
-  if (locals.user.role !== 'courier' && locals.user.role !== 'admin') {
-    return json({ ok: false, message: 'Courier account required.' }, { status: 403 });
-  }
-  if (!db) {
-    return json({ ok: false, message: 'Database unavailable.' }, { status: 503 });
-  }
+  const guard = requireApiUser(locals, 'courier');
+  if (guard.error) return guard.error;
+  const { user } = guard;
 
   const body = await request.json();
-  const tripId = typeof body?.tripId === 'string' ? body.tripId : null;
-  const action = typeof body?.action === 'string' ? body.action : null;
+  const tripId = body?.tripId;
+  const action = body?.action;
 
-  if (!tripId || !action || !NEXT_STATUS[action]) {
-    return json({ ok: false, message: 'Trip id and action required.' }, { status: 400 });
+  if (!isUuid(tripId) || !isTripAction(action)) {
+    return apiError(400, 'invalid_request', 'Trip id and action required.');
   }
 
-  if (!uuidPattern.test(tripId)) {
-    return json({ ok: false, message: 'Trip id and action required.' }, { status: 400 });
-  }
-
+  // Scoped to the courier's own trip, so the assignment check and the lookup
+  // are the same query.
   const [trip] = await db
-    .select({ id: deliveryRequests.id, status: deliveryRequests.status, assignedCourierId: deliveryRequests.assignedCourierId })
+    .select({ status: deliveryRequests.status })
     .from(deliveryRequests)
-    .where(and(eq(deliveryRequests.id, tripId), eq(deliveryRequests.assignedCourierId, locals.user.id)))
+    .where(and(eq(deliveryRequests.id, tripId), eq(deliveryRequests.assignedCourierId, user.id)))
     .limit(1);
 
   if (!trip) {
-    return json({ ok: false, message: 'Trip not found.' }, { status: 404 });
+    return apiError(404, 'no_results', 'Trip not found.');
+  }
+
+  if (action === 'pickup' && !PICKUP_FROM.includes(trip.status)) {
+    return apiError(409, 'conflict', 'Trip is not ready for pickup.');
+  }
+  if (action === 'complete' && trip.status === 'completed') {
+    return apiError(409, 'conflict', 'Trip already completed.');
   }
 
   const nextStatus = NEXT_STATUS[action];
-
-  if (action === 'pickup' && !['accepted', 'courier_arriving', 'arrived'].includes(trip.status)) {
-    return json({ ok: false, message: 'Trip is not ready for pickup.' }, { status: 409 });
-  }
-  if (action === 'complete' && trip.status === 'completed') {
-    return json({ ok: false, message: 'Trip already completed.' }, { status: 409 });
-  }
 
   await db
     .update(deliveryRequests)
     .set(nextStatus === 'completed' ? { status: nextStatus, completedAt: new Date() } : { status: nextStatus })
     .where(eq(deliveryRequests.id, tripId));
 
-  await db.insert(tripEvents).values({
-    tripId,
-    actorId: locals.user.id,
-    eventType: 'status_change',
-    payload: JSON.stringify({ from: trip.status, to: nextStatus, action })
-  });
+  await recordStatusChange(tripId, user.id, { from: trip.status, to: nextStatus, action });
 
   return json({ ok: true, tripId, status: nextStatus });
 };

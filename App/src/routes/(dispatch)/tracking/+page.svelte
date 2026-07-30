@@ -16,10 +16,11 @@
 		type RiderLocationEvent
 	} from '$lib/client/realtime/client';
 	import { LOCATION_STALE_MS } from '$lib/client/realtime/courier-location';
+	import { toDispatchStage, type TripStatus } from '$lib/shared/trip-status';
 
 	type ActiveTrip = {
 		id: string;
-		status: 'requested' | 'accepted' | 'courier_arriving' | 'arrived' | 'in_progress' | 'completed' | 'cancelled';
+		status: TripStatus;
 		pickupAddress: string;
 		dropoffAddress: string;
 		pickupLat: number;
@@ -31,15 +32,15 @@
 		routePath?: LatLng[];
 	};
 
-	let trip: ActiveTrip | null = null;
-	let riderPoint: LatLng | null = null;
-	let riderStale = false;
-	let etaText = '—';
-	let routePath: LatLng[] = [];
-	let locationUnavailable = false;
+	let trip = $state<ActiveTrip | null>(null);
+	let riderPoint = $state<LatLng | null>(null);
+	let riderStale = $state(false);
+	let etaText = $state('—');
+	let routePath = $state<LatLng[]>([]);
+	let locationUnavailable = $state(false);
 	let unsub: (() => void) | null = null;
 	let refreshTimer: ReturnType<typeof setInterval> | undefined;
-	let tripStatusLabel = 'Waiting';
+	let tripStatusLabel = $state('Waiting');
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
 	function isTemporaryTripId(tripId: string) {
@@ -202,36 +203,38 @@
 		if (refreshTimer) clearInterval(refreshTimer);
 	});
 
-	$: markers = trip
-		? [
-				{
-					id: 'pickup',
-					lat: trip.pickupLat,
-					lng: trip.pickupLng,
-					label: 'Pickup',
-					role: 'pickup' as const
-				},
-				{
-					id: 'dropoff',
-					lat: trip.dropoffLat,
-					lng: trip.dropoffLng,
-					label: trip.dropoffAddress,
-					role: 'dropoff' as const
-				},
-				...(riderPoint
-					? [
-							{
-								id: 'rider',
-								lat: riderPoint.lat,
-								lng: riderPoint.lng,
-								label: 'Rider',
-								role: 'rider' as const,
-								stale: riderStale
-							}
-						]
-					: [])
-			]
-		: [];
+	const markers = $derived(
+		trip
+			? [
+					{
+						id: 'pickup',
+						lat: trip.pickupLat,
+						lng: trip.pickupLng,
+						label: 'Pickup',
+						role: 'pickup' as const
+					},
+					{
+						id: 'dropoff',
+						lat: trip.dropoffLat,
+						lng: trip.dropoffLng,
+						label: trip.dropoffAddress,
+						role: 'dropoff' as const
+					},
+					...(riderPoint
+						? [
+								{
+									id: 'rider',
+									lat: riderPoint.lat,
+									lng: riderPoint.lng,
+									label: 'Rider',
+									role: 'rider' as const,
+									stale: riderStale
+								}
+							]
+						: [])
+				]
+			: []
+	);
 </script>
 
 <svelte:head>
@@ -253,17 +256,17 @@
 		<MapBackdrop
 			routeLabel
 			center={riderPoint ?? (trip ? { lat: trip.dropoffLat, lng: trip.dropoffLng } : KUMASI_CENTER)}
-			markers={markers}
+			{markers}
 			polylinePath={routePath}
 			followId="rider"
-			locationUnavailable={locationUnavailable}
+			{locationUnavailable}
 		/>
 	</div>
 
 	<aside
 		class="z-10 flex flex-col gap-4 rounded-t-xl border-t border-border bg-surface p-6 shadow-lg lg:w-[320px] lg:shrink-0 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none"
 	>
-		<StatusPill status={trip?.status === 'requested' ? 'searching' : trip?.status === 'accepted' ? 'assigned' : trip?.status === 'courier_arriving' || trip?.status === 'arrived' || trip?.status === 'in_progress' ? 'en_route' : trip?.status === 'completed' ? 'delivered' : 'cancelled'} />
+		<StatusPill status={toDispatchStage(trip?.status ?? 'requested')} />
 
 		<div class="flex items-center gap-3">
 			<Avatar initials="KA" status="online" size={48} />

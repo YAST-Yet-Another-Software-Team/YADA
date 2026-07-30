@@ -17,8 +17,28 @@ const trustedOrigins = [
     .filter(Boolean)
 ];
 
+/**
+ * The two kinds of account YADA has: a business that requests deliveries, and a
+ * courier that makes them. Anything else on a sign-up request is not a role.
+ */
+const AUTH_ROLES = ['business', 'courier'] as const;
+
+export type AuthRole = (typeof AUTH_ROLES)[number];
+
+/**
+ * Narrow an untrusted `role` to the role union.
+ *
+ * Used both on the sign-up path — where the value comes straight off the
+ * request body — and when reading the column back, which Better Auth types
+ * loosely and the database allows to be null. A cast would let either slip
+ * through and then fail every downstream role check with no explanation.
+ */
+export function toAuthRole(value: unknown): AuthRole {
+  return AUTH_ROLES.includes(value as AuthRole) ? (value as AuthRole) : 'business';
+}
+
 export const auth = betterAuth({
-  database: drizzleAdapter(db!, {
+  database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {
       user: schema.users,
@@ -49,11 +69,16 @@ export const auth = betterAuth({
 
   user: {
     additionalFields: {
+      // `input: false` means Better Auth never takes `role` from a request body:
+      // on sign-up it substitutes the defaultValue below (the create hook then
+      // applies the requested role), and on POST /update-user it rejects the
+      // request outright. Without this, any client could switch itself between
+      // workspaces — or into a role that doesn't exist — through the auth API.
       role: {
         type: 'string',
         defaultValue: 'business',
         required: false,
-        input: true
+        input: false
       },
       phoneNumber: {
         type: 'string',
@@ -63,10 +88,23 @@ export const auth = betterAuth({
     }
   },
 
+  databaseHooks: {
+    user: {
+      create: {
+        // `role` is stripped from the request body by `input: false`, so the
+        // sign-up form's choice is re-applied here — clamped to a real role.
+        // Social sign-ups carry no role and default to business.
+        before: async (user, context) => {
+          const requestedRole = (context?.body as { role?: unknown } | undefined)?.role;
+
+          return { data: { ...user, role: toAuthRole(requestedRole) } };
+        }
+      }
+    }
+  },
+
   plugins: [dash(), sveltekitCookies(getRequestEvent)]
 });
-
-export type AuthRole = 'business' | 'courier' | 'admin';
 
 export interface SessionUser {
   id: string;

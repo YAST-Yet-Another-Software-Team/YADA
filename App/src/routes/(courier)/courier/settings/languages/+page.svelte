@@ -5,7 +5,7 @@
 	const LANG_KEY = 'yada.courierLanguage';
 	type Lang = 'en' | 'tw' | 'fr';
 
-	let language: Lang = 'en';
+	let language = $state<Lang>('en');
 
 	const options: { id: Lang; label: string }[] = [
 		{ id: 'en', label: 'English' },
@@ -36,7 +36,7 @@
 				class="flex w-full items-center gap-3 px-4 py-3.5 text-left {i < options.length - 1
 					? 'border-b border-border'
 					: ''}"
-				on:click={() => select(option.id)}
+				onclick={() => select(option.id)}
 			>
 				<span class="flex-1 text-[15px] font-medium text-ink">{option.label}</span>
 				{#if language === option.id}

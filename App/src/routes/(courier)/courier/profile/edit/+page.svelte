@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
@@ -12,38 +11,30 @@
 		{ value: 'password', label: 'Password' }
 	];
 
-	let activeTab = 'profile';
-	let name = '';
-	let phone = '';
-	let email = '';
-	let currentPassword = '';
-	let newPassword = '';
-	let confirmPassword = '';
-	let error = '';
-	let saved = false;
-	let ready = false;
-	let passwordSaving = false;
+	// The root layout hydrates the auth store before this page initialises, and the
+	// courier layout guard guarantees there is a signed-in user by the time we get here.
+	const currentUser = $auth.user;
 
-	onMount(async () => {
-		if (!$auth.user) {
-			await auth.syncSession();
-		}
-		const user = $auth.user;
-		name = user?.name ?? '';
-		phone = user?.phone ?? '';
-		email = user?.email ?? '';
-		ready = true;
-	});
+	let activeTab = $state('profile');
+	let name = $state(currentUser?.name ?? '');
+	let phone = $state(currentUser?.phone ?? '');
+	let email = $state(currentUser?.email ?? '');
+	let currentPassword = $state('');
+	let newPassword = $state('');
+	let confirmPassword = $state('');
+	let error = $state('');
+	let saved = $state(false);
+	let ready = $state(currentUser !== null);
 
-	$: canSaveProfile =
+	const canSaveProfile = $derived(
 		ready &&
-		name.trim().length > 0 &&
-		(name.trim() !== ($auth.user?.name ?? '') || phone.trim() !== ($auth.user?.phone ?? ''));
+			name.trim().length > 0 &&
+			(name.trim() !== ($auth.user?.name ?? '') || phone.trim() !== ($auth.user?.phone ?? ''))
+	);
 
-	$: canSavePassword =
-		currentPassword.length > 0 &&
-		newPassword.length >= 8 &&
-		newPassword === confirmPassword;
+	const canSavePassword = $derived(
+		currentPassword.length > 0 && newPassword.length >= 8 && newPassword === confirmPassword
+	);
 
 	async function saveProfile() {
 		error = '';
@@ -77,7 +68,6 @@
 			return;
 		}
 
-		passwordSaving = true;
 		try {
 			await auth.changePassword(currentPassword, newPassword);
 			saved = true;
@@ -86,8 +76,6 @@
 			confirmPassword = '';
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Unable to change password.';
-		} finally {
-			passwordSaving = false;
 		}
 	}
 </script>
@@ -105,7 +93,13 @@
 		</div>
 
 		{#if activeTab === 'profile'}
-			<form class="flex flex-1 flex-col gap-4" on:submit|preventDefault={saveProfile}>
+			<form
+				class="flex flex-1 flex-col gap-4"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void saveProfile();
+				}}
+			>
 				<div class="space-y-3 rounded-2xl bg-surface p-4 shadow-sm">
 					<Input label="Full name" type="text" placeholder="Your name" bind:value={name} />
 					<Input label="Phone number" type="tel" placeholder="024 000 0000" bind:value={phone} />
@@ -134,7 +128,13 @@
 				</div>
 			</form>
 		{:else}
-			<form class="flex flex-1 flex-col gap-4" on:submit|preventDefault={savePassword}>
+			<form
+				class="flex flex-1 flex-col gap-4"
+				onsubmit={(e) => {
+					e.preventDefault();
+					void savePassword();
+				}}
+			>
 				<div class="space-y-3 rounded-2xl bg-surface p-4 shadow-sm">
 					<Input
 						label="Current password"
@@ -164,8 +164,8 @@
 				{/if}
 
 				<div class="mt-auto pt-2">
-					<Button type="submit" variant="primary" fullWidth disabled={!canSavePassword || passwordSaving}>
-						{passwordSaving ? 'Updating…' : 'Update password'}
+					<Button type="submit" variant="primary" fullWidth disabled={!canSavePassword || $auth.isLoading}>
+						{$auth.isLoading ? 'Updating…' : 'Update password'}
 					</Button>
 				</div>
 			</form>

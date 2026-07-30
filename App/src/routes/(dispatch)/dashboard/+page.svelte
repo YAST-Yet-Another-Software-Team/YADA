@@ -10,29 +10,35 @@
 	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
 	import { dashboardView } from '$lib/stores/dashboard-view';
 
-	export let data: {
-		dashboard: {
-			activeTrips: DashboardTripRecord[];
-			historyTrips: DashboardTripRecord[];
-			businessProfile: {
-				name: string;
-				businessName: string;
-				email: string | null;
-				phone: string | null;
-				address: string;
-				lat: number;
-				lng: number;
-			} | null;
+	let {
+		data
+	}: {
+		data: {
+			dashboard: {
+				activeTrips: DashboardTripRecord[];
+				historyTrips: DashboardTripRecord[];
+				businessProfile: {
+					name: string;
+					businessName: string;
+					email: string | null;
+					phone: string | null;
+					address: string;
+					lat: number;
+					lng: number;
+				} | null;
+			};
 		};
-	};
+	} = $props();
 
-	let selected: DashboardTripRecord | null = null;
+	let selected = $state<DashboardTripRecord | null>(null);
 
 	onMount(() => {
 		dashboardView.hydrate();
 	});
 
-	$: deliveredToday = data.dashboard.historyTrips.filter((t) => t.status === 'delivered').slice(0, 2);
+	const deliveredToday = $derived(
+		data.dashboard.historyTrips.filter((t) => t.status === 'delivered').slice(0, 2)
+	);
 
 	function newRequest() {
 		goto('/request');

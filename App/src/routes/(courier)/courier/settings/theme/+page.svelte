@@ -5,7 +5,7 @@
 	const THEME_KEY = 'yada.courierTheme';
 	type Theme = 'system' | 'light' | 'dark';
 
-	let theme: Theme = 'system';
+	let theme = $state<Theme>('system');
 
 	const options: { id: Theme; label: string; hint: string }[] = [
 		{ id: 'system', label: 'System', hint: 'Match device setting' },
@@ -36,7 +36,7 @@
 				class="flex w-full items-center gap-3 px-4 py-3.5 text-left {i < options.length - 1
 					? 'border-b border-border'
 					: ''}"
-				on:click={() => select(option.id)}
+				onclick={() => select(option.id)}
 			>
 				<span class="flex-1">
 					<span class="block text-[15px] font-medium text-ink">{option.label}</span>

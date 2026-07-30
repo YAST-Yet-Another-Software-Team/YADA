@@ -3,13 +3,12 @@
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { auth } from '$lib/stores/auth';
+	import { initials } from '$lib/shared/text';
 
 	let { open = false, onclose }: { open?: boolean; onclose?: () => void } = $props();
 
 	const user = $derived($auth.user);
-	const initials = $derived(
-		(user?.name || 'Y').split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() || 'Y'
-	);
+	const avatarInitials = $derived(initials(user?.name, 'Y'));
 	const displayName = $derived(user?.name || 'YADA user');
 	const businessName = $derived(user?.role === 'courier' ? 'Courier workspace' : 'Business workspace');
 	const email = $derived(user?.email || 'No email on file');
@@ -46,7 +45,7 @@
 		role="menu"
 	>
 		<div class="mb-3 flex items-center gap-3 border-b border-border pb-3">
-			<Avatar initials={initials} size={40} />
+			<Avatar initials={avatarInitials} size={40} />
 			<div>
 				<p class="text-sm font-semibold text-ink">{displayName}</p>
 				<p class="text-xs text-ink-secondary">{businessName}</p>

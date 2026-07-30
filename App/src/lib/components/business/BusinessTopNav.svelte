@@ -72,7 +72,7 @@
 				aria-expanded={profileOpen}
 				onclick={toggleProfile}
 			>
-				<Avatar initials="JM" size={34} />
+				<Avatar initials="JM" size={34}/>
 			</button>
 			<ProfileMenu open={profileOpen} onclose={() => (profileOpen = false)} />
 		</div>

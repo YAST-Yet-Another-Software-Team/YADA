@@ -1,5 +1,3 @@
-import { emitRiderLocation } from '$lib/client/realtime/client';
-
 const THROTTLE_MS = 2500;
 const STALE_MS = 30_000;
 
@@ -52,7 +50,8 @@ export function startCourierLocationReporter(options: {
         recordedAt
       };
 
-      emitRiderLocation(payload);
+      // POST only — the endpoint persists the fix and then broadcasts it over
+      // Socket.IO itself, so there is nothing for the client to emit.
       void fetch('/api/location', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

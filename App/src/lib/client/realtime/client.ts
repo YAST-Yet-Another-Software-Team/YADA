@@ -54,7 +54,6 @@ export function onRiderLocation(handler: (payload: RiderLocationEvent) => void) 
   };
 }
 
-export function emitRiderLocation(payload: RiderLocationEvent) {
-  const s = getRealtimeSocket();
-  s?.emit('rider:location', payload);
-}
+// Locations are published by POST /api/location, which authenticates the courier
+// and broadcasts server-side. There is deliberately no client emit: the server
+// does not accept `rider:location` from sockets.

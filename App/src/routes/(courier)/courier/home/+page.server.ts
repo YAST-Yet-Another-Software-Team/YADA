@@ -1,16 +1,7 @@
-import { error } from '@sveltejs/kit';
-
 import { getCourierHomeData } from '$lib/server/data/courier';
 
-export async function load({ locals }) {
-	if (!locals.user?.id) {
-		throw error(401, 'You need to be signed in.');
-	}
+export async function load({ parent }) {
+	const { user } = await parent();
 
-	const courierName = locals.user.name ?? 'Courier';
-	const data = await getCourierHomeData(locals.user.id, courierName);
-
-	return {
-		...data
-	};
+	return getCourierHomeData(user.id, user.name ?? 'Courier');
 }

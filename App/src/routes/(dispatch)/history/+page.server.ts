@@ -1,7 +1,8 @@
 import { getDashboardTrips } from '$lib/server/data/dashboard';
 
-export async function load({ locals }) {
-	const dashboard = await getDashboardTrips(locals.user?.id ?? undefined);
+export async function load({ parent }) {
+	const { user } = await parent();
+	const dashboard = await getDashboardTrips(user.id);
 
 	return {
 		historyTrips: dashboard.historyTrips

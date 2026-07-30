@@ -2,8 +2,8 @@
 	import SettingsSubpage from '$lib/components/courier/SettingsSubpage.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	let message = '';
-	let sent = false;
+	let message = $state('');
+	let sent = $state(false);
 
 	function submit() {
 		if (!message.trim()) return;
