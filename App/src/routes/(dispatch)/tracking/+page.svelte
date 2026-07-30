@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onDestroy, onMount } from 'svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
@@ -140,7 +140,7 @@
 	}
 
 	onMount(async () => {
-		const tripId = $page.url.searchParams.get('trip');
+		const tripId = page.url.searchParams.get('trip');
 		const raw = sessionStorage.getItem('yada:active-trip');
 		if (raw) {
 			try {

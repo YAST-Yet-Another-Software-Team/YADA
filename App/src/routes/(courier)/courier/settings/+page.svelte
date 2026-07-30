@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { auth } from '$lib/stores/auth';
-	import { courierOnline } from '$lib/stores/courier-online';
+	import { getSession } from '$lib/auth/session.svelte';
+	import { getCourierOnline } from '../courier-online.svelte';
+
+	const session = getSession();
+	const online = getCourierOnline();
 
 	const THEME_KEY = 'yada.courierTheme';
 	const LANG_KEY = 'yada.courierLanguage';
@@ -22,8 +25,8 @@
 	});
 
 	function signOut() {
-		courierOnline.goOffline();
-		void auth.signOut('/');
+		online.goOffline();
+		void session.signOut('/');
 	}
 </script>
 

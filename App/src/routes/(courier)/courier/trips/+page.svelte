@@ -1,10 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { onMount } from 'svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import StatusPill from '$lib/components/ui/StatusPill.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
-  import { courierOnline } from '$lib/stores/courier-online';
+  import { getCourierOnline } from '../courier-online.svelte';
 
   let {
     data
@@ -29,9 +28,7 @@
     };
   } = $props();
 
-  onMount(() => {
-    courierOnline.hydrate();
-  });
+  const online = getCourierOnline();
 
   const totalTrips = $derived(data.summary.completedTrips + data.summary.activeTrips);
 </script>
@@ -59,8 +56,8 @@
           class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-primary shadow-sm"
           onclick={() => goto('/courier/home')}
         >
-          <span class="h-2 w-2 rounded-full {$courierOnline ? 'bg-success' : 'bg-neutral-400'}"></span>
-          {$courierOnline ? 'Online' : 'Offline'}
+          <span class="h-2 w-2 rounded-full {online.online ? 'bg-success' : 'bg-neutral-400'}"></span>
+          {online.online ? 'Online' : 'Offline'}
         </button>
 
         <IconButton ariaLabel="Back to home" onclick={() => goto('/courier/home')}>

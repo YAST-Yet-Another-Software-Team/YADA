@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import BrandLogo from '$lib/components/BrandLogo.svelte';
 	import BusinessTopNav from '$lib/components/business/BusinessTopNav.svelte';
 	import ProfileMenu from '$lib/components/business/ProfileMenu.svelte';
@@ -10,7 +10,7 @@
 
 	let profileOpen = $state(false);
 
-	const path = $derived($page.url.pathname);
+	const path = $derived(page.url.pathname);
 
 	function toggleProfile(e: MouseEvent) {
 		e.stopPropagation();

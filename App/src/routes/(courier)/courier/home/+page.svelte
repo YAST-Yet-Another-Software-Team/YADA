@@ -5,7 +5,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import { startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
-	import { courierOnline } from '$lib/stores/courier-online';
+	import { getCourierOnline } from '../courier-online.svelte';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 
 	let {
@@ -46,6 +46,8 @@
 		};
 	} = $props();
 
+	const online = getCourierOnline();
+
 	let acceptingId = $state<string | null>(null);
 	let decliningId = $state<string | null>(null);
 	let actionError = $state('');
@@ -54,7 +56,6 @@
 	let stopDeviceWatcher: (() => void) | null = null;
 
 	onMount(() => {
-		courierOnline.hydrate();
 		stopDeviceWatcher = startDeviceLocationWatcher({
 			onUpdate: (location) => {
 				deviceCenter = location;
@@ -87,7 +88,7 @@
 	);
 	const routePath = $derived(pickupPoint && dropoffPoint ? [pickupPoint, dropoffPoint] : []);
 	const statusLabel = $derived(
-		!$courierOnline
+		!online.online
 			? 'Offline'
 			: data.activeTrip
 				? data.activeTrip.status === 'en_route'
@@ -99,7 +100,7 @@
 	);
 
 	async function acceptRequest(requestId: string) {
-		if (acceptingId || !$courierOnline) return;
+		if (acceptingId || !online.online) return;
 
 		acceptingId = requestId;
 		actionError = '';
@@ -126,7 +127,7 @@
 	}
 
 	async function declineRequest(requestId: string) {
-		if (decliningId || !$courierOnline) return;
+		if (decliningId || !online.online) return;
 
 		decliningId = requestId;
 		actionError = '';
@@ -156,11 +157,11 @@
 	}
 
 	function goOnline() {
-		courierOnline.goOnline();
+		online.goOnline();
 	}
 
 	function goOffline() {
-		courierOnline.goOffline();
+		online.goOffline();
 	}
 </script>
 
@@ -171,9 +172,9 @@
 <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
 	<div class="absolute inset-0">
 		<MapBackdrop
-			routeLabel={!!$courierOnline && !!heroTrip}
-			center={$courierOnline ? pickupPoint : deviceCenter ?? KUMASI_CENTER}
-			markers={$courierOnline && heroTrip
+			routeLabel={!!online.online && !!heroTrip}
+			center={online.online ? pickupPoint : deviceCenter ?? KUMASI_CENTER}
+			markers={online.online && heroTrip
 				? [
 						{
 							id: 'pickup',
@@ -195,7 +196,7 @@
 							: [])
 					]
 				: []}
-			polylinePath={$courierOnline ? routePath : []}
+			polylinePath={online.online ? routePath : []}
 		/>
 
 		<div class="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-4">
@@ -203,7 +204,7 @@
 				class="pointer-events-auto max-w-sm rounded-xl border border-border bg-surface/95 px-4 py-3 text-center shadow-md backdrop-blur-sm"
 				in:fade={{ duration: 160 }}
 			>
-				{#if $courierOnline}
+				{#if online.online}
 					<span
 						class="inline-flex items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1 text-xs font-semibold text-primary"
 					>
@@ -247,7 +248,7 @@
 	<div
 		class="relative z-10 mt-auto space-y-3 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pb-3 pt-10"
 	>
-		{#if $courierOnline && data.activeTrip}
+		{#if online.online && data.activeTrip}
 			<div class="rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
 				<div class="flex items-center justify-between gap-3">
 					<div>
@@ -261,7 +262,7 @@
 					<Button variant="primary" size="sm" onclick={openActiveTrip}>Continue trip</Button>
 				</div>
 			</div>
-		{:else if $courierOnline && currentRequest}
+		{:else if online.online && currentRequest}
 			<div class="rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
 				{#if actionError}
 					<p class="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{actionError}</p>
@@ -299,7 +300,7 @@
 					</div>
 				</div>
 			</div>
-		{:else if $courierOnline}
+		{:else if online.online}
 			<div class="rounded-2xl border border-border bg-surface/95 p-3 text-center text-sm text-ink-secondary shadow-sm backdrop-blur-sm">
 				{#if actionError}
 					<p class="mb-2 rounded-xl bg-red-50 px-3 py-2 text-left text-xs font-medium text-red-700">{actionError}</p>
@@ -308,7 +309,7 @@
 			</div>
 		{/if}
 
-		{#if $courierOnline}
+		{#if online.online}
 			{#if data.pendingRequests.length === 0 || data.activeTrip}
 				<Button variant="ghost" size="lg" fullWidth onclick={goOffline}>Go offline</Button>
 			{:else}

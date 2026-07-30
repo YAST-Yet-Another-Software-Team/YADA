@@ -1,24 +1,28 @@
 <script lang="ts">
-	import { onMount, type Snippet } from 'svelte';
-	import { page } from '$app/stores';
+	import type { Snippet } from 'svelte';
+	import { page } from '$app/state';
 	import BrandLogo from '$lib/components/BrandLogo.svelte';
 	import CourierTabBar from '$lib/components/courier/CourierTabBar.svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
-	import { auth } from '$lib/stores/auth';
-	import { courierOnline } from '$lib/stores/courier-online';
+	import { getSession } from '$lib/auth/session.svelte';
+	import { createCourierOnline } from './courier-online.svelte';
 	import { initials } from '$lib/shared/text';
 
 	let { children }: { children: Snippet } = $props();
 
-	const path = $derived($page.url.pathname);
+	const session = getSession();
+
+	// Provided here for the whole courier workspace, and adopted from storage
+	// after mount — $effect never runs on the server, where there is none.
+	const online = createCourierOnline();
+	$effect(() => {
+		online.hydrate();
+	});
+
+	const path = $derived(page.url.pathname);
 	const isFocusedTrip = $derived(path === '/courier/pickup' || path === '/courier/deliver');
 	const isHome = $derived(path === '/courier/home');
-	const user = $derived($auth.user);
-	const avatarInitials = $derived(initials(user?.name, 'C'));
-
-	onMount(() => {
-		courierOnline.hydrate();
-	});
+	const avatarInitials = $derived(initials(session.user?.name, 'C'));
 </script>
 
 <div class="min-h-svh bg-neutral-200">
@@ -34,7 +38,7 @@
 				class="rounded-full outline-none ring-primary focus-visible:ring-2"
 				aria-label="Open profile"
 			>
-				<Avatar initials={avatarInitials} size={32} status={$courierOnline ? 'online' : null} />
+				<Avatar initials={avatarInitials} size={32} status={online.online ? 'online' : null} />
 			</a>
 		</header>
 

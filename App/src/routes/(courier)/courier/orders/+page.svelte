@@ -2,12 +2,9 @@
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import { courierOnline } from '$lib/stores/courier-online';
-	import { onMount } from 'svelte';
+	import { getCourierOnline } from '../courier-online.svelte';
 
-	onMount(() => {
-		courierOnline.hydrate();
-	});
+	const online = getCourierOnline();
 
 	function openActive() {
 		goto('/courier/pickup');
@@ -24,7 +21,7 @@
 		<p class="mt-1 text-sm text-ink-secondary">Active and incoming deliveries</p>
 	</div>
 
-	{#if $courierOnline}
+	{#if online.online}
 		<Card>
 			<div class="flex flex-col gap-3">
 				<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">

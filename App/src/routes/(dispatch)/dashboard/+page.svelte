@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import DashboardBoard from '$lib/components/business/DashboardBoard.svelte';
 	import DashboardTable from '$lib/components/business/DashboardTable.svelte';
@@ -8,7 +7,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
-	import { dashboardView } from '$lib/stores/dashboard-view';
+	import { DashboardViewPreference } from './dashboard-view.svelte';
 
 	let {
 		data
@@ -32,8 +31,11 @@
 
 	let selected = $state<DashboardTripRecord | null>(null);
 
-	onMount(() => {
-		dashboardView.hydrate();
+	// Adopted from storage after mount — $effect never runs on the server,
+	// where localStorage doesn't exist.
+	const view = new DashboardViewPreference();
+	$effect(() => {
+		view.hydrate();
 	});
 
 	const deliveredToday = $derived(
@@ -44,8 +46,8 @@
 		goto('/request');
 	}
 
-	function setView(view: 'table' | 'board') {
-		dashboardView.set(view);
+	function setView(next: 'table' | 'board') {
+		view.set(next);
 	}
 
 	function selectTrip(trip: DashboardTripRecord) {
@@ -72,7 +74,7 @@
 			<div class="hidden items-center rounded-md bg-surface-sunken p-1 lg:flex">
 				<button
 					type="button"
-					class="rounded-sm px-3 py-1.5 text-sm font-semibold transition {$dashboardView === 'table'
+					class="rounded-sm px-3 py-1.5 text-sm font-semibold transition {view.current === 'table'
 						? 'bg-surface text-ink shadow-xs'
 						: 'text-ink-secondary hover:text-ink'}"
 					onclick={() => setView('table')}
@@ -81,7 +83,7 @@
 				</button>
 				<button
 					type="button"
-					class="rounded-sm px-3 py-1.5 text-sm font-semibold transition {$dashboardView === 'board'
+					class="rounded-sm px-3 py-1.5 text-sm font-semibold transition {view.current === 'board'
 						? 'bg-surface text-ink shadow-xs'
 						: 'text-ink-secondary hover:text-ink'}"
 					onclick={() => setView('board')}
@@ -145,7 +147,7 @@
 	</section>
 
 	<section class="hidden flex-col gap-4 lg:flex">
-		{#if $dashboardView === 'table'}
+		{#if view.current === 'table'}
 			<div class="flex items-center justify-between">
 				<h2 class="text-base font-semibold text-ink">Active requests</h2>
 				<p class="text-sm text-ink-tertiary">Click a row to see the rider on the map</p>

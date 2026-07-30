@@ -4,16 +4,17 @@
 	import Input from '$lib/components/ui/Input.svelte';
 	import Tabs from '$lib/components/ui/Tabs.svelte';
 	import SettingsSubpage from '$lib/components/courier/SettingsSubpage.svelte';
-	import { auth } from '$lib/stores/auth';
+	import { getSession } from '$lib/auth/session.svelte';
 
 	const editTabs = [
 		{ value: 'profile', label: 'Profile' },
 		{ value: 'password', label: 'Password' }
 	];
 
-	// The root layout hydrates the auth store before this page initialises, and the
+	// The root layout provides the session before this page initialises, and the
 	// courier layout guard guarantees there is a signed-in user by the time we get here.
-	const currentUser = $auth.user;
+	const session = getSession();
+	const currentUser = session.user;
 
 	let activeTab = $state('profile');
 	let name = $state(currentUser?.name ?? '');
@@ -29,7 +30,7 @@
 	const canSaveProfile = $derived(
 		ready &&
 			name.trim().length > 0 &&
-			(name.trim() !== ($auth.user?.name ?? '') || phone.trim() !== ($auth.user?.phone ?? ''))
+			(name.trim() !== (session.user?.name ?? '') || phone.trim() !== (session.user?.phone ?? ''))
 	);
 
 	const canSavePassword = $derived(
@@ -45,7 +46,7 @@
 		}
 
 		try {
-			await auth.updateProfile({ name: name.trim(), phone: phone.trim() });
+			await session.updateProfile({ name: name.trim(), phone: phone.trim() });
 			saved = true;
 			setTimeout(() => {
 				goto('/courier/profile');
@@ -69,7 +70,7 @@
 		}
 
 		try {
-			await auth.changePassword(currentPassword, newPassword);
+			await session.changePassword(currentPassword, newPassword);
 			saved = true;
 			currentPassword = '';
 			newPassword = '';
@@ -121,9 +122,9 @@
 						type="submit"
 						variant="primary"
 						fullWidth
-						disabled={!canSaveProfile || $auth.isLoading}
+						disabled={!canSaveProfile || session.isLoading}
 					>
-						{$auth.isLoading ? 'Saving…' : 'Save changes'}
+						{session.isLoading ? 'Saving…' : 'Save changes'}
 					</Button>
 				</div>
 			</form>
@@ -164,8 +165,8 @@
 				{/if}
 
 				<div class="mt-auto pt-2">
-					<Button type="submit" variant="primary" fullWidth disabled={!canSavePassword || $auth.isLoading}>
-						{$auth.isLoading ? 'Updating…' : 'Update password'}
+					<Button type="submit" variant="primary" fullWidth disabled={!canSavePassword || session.isLoading}>
+						{session.isLoading ? 'Updating…' : 'Update password'}
 					</Button>
 				</div>
 			</form>

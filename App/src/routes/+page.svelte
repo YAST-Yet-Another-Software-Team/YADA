@@ -2,11 +2,13 @@
 	import BrandLogo from '$lib/components/BrandLogo.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
-	import { auth } from '$lib/stores/auth';
+	import { getSession } from '$lib/auth/session.svelte';
 	import { slide } from 'svelte/transition';
 
 	type Role = 'business' | 'courier';
 	type Mode = 'sign-in' | 'sign-up';
+
+	const session = getSession();
 
 	let mode = $state<Mode>('sign-in');
 	let role = $state<Role>('business');
@@ -37,7 +39,7 @@
 				const displayName =
 					name.trim() ||
 					(role === 'business' ? email.split('@')[0] || 'Business user' : 'Courier');
-				await auth.signUp(
+				await session.signUp(
 					email,
 					password,
 					displayName,
@@ -48,7 +50,7 @@
 				return;
 			}
 
-			const user = await auth.signIn(email, password, rememberMe);
+			const user = await session.signIn(email, password, rememberMe);
 			window.location.replace(destinationFor(user?.role));
 		} catch {
 			// Keep the page calm — no technical error text.
@@ -72,7 +74,7 @@
 		if (isResetting || !resetEmail.trim().includes('@')) return;
 		isResetting = true;
 		try {
-			await auth.requestPasswordReset(resetEmail.trim());
+			await session.requestPasswordReset(resetEmail.trim());
 			resetSent = true;
 		} catch {
 			resetSent = false;
