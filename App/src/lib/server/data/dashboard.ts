@@ -1,5 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
 
+import { toDispatchStage, type TripStage } from '$lib/shared/trip-status';
+
 import { db } from '../db';
 import { businessProfiles, courierProfiles, deliveryRequests, users } from '../db/schema';
 
@@ -10,7 +12,7 @@ export type DashboardTripRecord = {
 	destination: string;
 	pickup: string | null;
 	eta: string | null;
-	status: 'searching' | 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled';
+	status: TripStage;
 	completedAt: string | null;
 	notes: string | null;
 	pickupLat?: number | null;
@@ -37,25 +39,6 @@ export type DispatchRiderRecord = {
 
 const STALE_LOCATION_MS = 30_000;
 
-function toDashboardStatus(status: string) {
-	switch (status) {
-		case 'requested':
-			return 'searching';
-		case 'accepted':
-			return 'assigned';
-		case 'courier_arriving':
-		case 'arrived':
-		case 'in_progress':
-			return 'en_route';
-		case 'completed':
-			return 'delivered';
-		case 'cancelled':
-			return 'cancelled';
-		default:
-			return 'searching';
-	}
-}
-
 function formatTripId(id: string) {
 	return id.startsWith('YD-') ? id : `YD-${id.slice(0, 4).toUpperCase()}`;
 }
@@ -72,8 +55,6 @@ function formatTime(value: Date | string | null | undefined) {
 }
 
 export async function getDashboardTrips(ownerId: string) {
-	if (!db) return { activeTrips: [], historyTrips: [], businessProfile: null };
-
 	const records = await db
 		.select({
 			id: deliveryRequests.id,
@@ -104,7 +85,7 @@ export async function getDashboardTrips(ownerId: string) {
 
 	const mapped = records.map((record) => {
 		const baseId = formatTripId(record.id);
-		const status = toDashboardStatus(record.status);
+		const status = toDispatchStage(record.status);
 		const completedAt = record.completedAt ? formatTime(record.completedAt) : null;
 		const duration = record.estimatedDurationMinutes
 			? `${Math.round(Number(record.estimatedDurationMinutes))} min`
@@ -147,8 +128,6 @@ export async function getDashboardTrips(ownerId: string) {
 }
 
 export async function getAvailableRiders(ownerId: string): Promise<DispatchRiderRecord[]> {
-	if (!db) return [];
-
 	const profile = (
 		await db.select().from(businessProfiles).where(eq(businessProfiles.userId, ownerId)).limit(1)
 	)[0];
@@ -198,10 +177,6 @@ export async function getAvailableRiders(ownerId: string): Promise<DispatchRider
 }
 
 export async function seedTestBusinessUser() {
-	if (!db) {
-		throw new Error('Database is not available.');
-	}
-
 	const existing = await db.select().from(users).where(eq(users.email, 'test-business@yada.local')).limit(1);
 	const businessUser = existing[0] ?? (await db.insert(users).values({
 		id: 'test-business-user',

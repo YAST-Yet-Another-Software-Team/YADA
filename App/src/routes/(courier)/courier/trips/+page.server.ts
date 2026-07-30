@@ -1,30 +1,13 @@
-import { getCourierTripHistory } from '$lib/server/data/courier';
+import { courierProfileOf, getCourierTripHistory } from '$lib/server/data/courier';
 
 export async function load({ parent }) {
   const { user } = await parent();
 
-  const data = await getCourierTripHistory(user.id);
-  const courierName = user.name ?? 'Courier';
-
-  const initials =
-    courierName
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0] ?? '')
-      .join('')
-      .toUpperCase() || 'C';
+  const { historyTrips, summary } = await getCourierTripHistory(user.id);
 
   return {
-    profile: {
-      name: courierName,
-      initials
-    },
-    summary: {
-      completedTrips: data.summary.completedTrips,
-      tripsToday: data.summary.tripsToday,
-      totalDistanceKm: data.summary.totalDistanceKm,
-      activeTrips: data.summary.activeTrips
-    },
-    historyTrips: data.historyTrips
+    profile: courierProfileOf(user.name),
+    summary,
+    historyTrips
   };
 }

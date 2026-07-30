@@ -30,7 +30,7 @@ function normalizeSignUpRole(role: unknown) {
 }
 
 export const auth = betterAuth({
-  database: drizzleAdapter(db!, {
+  database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {
       user: schema.users,

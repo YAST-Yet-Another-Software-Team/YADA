@@ -2,14 +2,13 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { eq } from 'drizzle-orm';
 
+import { apiError, requireApiUser } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
 import { deliveryRequests, tripEvents } from '$lib/server/db/schema';
 import { assertInZone, containsPoint } from '$lib/shared/geo/service-area';
 import { GeoError, geoErrorMessage } from '$lib/shared/geo/errors';
+import { isUuid } from '$lib/shared/uuid';
 import { env } from '$env/dynamic/private';
-
-const uuidPattern =
-	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type CreateTripBody = {
 	pickupAddress?: string;
@@ -25,16 +24,15 @@ type CreateTripBody = {
 	estimatedDurationMinutes?: number;
 };
 
+/** `numeric(10, 6)` columns — the scale the schema stores coordinates at. */
+function toCoordinateColumn(value: number) {
+	return value.toFixed(6);
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
-	if (!locals.user) {
-		return json({ ok: false, code: 'denied', message: 'Sign in required.' }, { status: 401 });
-	}
-	if (locals.user.role !== 'business' && locals.user.role !== 'admin') {
-		return json({ ok: false, code: 'denied', message: 'Business account required.' }, { status: 403 });
-	}
-	if (!db) {
-		return json({ ok: false, code: 'unavailable', message: 'Database unavailable.' }, { status: 503 });
-	}
+	const guard = requireApiUser(locals, 'business');
+	if (guard.error) return guard.error;
+	const { user } = guard;
 
 	try {
 		const body = (await request.json()) as CreateTripBody;
@@ -53,10 +51,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			!Number.isFinite(dropoffLat) ||
 			!Number.isFinite(dropoffLng)
 		) {
-			return json(
-				{ ok: false, code: 'invalid_request', message: geoErrorMessage('invalid_request') },
-				{ status: 400 }
-			);
+			return apiError(400, 'invalid_request', geoErrorMessage('invalid_request'));
 		}
 
 		assertInZone({ lat: pickupLat, lng: pickupLng });
@@ -65,14 +60,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const [trip] = await db
 			.insert(deliveryRequests)
 			.values({
-				businessId: locals.user.id,
+				businessId: user.id,
 				status: 'requested',
 				pickupAddress,
 				dropoffAddress,
-				pickupLatitude: pickupLat.toFixed(6),
-				pickupLongitude: pickupLng.toFixed(6),
-				dropoffLatitude: dropoffLat.toFixed(6),
-				dropoffLongitude: dropoffLng.toFixed(6),
+				pickupLatitude: toCoordinateColumn(pickupLat),
+				pickupLongitude: toCoordinateColumn(pickupLng),
+				dropoffLatitude: toCoordinateColumn(dropoffLat),
+				dropoffLongitude: toCoordinateColumn(dropoffLng),
 				pickupPlaceId: body.pickupPlaceId ?? null,
 				dropoffPlaceId: body.dropoffPlaceId ?? null,
 				notes: body.notes ?? null,
@@ -87,7 +82,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		await db.insert(tripEvents).values({
 			tripId: trip.id,
-			actorId: locals.user.id,
+			actorId: user.id,
 			eventType: 'trip_created',
 			payload: JSON.stringify({
 				pickup: { lat: pickupLat, lng: pickupLng },
@@ -113,50 +108,35 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 	} catch (error) {
 		if (error instanceof GeoError) {
-			return json({ ok: false, code: error.code, message: error.message }, { status: 422 });
+			return apiError(422, error.code, error.message);
 		}
 		console.error('create trip failed', error);
-		return json(
-			{ ok: false, code: 'unavailable', message: geoErrorMessage('unavailable') },
-			{ status: 502 }
-		);
+		return apiError(502, 'unavailable', geoErrorMessage('unavailable'));
 	}
 };
 
 export const GET: RequestHandler = async ({ url, locals }) => {
-	if (!locals.user) {
-		return json({ ok: false, code: 'denied', message: 'Sign in required.' }, { status: 401 });
-	}
-	if (!db) {
-		return json({ ok: false, code: 'unavailable', message: 'Database unavailable.' }, { status: 503 });
-	}
+	const guard = requireApiUser(locals);
+	if (guard.error) return guard.error;
+	const { user } = guard;
 
 	const tripId = url.searchParams.get('id');
-	if (!tripId) {
-		return json(
-			{ ok: false, code: 'invalid_request', message: geoErrorMessage('invalid_request') },
-			{ status: 400 }
-		);
+	if (!isUuid(tripId)) {
+		return apiError(400, 'invalid_request', geoErrorMessage('invalid_request'));
 	}
 
-	if (!uuidPattern.test(tripId)) {
-		return json(
-			{ ok: false, code: 'invalid_request', message: geoErrorMessage('invalid_request') },
-			{ status: 400 }
-		);
-	}
-
-	const [trip] = await db.select().from(deliveryRequests).where(eq(deliveryRequests.id, tripId)).limit(1);
-	if (!trip) {
-		return json({ ok: false, code: 'no_results', message: 'Trip not found.' }, { status: 404 });
-	}
+	const [trip] = await db
+		.select()
+		.from(deliveryRequests)
+		.where(eq(deliveryRequests.id, tripId))
+		.limit(1);
 
 	// Scope the trip to its participants — a valid session alone must not grant
-	// read access to another business's delivery, addresses included.
-	const isParticipant =
-		trip.businessId === locals.user.id || trip.assignedCourierId === locals.user.id;
-	if (!isParticipant && locals.user.role !== 'admin') {
-		return json({ ok: false, code: 'no_results', message: 'Trip not found.' }, { status: 404 });
+	// read access to another business's delivery, addresses included. 404 rather
+	// than 403, so a miss doesn't confirm the id exists.
+	const isParticipant = trip?.businessId === user.id || trip?.assignedCourierId === user.id;
+	if (!trip || (!isParticipant && user.role !== 'admin')) {
+		return apiError(404, 'no_results', 'Trip not found.');
 	}
 
 	const pickupLat = trip.pickupLatitude != null ? Number(trip.pickupLatitude) : null;

@@ -6,6 +6,7 @@
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import { auth } from '$lib/stores/auth';
 	import { courierOnline } from '$lib/stores/courier-online';
+	import { initials } from '$lib/shared/text';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -13,14 +14,7 @@
 	const isFocusedTrip = $derived(path === '/courier/pickup' || path === '/courier/deliver');
 	const isHome = $derived(path === '/courier/home');
 	const user = $derived($auth.user);
-	const initials = $derived(
-		(user?.name || 'C')
-			.split(/\s+/)
-			.slice(0, 2)
-			.map((part) => part[0] || '')
-			.join('')
-			.toUpperCase() || 'C'
-	);
+	const avatarInitials = $derived(initials(user?.name, 'C'));
 
 	onMount(() => {
 		courierOnline.hydrate();
@@ -40,7 +34,7 @@
 				class="rounded-full outline-none ring-primary focus-visible:ring-2"
 				aria-label="Open profile"
 			>
-				<Avatar {initials} size={32} status={$courierOnline ? 'online' : null} />
+				<Avatar initials={avatarInitials} size={32} status={$courierOnline ? 'online' : null} />
 			</a>
 		</header>
 

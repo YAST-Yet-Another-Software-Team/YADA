@@ -2,10 +2,14 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { and, eq, inArray } from 'drizzle-orm';
 
+import { apiError, requireApiUser } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
-import { courierProfiles, deliveryRequests, tripEvents } from '$lib/server/db/schema';
+import { courierProfiles, deliveryRequests } from '$lib/server/db/schema';
+import { recordTripEvent } from '$lib/server/data/trip-events';
 import { geoErrorMessage } from '$lib/shared/geo/errors';
 import { getIo } from '$lib/server/realtime/instance';
+import { ACTIVE_TRIP_STATUSES } from '$lib/shared/trip-status';
+import { isUuid } from '$lib/shared/uuid';
 
 type LocationBody = {
 	lat?: number;
@@ -15,32 +19,16 @@ type LocationBody = {
 	recordedAt?: string;
 };
 
-const ACTIVE_STATUSES = [
-	'accepted',
-	'courier_arriving',
-	'arrived',
-	'in_progress'
-] as const;
-
 export const POST: RequestHandler = async ({ request, locals }) => {
-	if (!locals.user) {
-		return json({ ok: false, code: 'denied', message: 'Sign in required.' }, { status: 401 });
-	}
-	if (locals.user.role !== 'courier' && locals.user.role !== 'admin') {
-		return json({ ok: false, code: 'denied', message: 'Courier account required.' }, { status: 403 });
-	}
-	if (!db) {
-		return json({ ok: false, code: 'unavailable', message: 'Database unavailable.' }, { status: 503 });
-	}
+	const guard = requireApiUser(locals, 'courier');
+	if (guard.error) return guard.error;
+	const { user } = guard;
 
 	const body = (await request.json()) as LocationBody;
 	const lat = Number(body.lat);
 	const lng = Number(body.lng);
 	if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-		return json(
-			{ ok: false, code: 'invalid_request', message: geoErrorMessage('invalid_request') },
-			{ status: 400 }
-		);
+		return apiError(400, 'invalid_request', geoErrorMessage('invalid_request'));
 	}
 
 	const recordedAt = body.recordedAt ? new Date(body.recordedAt) : new Date();
@@ -53,18 +41,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			lastLocationAt: recordedAt,
 			updatedAt: new Date()
 		})
-		.where(eq(courierProfiles.userId, locals.user.id));
+		.where(eq(courierProfiles.userId, user.id));
 
-	let tripId = body.tripId ?? null;
+	// A tripId is only honoured if it's this courier's own live trip; anything
+	// else is dropped so a stale id can't attach fixes to someone's delivery.
+	// Screening the shape first keeps a malformed id out of the uuid column,
+	// where Postgres would raise rather than simply not match.
+	let tripId = isUuid(body.tripId) ? body.tripId : null;
 	if (tripId) {
 		const [trip] = await db
-			.select()
+			.select({ id: deliveryRequests.id })
 			.from(deliveryRequests)
 			.where(
 				and(
 					eq(deliveryRequests.id, tripId),
-					eq(deliveryRequests.assignedCourierId, locals.user.id),
-					inArray(deliveryRequests.status, [...ACTIVE_STATUSES])
+					eq(deliveryRequests.assignedCourierId, user.id),
+					inArray(deliveryRequests.status, [...ACTIVE_TRIP_STATUSES])
 				)
 			)
 			.limit(1);
@@ -72,22 +64,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (!trip) {
 			tripId = null;
 		} else {
-			await db.insert(tripEvents).values({
-				tripId: trip.id,
-				actorId: locals.user.id,
-				eventType: 'rider_location',
-				payload: JSON.stringify({
-					lat,
-					lng,
-					heading: body.heading ?? null,
-					recordedAt: recordedAt.toISOString()
-				})
+			await recordTripEvent(trip.id, user.id, 'rider_location', {
+				lat,
+				lng,
+				heading: body.heading ?? null,
+				recordedAt: recordedAt.toISOString()
 			});
 		}
 	}
 
 	const payload = {
-		courierId: locals.user.id,
+		courierId: user.id,
 		tripId,
 		lat,
 		lng,

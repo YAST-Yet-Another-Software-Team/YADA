@@ -16,10 +16,11 @@
 		type RiderLocationEvent
 	} from '$lib/client/realtime/client';
 	import { LOCATION_STALE_MS } from '$lib/client/realtime/courier-location';
+	import { toDispatchStage, type TripStatus } from '$lib/shared/trip-status';
 
 	type ActiveTrip = {
 		id: string;
-		status: 'requested' | 'accepted' | 'courier_arriving' | 'arrived' | 'in_progress' | 'completed' | 'cancelled';
+		status: TripStatus;
 		pickupAddress: string;
 		dropoffAddress: string;
 		pickupLat: number;
@@ -265,7 +266,7 @@
 	<aside
 		class="z-10 flex flex-col gap-4 rounded-t-xl border-t border-border bg-surface p-6 shadow-lg lg:w-[320px] lg:shrink-0 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none"
 	>
-		<StatusPill status={trip?.status === 'requested' ? 'searching' : trip?.status === 'accepted' ? 'assigned' : trip?.status === 'courier_arriving' || trip?.status === 'arrived' || trip?.status === 'in_progress' ? 'en_route' : trip?.status === 'completed' ? 'delivered' : 'cancelled'} />
+		<StatusPill status={toDispatchStage(trip?.status ?? 'requested')} />
 
 		<div class="flex items-center gap-3">
 			<Avatar initials="KA" status="online" size={48} />
