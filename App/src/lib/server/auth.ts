@@ -101,6 +101,21 @@ export const auth = betterAuth({
 
 export type AuthRole = 'business' | 'courier' | 'admin';
 
+const AUTH_ROLES: readonly AuthRole[] = ['business', 'courier', 'admin'];
+
+/**
+ * Narrow the `role` column to the role union.
+ *
+ * Better Auth types additionalFields loosely and the column is nullable, so a
+ * plain cast lets `null` masquerade as a valid role — it then fails every
+ * `role !== 'courier' && role !== 'admin'` guard and 403s with no explanation.
+ * Anything unrecognised falls back to the column's own defaultValue. The one
+ * guarantee that matters: this never returns `admin` for a value that wasn't.
+ */
+export function toAuthRole(value: unknown): AuthRole {
+  return AUTH_ROLES.includes(value as AuthRole) ? (value as AuthRole) : 'business';
+}
+
 export interface SessionUser {
   id: string;
   name: string;

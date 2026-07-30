@@ -25,7 +25,6 @@
 	let error = $state('');
 	let saved = $state(false);
 	let ready = $state(currentUser !== null);
-	let passwordSaving = $state(false);
 
 	const canSaveProfile = $derived(
 		ready &&
@@ -69,7 +68,6 @@
 			return;
 		}
 
-		passwordSaving = true;
 		try {
 			await auth.changePassword(currentPassword, newPassword);
 			saved = true;
@@ -78,8 +76,6 @@
 			confirmPassword = '';
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Unable to change password.';
-		} finally {
-			passwordSaving = false;
 		}
 	}
 </script>
@@ -168,8 +164,8 @@
 				{/if}
 
 				<div class="mt-auto pt-2">
-					<Button type="submit" variant="primary" fullWidth disabled={!canSavePassword || passwordSaving}>
-						{passwordSaving ? 'Updating…' : 'Update password'}
+					<Button type="submit" variant="primary" fullWidth disabled={!canSavePassword || $auth.isLoading}>
+						{$auth.isLoading ? 'Updating…' : 'Update password'}
 					</Button>
 				</div>
 			</form>
