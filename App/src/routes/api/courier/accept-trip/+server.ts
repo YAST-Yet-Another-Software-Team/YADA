@@ -5,6 +5,9 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { deliveryRequests, tripEvents } from '$lib/server/schema';
 
+const uuidPattern =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user) {
 		return json({ ok: false, message: 'Sign in required.' }, { status: 401 });
@@ -19,6 +22,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const body = await request.json();
 	const tripId = typeof body?.tripId === 'string' ? body.tripId : null;
 	if (!tripId) {
+		return json({ ok: false, message: 'Trip id required.' }, { status: 400 });
+	}
+	if (!uuidPattern.test(tripId)) {
 		return json({ ok: false, message: 'Trip id required.' }, { status: 400 });
 	}
 

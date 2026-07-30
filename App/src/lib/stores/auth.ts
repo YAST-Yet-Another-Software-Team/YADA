@@ -52,12 +52,12 @@ async function syncSession() {
       return null;
     }
 
-    const payload = (await response.json()) as {
+    const payload = (await response.json().catch(() => null)) as {
       user?: Parameters<typeof mapUser>[0] | null;
       data?: { user?: Parameters<typeof mapUser>[0] | null } | null;
-    };
+    } | null;
 
-    const currentUser = payload.user ?? payload.data?.user ?? null;
+    const currentUser = payload?.user ?? payload?.data?.user ?? null;
 
     set({
       user: mapUser(currentUser),
@@ -87,12 +87,12 @@ async function signIn(email: string, password: string, rememberMe = false) {
       throw new Error('Unable to sign in.');
     }
 
-    const payload = (await response.json()) as {
+    const payload = (await response.json().catch(() => null)) as {
       user?: Parameters<typeof mapUser>[0] | null;
       data?: { user?: Parameters<typeof mapUser>[0] | null } | null;
-    };
+    } | null;
 
-    const currentUser = payload.user ?? payload.data?.user ?? null;
+    const currentUser = payload?.user ?? payload?.data?.user ?? null;
     const mappedUser = mapUser(currentUser);
 
     set({ user: mappedUser, isLoading: false, error: null });

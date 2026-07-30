@@ -10,8 +10,6 @@
 	$: path = $page.url.pathname;
 	$: isAuth = path === '/courier/auth';
 	$: isFocusedTrip =
-		path === '/courier/offer' ||
-		path === '/courier/offer-sheet' ||
 		path === '/courier/pickup' ||
 		path === '/courier/deliver';
 	$: showChrome = !isAuth;

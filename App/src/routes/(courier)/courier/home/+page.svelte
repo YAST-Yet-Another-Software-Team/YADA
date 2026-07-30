@@ -4,6 +4,7 @@
 	import { fade } from 'svelte/transition';
 	import Button from '$lib/components/ui/Button.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
+	import { startDeviceLocationWatcher } from '$lib/geo/device-location';
 	import { courierOnline } from '$lib/stores/courier-online';
 	import { KUMASI_CENTER } from '$lib/geo/service-area';
 
@@ -46,9 +47,19 @@
 	let decliningId: string | null = null;
 	let actionError = '';
 	let refreshTimer: ReturnType<typeof setInterval> | undefined;
+	let deviceCenter: { lat: number; lng: number } | null = null;
+	let stopDeviceWatcher: (() => void) | null = null;
 
 	onMount(() => {
 		courierOnline.hydrate();
+		stopDeviceWatcher = startDeviceLocationWatcher({
+			onUpdate: (location) => {
+				deviceCenter = location;
+			},
+			onError: () => {
+				deviceCenter = deviceCenter ?? KUMASI_CENTER;
+			}
+		});
 		refreshTimer = setInterval(() => {
 			void invalidateAll();
 		}, 5000);
@@ -56,6 +67,7 @@
 
 	onDestroy(() => {
 		if (refreshTimer) clearInterval(refreshTimer);
+		stopDeviceWatcher?.();
 	});
 
 	$: currentRequest = data.pendingRequests[0] ?? null;
@@ -153,7 +165,7 @@
 	<div class="absolute inset-0">
 		<MapBackdrop
 			routeLabel={!!$courierOnline && !!heroTrip}
-			center={$courierOnline ? pickupPoint : KUMASI_CENTER}
+			center={$courierOnline ? pickupPoint : deviceCenter ?? KUMASI_CENTER}
 			markers={$courierOnline && heroTrip
 				? [
 						{

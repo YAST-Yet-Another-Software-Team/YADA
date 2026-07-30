@@ -42,6 +42,10 @@
 	let tripStatusLabel = 'Waiting';
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
+	function isTemporaryTripId(tripId: string) {
+		return tripId.startsWith('local-');
+	}
+
 	function markDelivered() {
 		goto('/history');
 	}
@@ -70,6 +74,10 @@
 	}
 
 	async function loadTripState(tripId: string) {
+		if (isTemporaryTripId(tripId)) {
+			return Boolean(trip);
+		}
+
 		try {
 			const res = await fetch(`/api/trips?id=${encodeURIComponent(tripId)}`);
 			const data = await res.json();
@@ -179,7 +187,7 @@
 		}
 
 		refreshTimer = setInterval(() => {
-			if (tripId) void loadTripState(tripId);
+			if (tripId && !isTemporaryTripId(tripId)) void loadTripState(tripId);
 		}, 4000);
 
 		if (trip.status !== 'requested' && trip.assignedCourierId) {

@@ -13,8 +13,6 @@
 			label: 'Orders',
 			match: [
 				'/courier/orders',
-				'/courier/offer',
-				'/courier/offer-sheet',
 				'/courier/pickup',
 				'/courier/deliver'
 			],
