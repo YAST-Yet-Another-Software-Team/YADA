@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { and, eq } from 'drizzle-orm';
 
 import { db } from '$lib/server/db';
-import { deliveryRequests, tripEvents } from '$lib/server/schema';
+import { deliveryRequests, tripEvents } from '$lib/server/db/schema';
 
 const NEXT_STATUS: Record<string, 'courier_arriving' | 'in_progress' | 'completed'> = {
   arrive: 'courier_arriving',

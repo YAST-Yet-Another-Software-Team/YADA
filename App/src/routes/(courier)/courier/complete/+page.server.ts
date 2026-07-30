@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 
-import { formatCourierMoney, getCourierLatestCompletedTrip } from '$lib/server/courier-data';
+import { formatCourierMoney, getCourierLatestCompletedTrip } from '$lib/server/data/courier';
 
 export async function load({ locals, url }) {
   if (!locals.user?.id) {

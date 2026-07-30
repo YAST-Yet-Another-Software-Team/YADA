@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 
-import { getCourierTripById } from '$lib/server/courier-data';
+import { getCourierTripById } from '$lib/server/data/courier';
 
 export async function load({ locals, url }) {
   if (!locals.user?.id) {

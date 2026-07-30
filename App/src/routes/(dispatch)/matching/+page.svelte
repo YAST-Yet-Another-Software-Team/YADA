@@ -5,7 +5,7 @@
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
-	import { KUMASI_CENTER } from '$lib/geo/service-area';
+	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let center = KUMASI_CENTER;

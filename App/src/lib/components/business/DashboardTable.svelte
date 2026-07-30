@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
-	import type { DashboardTripRecord } from '$lib/server/dashboard-data';
+	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
 
 	export let trips: DashboardTripRecord[] = [];
 

@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 
-import { db } from './db';
-import { deliveryRequests, users } from './schema';
+import { db } from '../db';
+import { deliveryRequests, users } from '../db/schema';
 
 const ACTIVE_STATUSES = ['accepted', 'courier_arriving', 'arrived', 'in_progress'] as const;
 const COMPLETED_STATUSES = ['completed', 'cancelled'] as const;

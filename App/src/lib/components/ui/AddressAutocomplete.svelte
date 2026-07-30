@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { createEventDispatcher, onDestroy } from 'svelte';
 	import Input from './Input.svelte';
-	import { loadGoogleMapsPlaces } from '$lib/maps/google-maps-loader';
-	import { MAPS_ENABLED } from '$lib/maps/maps-enabled';
-	import { containsPoint, getZoneBounds, KUMASI_CENTER } from '$lib/geo/service-area';
-	import { geoErrorMessage, type GeoErrorCode } from '$lib/geo/errors';
-	import { createClientGeocodeCache, placeCacheKey } from '$lib/geo/geocode-cache';
+	import { loadGoogleMapsPlaces } from '$lib/client/maps/google-maps-loader';
+	import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
+	import { containsPoint, getZoneBounds, KUMASI_CENTER } from '$lib/shared/geo/service-area';
+	import { geoErrorMessage, type GeoErrorCode } from '$lib/shared/geo/errors';
+	import { createClientGeocodeCache, placeCacheKey } from '$lib/shared/geo/geocode-cache';
 
 	export let label = '';
 	export let placeholder = 'Search KNUST / Ayeduase address...';

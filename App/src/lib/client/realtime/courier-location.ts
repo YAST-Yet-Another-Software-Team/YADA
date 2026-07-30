@@ -1,4 +1,4 @@
-import { emitRiderLocation } from '$lib/realtime/client';
+import { emitRiderLocation } from '$lib/client/realtime/client';
 
 const THROTTLE_MS = 2500;
 const STALE_MS = 30_000;

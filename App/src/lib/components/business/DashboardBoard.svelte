@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { boardColumns } from '$lib/data/mock-trips';
-	import type { DashboardTripRecord } from '$lib/server/dashboard-data';
+	import { boardColumns } from '$lib/client/data/mock-trips';
+	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
 
 	type TripStatus = DashboardTripRecord['status'];
 

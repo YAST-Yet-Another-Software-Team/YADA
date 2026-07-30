@@ -2,16 +2,16 @@
 	import { onDestroy, onMount } from 'svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
-	import { startDeviceLocationWatcher } from '$lib/geo/device-location';
-	import { KUMASI_CENTER } from '$lib/geo/service-area';
-	import { computeDrivingRoute } from '$lib/maps/routing';
+	import { startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
+	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
+	import { computeDrivingRoute } from '$lib/client/maps/routing';
 	import {
 		joinDispatchRiders,
 		leaveDispatchRiders,
 		onRiderLocation,
 		type RiderLocationEvent
-	} from '$lib/realtime/client';
-	import { LOCATION_STALE_MS } from '$lib/realtime/courier-location';
+	} from '$lib/client/realtime/client';
+	import { LOCATION_STALE_MS } from '$lib/client/realtime/courier-location';
 
 	export let data: {
 		businessProfile: {

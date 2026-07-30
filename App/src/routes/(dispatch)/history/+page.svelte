@@ -4,7 +4,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import Tabs from '$lib/components/ui/Tabs.svelte';
-	import type { DashboardTripRecord } from '$lib/server/dashboard-data';
+	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
 
 	export let data: {
 		historyTrips: DashboardTripRecord[];

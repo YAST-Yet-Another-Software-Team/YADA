@@ -1,10 +1,10 @@
-import type { LatLng } from '$lib/geo/service-area';
-import type { GeoErrorCode } from '$lib/geo/errors';
+import type { LatLng } from '$lib/shared/geo/service-area';
+import type { GeoErrorCode } from '$lib/shared/geo/errors';
 import {
 	createClientGeocodeCache,
 	forwardCacheKey,
 	reverseCacheKey
-} from '$lib/geo/geocode-cache';
+} from '$lib/shared/geo/geocode-cache';
 
 export type GeocodeResult = {
 	address: string;
@@ -27,7 +27,7 @@ export async function forwardGeocode(
 	const key = forwardCacheKey(address);
 	const cached = cache.get(key);
 	if (cached) {
-		const { containsPoint } = await import('$lib/geo/service-area');
+		const { containsPoint } = await import('$lib/shared/geo/service-area');
 		const inZone = containsPoint({ lat: cached.lat, lng: cached.lng });
 		if (options?.enforceZone !== false && !inZone) {
 			return {
@@ -70,7 +70,7 @@ export async function reverseGeocode(point: LatLng): Promise<GeocodeResponse> {
 	const key = reverseCacheKey(point.lat, point.lng);
 	const cached = cache.get(key);
 	if (cached) {
-		const { containsPoint } = await import('$lib/geo/service-area');
+		const { containsPoint } = await import('$lib/shared/geo/service-area');
 		return {
 			ok: true,
 			result: {

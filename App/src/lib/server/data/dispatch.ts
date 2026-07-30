@@ -1,7 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
 
-import { db } from './db';
-import { businessProfiles, deliveryRequests, users } from './schema';
+import { db } from '../db';
+import { businessProfiles, deliveryRequests, users } from '../db/schema';
 
 export type DispatchUser = {
   id: string;

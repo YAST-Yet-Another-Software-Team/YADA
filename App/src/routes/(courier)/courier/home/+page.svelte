@@ -4,9 +4,9 @@
 	import { fade } from 'svelte/transition';
 	import Button from '$lib/components/ui/Button.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
-	import { startDeviceLocationWatcher } from '$lib/geo/device-location';
+	import { startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
 	import { courierOnline } from '$lib/stores/courier-online';
-	import { KUMASI_CENTER } from '$lib/geo/service-area';
+	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 
 	export let data: {
 		profile: { name: string; initials: string };

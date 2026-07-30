@@ -3,7 +3,7 @@ import type { Server as HttpsServer } from 'node:https';
 import { Server } from 'socket.io';
 import { env } from '$env/dynamic/private';
 
-import { setIo } from './socket-instance';
+import { setIo } from './instance';
 
 const socketCorsOrigin = env.SOCKET_CORS_ORIGIN ?? 'http://localhost:5173';
 

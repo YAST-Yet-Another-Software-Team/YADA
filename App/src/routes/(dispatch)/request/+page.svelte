@@ -5,11 +5,11 @@
 	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import { getCurrentDeviceLocation, startDeviceLocationWatcher } from '$lib/geo/device-location';
-	import { reverseGeocode } from '$lib/maps/geocode-client';
-	import { computeDrivingRoute } from '$lib/maps/routing';
-	import { containsPoint, KUMASI_CENTER, type LatLng } from '$lib/geo/service-area';
-	import { geoErrorMessage, type GeoErrorCode } from '$lib/geo/errors';
+	import { getCurrentDeviceLocation, startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
+	import { reverseGeocode } from '$lib/client/maps/geocode-client';
+	import { computeDrivingRoute } from '$lib/client/maps/routing';
+	import { containsPoint, KUMASI_CENTER, type LatLng } from '$lib/shared/geo/service-area';
+	import { geoErrorMessage, type GeoErrorCode } from '$lib/shared/geo/errors';
 
 	type LocationMode = 'pickup' | 'dropoff';
 

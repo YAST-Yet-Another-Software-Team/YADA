@@ -14,13 +14,13 @@
 
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import { loadGoogleMaps } from '$lib/maps/google-maps-loader';
-  import { MAPS_ENABLED } from '$lib/maps/maps-enabled';
+  import { loadGoogleMaps } from '$lib/client/maps/google-maps-loader';
+  import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
   import {
     KUMASI_CENTER,
     KUMASI_DEFAULT_ZOOM,
     type LatLng
-  } from '$lib/geo/service-area';
+  } from '$lib/shared/geo/service-area';
 
   export let routeLabel = false;
   export let interactive = false;

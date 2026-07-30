@@ -2,13 +2,13 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 import { env } from '$env/dynamic/private';
-import { GeoError, geoErrorMessage, mapGoogleStatusToGeoError } from '$lib/geo/errors';
+import { GeoError, geoErrorMessage, mapGoogleStatusToGeoError } from '$lib/shared/geo/errors';
 import {
 	forwardCacheKey,
 	serverGeocodeCache,
 	type CachedGeocode
-} from '$lib/geo/geocode-cache';
-import { assertInZone, containsPoint } from '$lib/geo/service-area';
+} from '$lib/shared/geo/geocode-cache';
+import { assertInZone, containsPoint } from '$lib/shared/geo/service-area';
 
 type ForwardBody = {
 	address?: string;

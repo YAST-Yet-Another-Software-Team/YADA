@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 
-import { seedTestBusinessUser } from '$lib/server/dashboard-data';
+import { seedTestBusinessUser } from '$lib/server/data/dashboard';
 
 export async function POST() {
 	const user = await seedTestBusinessUser();

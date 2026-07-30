@@ -3,9 +3,9 @@ import type { RequestHandler } from './$types';
 import { eq } from 'drizzle-orm';
 
 import { db } from '$lib/server/db';
-import { deliveryRequests, tripEvents } from '$lib/server/schema';
-import { assertInZone, containsPoint } from '$lib/geo/service-area';
-import { GeoError, geoErrorMessage } from '$lib/geo/errors';
+import { deliveryRequests, tripEvents } from '$lib/server/db/schema';
+import { assertInZone, containsPoint } from '$lib/shared/geo/service-area';
+import { GeoError, geoErrorMessage } from '$lib/shared/geo/errors';
 import { env } from '$env/dynamic/private';
 
 const uuidPattern =

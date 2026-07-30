@@ -1,4 +1,4 @@
-import { getAvailableRiders, getDashboardTrips } from '$lib/server/dashboard-data';
+import { getAvailableRiders, getDashboardTrips } from '$lib/server/data/dashboard';
 
 export async function load({ locals }) {
 	const userId = locals.user?.id ?? undefined;
