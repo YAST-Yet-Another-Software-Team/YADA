@@ -13,25 +13,31 @@ import type { Handle } from '@sveltejs/kit';
 // The `building` flag prevents execution during `vite build`.
 // ---------------------------------------------------------------------------
 export const handle: Handle = async ({ event, resolve }) => {
-  // Populate locals with the session on every request so any
-  // +page.server.ts or +layout.server.ts can do event.locals.user.
-  const session = await auth.api.getSession({ headers: event.request.headers });
+  // If auth isn't configured (no DATABASE_URL), skip session handling
+  if (auth) {
+    // Populate locals with the session on every request so any
+    // +page.server.ts or +layout.server.ts can do event.locals.user.
+    const session = await auth.api.getSession({ headers: event.request.headers });
 
-  event.locals.session = session?.session ?? null;
-  event.locals.user = session?.user
-    ? {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email ?? null,
-        phone: (session.user as Record<string, unknown>).phoneNumber as string | null,
-        role: ((session.user as Record<string, unknown>).role as string | null) as
-          | 'business'
-          | 'courier'
-          | 'admin',
-        image: session.user.image ?? null
-      }
-    : null;
+    event.locals.session = session?.session ?? null;
+    event.locals.user = session?.user
+      ? {
+          id: session.user.id,
+          name: session.user.name,
+          email: session.user.email ?? null,
+          phone: (session.user as Record<string, unknown>).phoneNumber as string | null,
+          role: ((session.user as Record<string, unknown>).role as string | null) as
+            | 'business'
+            | 'courier'
+            | 'admin',
+          image: session.user.image ?? null
+        }
+      : null;
 
-  return svelteKitHandler({ event, resolve, auth, building });
+    return svelteKitHandler({ event, resolve, auth, building });
+  }
+
+  // No database configured — just pass through
+  return resolve(event);
 };
 

@@ -4,7 +4,7 @@ import { betterAuth } from 'better-auth';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
 
-import { db } from './db';
+import { getDb } from './db';
 import { appEnv } from './env';
 import * as schema from './schema';
 
@@ -19,9 +19,14 @@ import * as schema from './schema';
 // - sveltekitCookies plugin ensures Set-Cookie works inside SvelteKit's
 //   server actions (which bypass the normal response cycle).
 // ---------------------------------------------------------------------------
-export const auth = betterAuth({
-  // Require DATABASE_URL to be set; db can be null during type-check without a DB
-  database: drizzleAdapter(db!, {
+function createAuth() {
+  const db = getDb();
+  if (!db) {
+    return null;
+  }
+
+  return betterAuth({
+  database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {
       user: schema.users,
@@ -69,7 +74,10 @@ export const auth = betterAuth({
 
   // sveltekitCookies must be last — it finalises Set-Cookie during server actions.
   plugins: [dash(), sveltekitCookies(getRequestEvent)]
-});
+  });
+}
+
+export const auth = createAuth();
 
 // ---------------------------------------------------------------------------
 // Re-export the session user shape so the rest of the app can reference it.

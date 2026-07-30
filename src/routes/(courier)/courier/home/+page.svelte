@@ -2,6 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
 	import { courierOnline } from '$lib/stores/courier-online';
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
@@ -34,6 +35,18 @@
 		if (timer) clearTimeout(timer);
 		goto('/courier/offer');
 	}
+
+	function openOrders() {
+		goto('/courier/orders');
+	}
+
+	function openTrips() {
+		goto('/courier/trips');
+	}
+
+	function openProfile() {
+		goto('/courier/profile');
+	}
 </script>
 
 <svelte:head>
@@ -61,31 +74,48 @@
 	</div>
 
 	{#if !$courierOnline}
-		<div class="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-			<div
-				class="flex h-[120px] w-[120px] items-center justify-center rounded-full border-2 border-dashed border-neutral-300"
-			>
-				<svg
-					viewBox="0 0 24 24"
-					class="h-12 w-12 text-ink-tertiary"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="1.5"
-				>
-					<path d="M5 17h14" />
-					<path d="M7 17V9l5-4 5 4v8" />
-					<circle cx="8.5" cy="17" r="1.5" />
-					<circle cx="15.5" cy="17" r="1.5" />
-				</svg>
+			<div class="flex flex-1 flex-col justify-between gap-6 px-4 py-4">
+				<Card>
+					<div class="flex items-start gap-4">
+						<div
+							class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border bg-primary-subtle text-primary"
+						>
+							<svg
+								viewBox="0 0 24 24"
+								class="h-7 w-7"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.7"
+							>
+								<path d="M5 17h14" />
+								<path d="M7 17V9l5-4 5 4v8" />
+								<circle cx="8.5" cy="17" r="1.5" />
+								<circle cx="15.5" cy="17" r="1.5" />
+							</svg>
+						</div>
+						<div class="min-w-0 flex-1">
+							<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Status</p>
+							<h1 class="mt-1 text-lg font-bold text-ink">You’re offline</h1>
+							<p class="mt-2 text-sm leading-6 text-ink-secondary">
+								Go online when you’re ready to receive nearby delivery requests.
+							</p>
+						</div>
+					</div>
+				</Card>
+
+				<div class="grid gap-3 sm:grid-cols-3">
+					<Button variant="outline" size="sm" fullWidth on:click={openOrders}>Orders</Button>
+					<Button variant="outline" size="sm" fullWidth on:click={openTrips}>Trips</Button>
+					<Button variant="outline" size="sm" fullWidth on:click={openProfile}>Profile</Button>
+				</div>
+
+				<div class="mt-auto flex flex-col gap-3">
+					<p class="text-sm text-ink-secondary">
+						Once you’re online, request offers will appear here and in the orders tab.
+					</p>
+					<Button variant="primary" size="lg" fullWidth on:click={goOnline}>Go online</Button>
+				</div>
 			</div>
-			<h1 class="text-lg font-bold text-ink">You're offline</h1>
-			<p class="max-w-xs text-sm text-ink-secondary">
-				Go online when you're ready to receive delivery requests from nearby businesses.
-			</p>
-			<div class="w-full max-w-xs pt-2">
-				<Button variant="primary" size="lg" fullWidth on:click={goOnline}>Go online</Button>
-			</div>
-		</div>
 	{:else}
 		<div class="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
 			<div
