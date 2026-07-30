@@ -24,7 +24,7 @@
 	{#each boardColumns as column}
 		{@const cards = columnTrips(column.key)}
 		<section class="flex min-h-[220px] flex-col rounded-lg border border-border bg-surface-sunken p-3">
-			<h3 class="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+			<h3 class="mb-3 text-eyebrow text-ink-tertiary">
 				{column.title} ({cards.length})
 			</h3>
 			<div class="flex flex-1 flex-col gap-2">

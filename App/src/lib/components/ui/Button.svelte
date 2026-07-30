@@ -34,8 +34,11 @@
     secondary:
       'bg-secondary text-secondary-on hover:bg-secondary-hover active:bg-secondary-active border-transparent',
     outline:
-      'bg-transparent text-primary border-[1.5px] border-primary hover:bg-primary-subtle active:bg-primary-subtle',
+      'bg-transparent text-primary border-md border-primary hover:bg-primary-subtle active:bg-primary-subtle',
     ghost: 'bg-transparent text-ink border-transparent hover:bg-neutral-100 active:bg-neutral-200',
+    // The Design System aliases danger onto the brand red ramp on purpose, so
+    // an error state doesn't introduce a second competing red. --color-danger
+    // *is* --red-600; the hover/active steps continue up that same ramp.
     danger: 'bg-danger text-primary-on hover:bg-primary-700 active:bg-primary-800 border-transparent'
   };
 </script>

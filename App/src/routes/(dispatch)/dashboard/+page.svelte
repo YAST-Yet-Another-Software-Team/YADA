@@ -100,26 +100,26 @@
 
 	<div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
 		<div class="rounded-lg border border-border bg-surface p-4 shadow-xs">
-			<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+			<p class="text-eyebrow text-ink-tertiary">
 				Active deliveries
 			</p>
-			<p class="font-mono-data mt-2 text-2xl font-bold text-ink lg:text-[26px]">
+			<p class="font-mono-data mt-2 text-2xl font-bold text-ink">
 				{data.dashboard.activeTrips.length}
 			</p>
 		</div>
 		<div class="hidden rounded-lg border border-border bg-surface p-4 shadow-xs lg:block">
-			<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+			<p class="text-eyebrow text-ink-tertiary">
 				Avg. pickup time
 			</p>
-			<p class="font-mono-data mt-2 text-[26px] font-bold text-ink">
+			<p class="font-mono-data mt-2 text-2xl font-bold text-ink">
 				{data.dashboard.activeTrips.length > 0 ? 'Live' : '—'}
 			</p>
 		</div>
 		<div class="rounded-lg border border-border bg-surface p-4 shadow-xs">
-			<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+			<p class="text-eyebrow text-ink-tertiary">
 				Delivered today
 			</p>
-			<p class="font-mono-data mt-2 text-2xl font-bold text-ink lg:text-[26px]">
+			<p class="font-mono-data mt-2 text-2xl font-bold text-ink">
 				{data.dashboard.historyTrips.filter((t) => t.status === 'delivered').length}
 			</p>
 		</div>
@@ -169,7 +169,7 @@
 
 {#if selected}
 	<!-- Overlay map panel (stays on dashboard) -->
-	<div class="fixed inset-0 z-40 flex justify-end bg-[color:var(--color-overlay)]" role="dialog" aria-modal="true">
+	<div class="fixed inset-0 z-40 flex justify-end bg-overlay" role="dialog" aria-modal="true">
 		<button
 			type="button"
 			class="absolute inset-0 cursor-default"

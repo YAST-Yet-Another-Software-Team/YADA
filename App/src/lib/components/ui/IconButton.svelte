@@ -15,7 +15,7 @@
 
   const variantClass = $derived(
     variant === 'outline'
-      ? 'border-[1.5px] border-border bg-surface hover:bg-neutral-100'
+      ? 'border-md border-border bg-surface hover:bg-neutral-100'
       : 'border border-transparent bg-surface shadow-xs hover:bg-neutral-100'
   );
 </script>

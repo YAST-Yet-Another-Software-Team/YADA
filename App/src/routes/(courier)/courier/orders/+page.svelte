@@ -24,7 +24,7 @@
 	{#if online.online}
 		<Card>
 			<div class="flex flex-col gap-3">
-				<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+				<p class="text-eyebrow text-ink-tertiary">
 					Demo active order
 				</p>
 				<p class="font-semibold text-ink">#4521 · 88 Elm St</p>

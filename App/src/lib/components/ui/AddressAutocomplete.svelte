@@ -410,7 +410,7 @@
 	/>
 
 	{#if loading || resolving}
-		<p class="mt-1 text-[10px] font-semibold uppercase tracking-wide text-ink-tertiary">
+		<p class="mt-1 text-eyebrow text-ink-tertiary">
 			{resolving ? 'Resolving location…' : 'Searching…'}
 		</p>
 	{/if}
@@ -446,7 +446,7 @@
 						<div class="min-w-0 flex-1">
 							<p class="truncate font-semibold text-ink">{suggestion.mainText}</p>
 							{#if suggestion.secondaryText}
-								<p class="truncate text-[11px] text-ink-secondary">{suggestion.secondaryText}</p>
+								<p class="truncate text-xs text-ink-secondary">{suggestion.secondaryText}</p>
 							{/if}
 						</div>
 					</button>
@@ -456,7 +456,7 @@
 	{/if}
 
 	{#if errorMessage}
-		<p class="mt-1.5 text-xs font-medium text-red-600">{errorMessage}</p>
+		<p class="mt-1.5 text-xs font-medium text-danger">{errorMessage}</p>
 	{/if}
 
 	{#if MAPS_ENABLED && !googleMapsApiKey}

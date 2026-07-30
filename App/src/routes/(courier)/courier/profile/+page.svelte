@@ -44,11 +44,11 @@
 
 	<div class="grid grid-cols-2 gap-3">
 		<div class="rounded-lg border border-border bg-surface p-4">
-			<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Status</p>
+			<p class="text-eyebrow text-ink-tertiary">Status</p>
 			<p class="font-mono-data mt-1 text-2xl font-bold text-ink">{online.online ? 'Online' : 'Offline'}</p>
 		</div>
 		<div class="rounded-lg border border-border bg-surface p-4">
-			<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Role</p>
+			<p class="text-eyebrow text-ink-tertiary">Role</p>
 			<p class="font-mono-data mt-1 text-2xl font-bold text-ink">{user?.role ?? 'courier'}</p>
 		</div>
 	</div>

@@ -146,7 +146,7 @@
 </div>
 
 {#if selected}
-	<div class="fixed inset-0 z-40 flex justify-end bg-[color:var(--color-overlay)]" role="dialog" aria-modal="true">
+	<div class="fixed inset-0 z-40 flex justify-end bg-overlay" role="dialog" aria-modal="true">
 		<button
 			type="button"
 			class="absolute inset-0 cursor-default"
@@ -174,27 +174,27 @@
 
 			<dl class="space-y-4 text-sm">
 				<div>
-					<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+					<dt class="text-eyebrow text-ink-tertiary">
 						Destination
 					</dt>
 					<dd class="mt-1 text-ink">{selected.destination}</dd>
 				</div>
 				<div>
-					<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Pickup</dt>
+					<dt class="text-eyebrow text-ink-tertiary">Pickup</dt>
 					<dd class="mt-1 text-ink">{selected.pickup ?? '—'}</dd>
 				</div>
 				<div>
-					<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Rider</dt>
+					<dt class="text-eyebrow text-ink-tertiary">Rider</dt>
 					<dd class="mt-1 text-ink">{selected.rider ?? '—'}</dd>
 				</div>
 				<div>
-					<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+					<dt class="text-eyebrow text-ink-tertiary">
 						Completed
 					</dt>
 					<dd class="mt-1 text-ink">{selected.completedAt ?? '—'}</dd>
 				</div>
 				<div>
-					<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Notes</dt>
+					<dt class="text-eyebrow text-ink-tertiary">Notes</dt>
 					<dd class="mt-1 text-ink-secondary">{selected.notes ?? '—'}</dd>
 				</div>
 			</dl>

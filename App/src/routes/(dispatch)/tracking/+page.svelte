@@ -274,12 +274,12 @@
 				<p class="text-sm font-semibold text-ink">Assigned rider</p>
 				<p class="text-sm text-ink-secondary">{tripStatusLabel}</p>
 			</div>
-			<p class="font-mono-data text-[22px] font-semibold leading-none text-primary lg:hidden">
+			<p class="font-mono-data text-xl font-semibold leading-tight text-primary lg:hidden">
 				{etaText}
 			</p>
 		</div>
 
-		<p class="font-mono-data hidden text-[26px] font-bold text-primary lg:block">{etaText}</p>
+		<p class="font-mono-data hidden text-2xl font-bold text-primary lg:block">{etaText}</p>
 
 		<div class="hidden border-t border-border pt-3 lg:block">
 			<p class="text-sm text-ink-secondary">

@@ -103,13 +103,13 @@
 
 <div class="min-h-svh bg-surface-sunken lg:px-8 lg:py-10">
 	<div class="mx-auto flex min-h-svh max-w-6xl items-stretch justify-center lg:min-h-[calc(100vh-2rem)] lg:items-center">
-		<div class="grid w-full grid-cols-1 overflow-hidden bg-surface lg:grid-cols-[1fr_1fr] lg:rounded-[28px] lg:border lg:border-border lg:shadow-[0_1px_2px_rgba(15,23,42,0.06),0_24px_60px_-20px_rgba(15,23,42,0.25)]">
+		<div class="grid w-full grid-cols-1 overflow-hidden bg-surface lg:grid-cols-[1fr_1fr] lg:rounded-xl lg:border lg:border-border lg:shadow-lg">
 
 			<!-- Mobile-only compact brand band -->
 			<section class="relative flex shrink-0 items-center justify-between overflow-hidden bg-primary px-5 py-4 lg:hidden">
 				<div class="pointer-events-none absolute -right-3 -top-3 grid grid-cols-4 gap-1.5 opacity-30">
 					{#each miniDotGrid as _}
-						<span class="h-1 w-1 rounded-full bg-white"></span>
+						<span class="h-1 w-1 rounded-full bg-primary-on"></span>
 					{/each}
 				</div>
 
@@ -118,13 +118,13 @@
 				</div>
 
 				<div class="relative z-10 flex items-center gap-3">
-					<div class="relative h-px w-12 border-t-2 border-dashed border-white/40">
-						<span class="absolute -top-[5px] h-2.5 w-2.5 rounded-full bg-white travel-shape"></span>
+					<div class="relative h-px w-12 border-t-2 border-dashed border-primary-on/40">
+						<span class="absolute -top-[5px] h-2.5 w-2.5 rounded-full bg-primary-on travel-shape"></span>
 					</div>
 					<div class="relative float-shape">
-						<div class="relative h-7 w-7 rounded-md border-2 border-white/70">
-							<span class="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-white/70"></span>
-							<span class="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/70"></span>
+						<div class="relative h-7 w-7 rounded-md border-2 border-primary-on/70">
+							<span class="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-primary-on/70"></span>
+							<span class="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-primary-on/70"></span>
 						</div>
 						<span class="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-secondary pulse-shape"></span>
 					</div>
@@ -136,44 +136,44 @@
 				<!-- top-left dot grid -->
 				<div class="absolute left-8 top-8 grid grid-cols-5 gap-2.5">
 					{#each dotGrid as _}
-						<span class="h-1.5 w-1.5 rounded-full bg-white/35"></span>
+						<span class="h-1.5 w-1.5 rounded-full bg-primary-on/35"></span>
 					{/each}
 				</div>
 
 				<!-- floating parcel icon, top-right -->
 				<div class="absolute right-10 top-10 float-shape">
-					<div class="relative h-14 w-14 rounded-lg border-2 border-white/70">
-						<span class="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-white/70"></span>
-						<span class="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/70"></span>
+					<div class="relative h-14 w-14 rounded-lg border-2 border-primary-on/70">
+						<span class="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-primary-on/70"></span>
+						<span class="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-primary-on/70"></span>
 					</div>
 					<span class="absolute -bottom-2 -right-2 h-4 w-4 rounded-full bg-secondary pulse-shape"></span>
 				</div>
 
 				<div class="relative z-10 mt-16">
-					<p class="font-mono text-xs uppercase tracking-[0.2em] text-white/70">YADA for teams</p>
-					<h1 class="mt-4 max-w-xs text-4xl font-bold leading-[1.1] tracking-tight text-white">
+					<p class="text-eyebrow font-mono text-primary-on/70">YADA for teams</p>
+					<h1 class="mt-4 max-w-xs text-4xl font-bold leading-tight tracking-tight text-primary-on">
 						Every delivery,<br />on time.
 					</h1>
-					<p class="mt-4 max-w-xs text-sm leading-6 text-white/80">
+					<p class="mt-4 max-w-xs text-sm leading-relaxed text-primary-on/80">
 						Sign in to manage orders, track couriers, and keep customers in the loop.
 					</p>
 				</div>
 
 				<!-- traveling courier dot along a dashed route -->
-				<div class="relative z-10 mt-10 h-px w-full border-t-2 border-dashed border-white/35">
-					<span class="absolute -top-[5px] h-2.5 w-2.5 rounded-full bg-white travel-shape"></span>
+				<div class="relative z-10 mt-10 h-px w-full border-t-2 border-dashed border-primary-on/35">
+					<span class="absolute -top-[5px] h-2.5 w-2.5 rounded-full bg-primary-on travel-shape"></span>
 				</div>
 
 				<!-- route/tracking motif, bottom -->
 				<div class="relative z-10 mt-8 flex items-center gap-4">
 					<div class="relative h-24 w-24 shrink-0">
-						<span class="absolute inset-0 spin-shape rounded-full border-2 border-dashed border-white/40"></span>
+						<span class="absolute inset-0 spin-shape rounded-full border-2 border-dashed border-primary-on/40"></span>
 						<span class="absolute bottom-1 left-1 h-12 w-12 rounded-full bg-secondary pulse-shape"></span>
-						<span class="absolute right-0 top-0 h-4 w-4 rounded-full bg-white"></span>
+						<span class="absolute right-0 top-0 h-4 w-4 rounded-full bg-primary-on"></span>
 					</div>
 					<div class="grid grid-cols-4 gap-2.5">
 						{#each Array.from({ length: 12 }) as _}
-							<span class="h-1.5 w-1.5 rounded-full bg-white/35"></span>
+							<span class="h-1.5 w-1.5 rounded-full bg-primary-on/35"></span>
 						{/each}
 					</div>
 				</div>
@@ -183,7 +183,7 @@
 			<section class="flex flex-col justify-center p-5 sm:p-6 lg:items-center lg:p-12">
 				<div class="mx-auto w-full max-w-sm">
 					<div class="flex flex-col items-center text-center">
-						<div class="hidden rounded-2xl bg-surface p-3 shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_20px_-8px_rgba(15,23,42,0.25)] lg:block">
+						<div class="hidden rounded-lg bg-surface p-3 shadow-md lg:block">
 							<BrandLogo href="/" size="md" />
 						</div>
 						<h2 class="mt-3 text-xl font-semibold tracking-tight text-ink lg:mt-5 lg:text-2xl">
@@ -193,7 +193,7 @@
 								{mode === 'sign-up' ? 'Create your account' : 'Hello! Welcome back'}
 							{/if}
 						</h2>
-						<p class="mt-1 text-sm leading-6 text-ink-secondary lg:mt-1.5">
+						<p class="mt-1 text-sm leading-relaxed text-ink-secondary lg:mt-1.5">
 							{#if showForgotPassword}
 								{resetSent
 									? `If an account exists for ${resetEmail}, we've sent a reset link.`
@@ -307,7 +307,7 @@
 						</form>
 					{/if}
 
-					<p class="mt-4 text-center text-xs leading-6 text-ink-tertiary lg:mt-6">
+					<p class="mt-4 text-center text-xs leading-relaxed text-ink-tertiary lg:mt-6">
 						No payment info needed — YADA only locates and tracks riders.
 					</p>
 				</div>

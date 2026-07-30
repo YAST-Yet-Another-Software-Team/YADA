@@ -101,7 +101,7 @@
 					void saveProfile();
 				}}
 			>
-				<div class="space-y-3 rounded-2xl bg-surface p-4 shadow-sm">
+				<div class="space-y-3 rounded-lg bg-surface p-4 shadow-sm">
 					<Input label="Full name" type="text" placeholder="Your name" bind:value={name} />
 					<Input label="Phone number" type="tel" placeholder="024 000 0000" bind:value={phone} />
 					<Input label="Email" type="email" bind:value={email} disabled />
@@ -136,7 +136,7 @@
 					void savePassword();
 				}}
 			>
-				<div class="space-y-3 rounded-2xl bg-surface p-4 shadow-sm">
+				<div class="space-y-3 rounded-lg bg-surface p-4 shadow-sm">
 					<Input
 						label="Current password"
 						type="password"

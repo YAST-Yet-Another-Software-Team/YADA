@@ -42,7 +42,7 @@
 				<a
 					href={link.href}
 					aria-current={active ? 'page' : undefined}
-					class="relative flex h-full items-center px-3 text-[15px] transition-colors {active
+					class="relative flex h-full items-center px-3 text-base transition-colors {active
 						? 'font-bold text-ink'
 						: 'font-medium text-ink-secondary hover:text-ink'}"
 				>
@@ -56,7 +56,7 @@
 				</a>
 			{/each}
 			<span
-				class="relative flex h-full cursor-not-allowed items-center px-3 text-[15px] text-ink-disabled"
+				class="relative flex h-full cursor-not-allowed items-center px-3 text-base text-ink-disabled"
 				title="Coming soon"
 			>
 				Team
@@ -67,7 +67,7 @@
 			{@render actions?.()}
 			<button
 				type="button"
-				class="rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-[color:var(--color-focus-ring)]"
+				class="rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-focus"
 				aria-label="Open business profile"
 				aria-expanded={profileOpen}
 				onclick={toggleProfile}

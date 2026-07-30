@@ -249,10 +249,10 @@
 		class="relative z-10 mt-auto space-y-3 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pb-3 pt-10"
 	>
 		{#if online.online && data.activeTrip}
-			<div class="rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
+			<div class="rounded-lg border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
 				<div class="flex items-center justify-between gap-3">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+						<p class="text-eyebrow text-ink-tertiary">
 							Active trip
 						</p>
 						<p class="text-sm font-semibold text-ink">
@@ -263,13 +263,13 @@
 				</div>
 			</div>
 		{:else if online.online && currentRequest}
-			<div class="rounded-2xl border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
+			<div class="rounded-lg border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
 				{#if actionError}
-					<p class="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{actionError}</p>
+					<p class="mb-3 rounded-xl bg-danger-subtle px-3 py-2 text-xs font-medium text-danger">{actionError}</p>
 				{/if}
 				<div class="flex items-start justify-between gap-3">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+						<p class="text-eyebrow text-ink-tertiary">
 							New request
 						</p>
 						<p class="text-sm font-semibold text-ink">{currentRequest.businessName}</p>
@@ -301,9 +301,9 @@
 				</div>
 			</div>
 		{:else if online.online}
-			<div class="rounded-2xl border border-border bg-surface/95 p-3 text-center text-sm text-ink-secondary shadow-sm backdrop-blur-sm">
+			<div class="rounded-lg border border-border bg-surface/95 p-3 text-center text-sm text-ink-secondary shadow-sm backdrop-blur-sm">
 				{#if actionError}
-					<p class="mb-2 rounded-xl bg-red-50 px-3 py-2 text-left text-xs font-medium text-red-700">{actionError}</p>
+					<p class="mb-2 rounded-xl bg-danger-subtle px-3 py-2 text-left text-xs font-medium text-danger">{actionError}</p>
 				{/if}
 				Today: {data.summary.tripsToday} deliveries
 			</div>

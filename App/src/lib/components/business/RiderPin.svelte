@@ -37,7 +37,7 @@
 		</svg>
 	</div>
 	<span
-		class="mt-0.5 max-w-[5.5rem] truncate rounded bg-surface/95 px-1 text-center text-[10px] font-semibold leading-tight text-ink shadow-xs"
+		class="mt-0.5 max-w-[5.5rem] truncate rounded bg-surface/95 px-1 text-center text-xs font-semibold leading-tight text-ink shadow-xs"
 	>
 		{label}
 	</span>

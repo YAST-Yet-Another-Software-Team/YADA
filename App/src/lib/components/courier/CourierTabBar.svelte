@@ -46,7 +46,7 @@
 </script>
 
 <nav
-	class="z-20 shrink-0 border-t border-border bg-surface px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1.5 shadow-[0_-2px_10px_rgba(0,0,0,0.03)]"
+	class="z-20 shrink-0 border-t border-border bg-surface px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1.5 shadow-nav"
 	aria-label="Courier"
 >
 	<div class="relative mx-auto flex max-w-md items-stretch">
@@ -61,7 +61,7 @@
 			<a
 				href={tab.href}
 				aria-current={active ? 'page' : undefined}
-				class="group relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-semibold transition-colors duration-200 {active
+				class="group relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-xs font-semibold transition-colors duration-200 {active
 					? 'text-primary'
 					: 'text-ink-tertiary hover:text-ink-secondary'}"
 			>

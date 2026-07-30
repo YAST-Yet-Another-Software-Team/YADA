@@ -54,15 +54,15 @@
 		</div>
 		<dl class="mb-4 space-y-2.5 text-sm">
 			<div>
-				<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Email</dt>
+				<dt class="text-eyebrow text-ink-tertiary">Email</dt>
 				<dd class="text-ink">{email}</dd>
 			</div>
 			<div>
-				<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Phone</dt>
+				<dt class="text-eyebrow text-ink-tertiary">Phone</dt>
 				<dd class="text-ink">{phone}</dd>
 			</div>
 			<div>
-				<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Role</dt>
+				<dt class="text-eyebrow text-ink-tertiary">Role</dt>
 				<dd class="text-ink">{user?.role ?? 'business'}</dd>
 			</div>
 		</dl>

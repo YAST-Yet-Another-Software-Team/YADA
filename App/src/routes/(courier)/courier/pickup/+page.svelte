@@ -173,11 +173,11 @@
     </div>
 
     {#if data.trip.notes}
-      <p class="rounded-2xl bg-neutral-50 px-3 py-2 text-sm text-ink-secondary">{data.trip.notes}</p>
+      <p class="rounded-lg bg-neutral-50 px-3 py-2 text-sm text-ink-secondary">{data.trip.notes}</p>
     {/if}
 
     {#if actionError}
-      <p class="rounded-2xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{actionError}</p>
+      <p class="rounded-lg bg-danger-subtle px-3 py-2 text-sm font-medium text-danger">{actionError}</p>
     {/if}
 
     <div class="flex items-center gap-3">

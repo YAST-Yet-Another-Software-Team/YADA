@@ -1,4 +1,8 @@
-/* Single source of truth: Design System tokens (must precede other rules) */
+/* Single source of truth: Design System tokens (must precede other rules).
+   These are the *only* colour/type/space/radius/shadow definitions in the app —
+   nothing below and nothing in a component should introduce a literal colour.
+   tailwind.config.ts exposes every token here as a utility class; reach for the
+   class first and `var(--token)` only inside a `<style>` block. */
 @import url('../../../../Design System/tokens/colors.css');
 @import url('../../../../Design System/tokens/typography.css');
 @import url('../../../../Design System/tokens/spacing.css');
@@ -10,6 +14,14 @@
 
 :root {
   color-scheme: light;
+
+  /* App-level additions — kept here rather than in the Design System because
+     they are specific to this app's chrome. Both derive from DS values so they
+     stay in step with the ramps. */
+
+  /* Upward shadow for the bottom tab bar; the DS elevation scale only casts
+     downward. Same warm shadow hue as --shadow-xs, negative Y. */
+  --shadow-nav: 0 -2px 10px oklch(20% 0.02 30 / 0.06);
 }
 
 html,
@@ -30,6 +42,26 @@ body {
 ::selection {
   background: var(--color-primary-subtle);
   color: var(--color-text-primary);
+}
+
+/* Semantic type roles. These live in the `components` layer on purpose: the
+   `font:` shorthand would otherwise beat any utility written alongside it, and
+   utilities must stay able to override a single property (`font-bold` on an
+   eyebrow, `font-mono` on the marketing panel). Layer order guarantees that.
+
+   The remaining Design System composites (--text-display-*, --text-heading-*,
+   --text-body-*, --text-label, --text-mono-*) are available the same way via
+   `font: var(--token)`; only the roles the app actually repeats are promoted to
+   a class here. */
+@layer components {
+  /* Small uppercase label above a value — stat captions, definition-list terms,
+     section headers. The Design System pairs 12px/semibold with --tracking-widest
+     for this role; colour stays a separate utility since it varies by context. */
+  .text-eyebrow {
+    font: var(--text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-widest);
+  }
 }
 
 .text-balance {

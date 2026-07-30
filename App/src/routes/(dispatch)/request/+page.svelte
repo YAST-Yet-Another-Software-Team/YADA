@@ -287,11 +287,11 @@
 			</div>
 
 			{#if zoneError}
-				<p class="rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{zoneError}</p>
+				<p class="rounded-md bg-danger-subtle px-3 py-2 text-xs font-medium text-danger">{zoneError}</p>
 			{/if}
 
 			<section class="space-y-2">
-				<p class="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Pickup</p>
+				<p class="text-eyebrow font-bold text-primary">Pickup</p>
 				<div onfocusin={() => (activeLocation = 'pickup')}>
 					<AddressAutocomplete
 						placeholder="Business / pickup address"
@@ -304,7 +304,7 @@
 			</section>
 
 			<section class="space-y-2">
-				<p class="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Dropoff</p>
+				<p class="text-eyebrow font-bold text-primary">Dropoff</p>
 				<div onfocusin={() => (activeLocation = 'dropoff')}>
 					<AddressAutocomplete
 						placeholder="Customer delivery address"
@@ -317,7 +317,7 @@
 			</section>
 
 			<section class="space-y-2">
-				<p class="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Dispatch</p>
+				<p class="text-eyebrow font-bold text-primary">Dispatch</p>
 				<Select label="Rider distance" options={distanceOptions} bind:value={distance} />
 			</section>
 
