@@ -1,6 +1,6 @@
 import { boolean, numeric, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
-export const userRoleEnum = pgEnum('user_role', ['business', 'courier', 'admin']);
+export const userRoleEnum = pgEnum('user_role', ['business', 'courier']);
 
 export const tripStatusEnum = pgEnum('trip_status', [
   'requested',

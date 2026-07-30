@@ -24,9 +24,7 @@ type Allowed = { error?: undefined; user: SessionUser };
  * const { user } = guard;
  * ```
  *
- * `admin` satisfies every role check — it's the cross-workspace role, and this
- * matches the `role !== 'x' && role !== 'admin'` shape these routes used to
- * spell out one at a time.
+ * Passing no roles requires only that someone is signed in.
  */
 export function requireApiUser(
   locals: App.Locals,
@@ -38,7 +36,7 @@ export function requireApiUser(
     return { error: apiError(401, 'denied', 'Sign in required.') };
   }
 
-  if (roles.length > 0 && user.role !== 'admin' && !roles.includes(user.role)) {
+  if (roles.length > 0 && !roles.includes(user.role)) {
     const required = roles.map((role) => role[0].toUpperCase() + role.slice(1)).join(' or ');
     return { error: apiError(403, 'denied', `${required} account required.`) };
   }

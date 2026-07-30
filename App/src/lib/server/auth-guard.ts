@@ -2,8 +2,8 @@ import { redirect } from '@sveltejs/kit';
 
 import type { AuthRole, SessionUser } from './auth';
 
-/** The two workspaces a signed-in user can land in. `admin` may enter either. */
-export type Workspace = 'business' | 'courier';
+/** A workspace is a role: every account belongs to exactly one of them. */
+export type Workspace = AuthRole;
 
 /** Where a role belongs once signed in — the single source of truth for post-auth routing. */
 export function homeFor(role: AuthRole | null | undefined) {
@@ -21,7 +21,7 @@ export function requireWorkspace(user: SessionUser | null, workspace: Workspace)
     redirect(303, '/');
   }
 
-  if (user.role !== 'admin' && user.role !== workspace) {
+  if (user.role !== workspace) {
     redirect(303, homeFor(user.role));
   }
 

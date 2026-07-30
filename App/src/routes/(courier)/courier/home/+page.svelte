@@ -24,7 +24,7 @@
 				dropoffLat: number | null;
 				dropoffLng: number | null;
 				notes: string | null;
-				estimatedPayout: number;
+				estimatedDistanceKm: number | null;
 			} | null;
 			pendingRequests: Array<{
 				id: string;
@@ -38,7 +38,6 @@
 				notes: string | null;
 			}>;
 			summary: {
-				walletBalance: number;
 				completedTrips: number;
 				tripsToday: number;
 				totalDistanceKm: number;
@@ -255,8 +254,8 @@
 						<p class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
 							Active trip
 						</p>
-						<p class="font-mono-data text-sm font-bold text-primary">
-							${data.activeTrip.estimatedPayout.toFixed(2)}
+						<p class="text-sm font-semibold text-ink">
+							{data.activeTrip.businessName}
 						</p>
 					</div>
 					<Button variant="primary" size="sm" onclick={openActiveTrip}>Continue trip</Button>

@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 
-export type AuthRole = 'business' | 'courier' | 'admin';
+export type AuthRole = 'business' | 'courier';
 
 export type AuthUser = {
   id: string;
@@ -27,10 +27,10 @@ const { subscribe, set, update } = writable<SessionState>(initialState);
 // Shared plumbing
 // ---------------------------------------------------------------------------
 
-const AUTH_ROLES: readonly AuthRole[] = ['business', 'courier', 'admin'];
+const AUTH_ROLES: readonly AuthRole[] = ['business', 'courier'];
 
 /** Mirrors toAuthRole() in $lib/server/auth — kept separate so the client bundle
- *  doesn't pull in the server module. Unrecognised values are never `admin`. */
+ *  doesn't pull in the server module. */
 function toRole(value: unknown): AuthRole {
   return AUTH_ROLES.includes(value as AuthRole) ? (value as AuthRole) : 'business';
 }

@@ -135,7 +135,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	// read access to another business's delivery, addresses included. 404 rather
 	// than 403, so a miss doesn't confirm the id exists.
 	const isParticipant = trip?.businessId === user.id || trip?.assignedCourierId === user.id;
-	if (!trip || (!isParticipant && user.role !== 'admin')) {
+	if (!trip || !isParticipant) {
 		return apiError(404, 'no_results', 'Trip not found.');
 	}
 

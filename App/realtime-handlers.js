@@ -95,7 +95,7 @@ export function attachRealtimeHandlers(io, { getAppOrigin }) {
     // The live rider feed is business-facing. Couriers publish their own position
     // through POST /api/location and have no reason to read everyone else's.
     socket.on('dispatch:join', () => {
-      if (user.role === 'business' || user.role === 'admin') {
+      if (user.role === 'business') {
         socket.join('dispatch:riders');
       }
     });

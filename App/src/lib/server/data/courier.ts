@@ -30,21 +30,13 @@ export type CourierTrip = CourierRequest & {
   completedAt: string | null;
   estimatedDistanceKm: number | null;
   estimatedDurationMinutes: number | null;
-  estimatedPayout: number;
 };
 
 export type CourierHomeSummary = {
-  walletBalance: number;
   completedTrips: number;
   tripsToday: number;
   totalDistanceKm: number;
   activeTrips: number;
-};
-
-export type CourierWeeklyBar = {
-  label: string;
-  value: number;
-  trips: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -98,19 +90,6 @@ function round(value: number, decimals: number) {
   return Math.round(value * factor) / factor;
 }
 
-/**
- * What a courier earns for a trip: a per-km rate plus a per-minute rate, with a
- * floor so short hops are still worth taking. Distance falls back to a typical
- * trip when it wasn't estimated, which matters because the floor no longer
- * covers it once the duration component is large.
- */
-export function estimatePayout(
-  distanceKm: number | null | undefined,
-  durationMinutes: number | null | undefined
-) {
-  return Math.max(7.5, round((distanceKm ?? 1.5) * 3.75 + (durationMinutes ?? 0) * 0.3, 2));
-}
-
 function toCourierRequest(row: TripRow): CourierRequest {
   return {
     id: row.id,
@@ -127,17 +106,13 @@ function toCourierRequest(row: TripRow): CourierRequest {
 }
 
 function toCourierTrip(row: TripRow): CourierTrip {
-  const estimatedDistanceKm = asNumber(row.estimatedDistanceKm);
-  const estimatedDurationMinutes = asNumber(row.estimatedDurationMinutes);
-
   return {
     ...toCourierRequest(row),
     status: toTripStage(row.status),
     acceptedAt: row.acceptedAt?.toISOString() ?? null,
     completedAt: row.completedAt?.toISOString() ?? null,
-    estimatedDistanceKm,
-    estimatedDurationMinutes,
-    estimatedPayout: estimatePayout(estimatedDistanceKm, estimatedDurationMinutes)
+    estimatedDistanceKm: asNumber(row.estimatedDistanceKm),
+    estimatedDurationMinutes: asNumber(row.estimatedDurationMinutes)
   };
 }
 
@@ -147,16 +122,12 @@ function startOfToday() {
   return start.getTime();
 }
 
-/** Wallet and trip totals, derived from the delivered trips in a set. */
+/** Delivery counts and distance covered, derived from the delivered trips in a set. */
 function summarize(trips: CourierTrip[], activeTrips: number): CourierHomeSummary {
   const delivered = trips.filter((trip) => trip.status === 'delivered');
   const today = startOfToday();
 
   return {
-    walletBalance: round(
-      delivered.reduce((sum, trip) => sum + trip.estimatedPayout, 0),
-      2
-    ),
     completedTrips: delivered.length,
     tripsToday: delivered.filter(
       (trip) => trip.completedAt && new Date(trip.completedAt).getTime() >= today
@@ -167,10 +138,6 @@ function summarize(trips: CourierTrip[], activeTrips: number): CourierHomeSummar
     ),
     activeTrips
   };
-}
-
-export function formatCourierMoney(amount: number) {
-  return `$${amount.toFixed(2)}`;
 }
 
 export function courierProfileOf(name: string | null | undefined, fallback = 'Courier') {
@@ -272,39 +239,6 @@ export async function getCourierLatestCompletedTrip(userId: string, tripId?: str
   return row ? toCourierTrip(row) : null;
 }
 
-/** Earnings for the last seven days, oldest bucket first. */
-export function getCourierWeeklySeries(trips: CourierTrip[]): CourierWeeklyBar[] {
-  const labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-  const today = new Date();
-
-  const buckets = labels.map((label, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - (6 - index));
-    date.setHours(0, 0, 0, 0);
-
-    return {
-      label,
-      value: 0,
-      trips: 0,
-      start: date.getTime(),
-      end: date.getTime() + 24 * 60 * 60 * 1000
-    };
-  });
-
-  for (const trip of trips) {
-    if (trip.status !== 'delivered' || !trip.completedAt) continue;
-
-    const completedAt = new Date(trip.completedAt).getTime();
-    const bucket = buckets.find((entry) => completedAt >= entry.start && completedAt < entry.end);
-    if (!bucket) continue;
-
-    bucket.value = round(bucket.value + trip.estimatedPayout, 2);
-    bucket.trips += 1;
-  }
-
-  return buckets.map(({ start, end, ...bar }) => bar);
-}
-
 export async function getCourierTripHistory(userId: string) {
   const rows = await tripQuery()
     .where(
@@ -319,7 +253,6 @@ export async function getCourierTripHistory(userId: string) {
 
   return {
     historyTrips,
-    summary: summarize(historyTrips, 0),
-    weeklySeries: getCourierWeeklySeries(historyTrips)
+    summary: summarize(historyTrips, 0)
   };
 }

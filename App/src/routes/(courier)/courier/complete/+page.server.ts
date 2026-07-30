@@ -1,5 +1,5 @@
 import { requireCourierTrip } from '$lib/server/courier-trip';
-import { formatCourierMoney, getCourierLatestCompletedTrip } from '$lib/server/data/courier';
+import { getCourierLatestCompletedTrip } from '$lib/server/data/courier';
 
 export async function load({ parent, url }) {
   const { user } = await parent();
@@ -7,8 +7,5 @@ export async function load({ parent, url }) {
     getCourierLatestCompletedTrip(user.id, url.searchParams.get('tripId'))
   );
 
-  return {
-    trip,
-    earningsLabel: formatCourierMoney(trip.estimatedPayout)
-  };
+  return { trip };
 }

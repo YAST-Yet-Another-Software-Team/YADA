@@ -14,9 +14,8 @@
         dropoffAddress: string;
         completedAt: string | null;
         estimatedDistanceKm: number | null;
-        estimatedPayout: number;
+        estimatedDurationMinutes: number | null;
       };
-      earningsLabel: string;
     };
   } = $props();
 
@@ -43,12 +42,12 @@
     <Card>
       <div class="flex flex-col gap-3 text-left text-sm">
         <div class="flex items-center justify-between">
-          <span class="text-ink-secondary">Trip earnings</span>
-          <span class="font-mono-data font-semibold text-ink">{data.earningsLabel}</span>
-        </div>
-        <div class="flex items-center justify-between">
           <span class="text-ink-secondary">Distance</span>
           <span class="font-mono-data font-semibold text-ink">{data.trip.estimatedDistanceKm != null ? `${data.trip.estimatedDistanceKm.toFixed(1)} km` : '—'}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-ink-secondary">Duration</span>
+          <span class="font-mono-data font-semibold text-ink">{data.trip.estimatedDurationMinutes != null ? `${Math.round(data.trip.estimatedDurationMinutes)} min` : '—'}</span>
         </div>
         <div class="flex items-center justify-between">
           <span class="text-ink-secondary">Order</span>
