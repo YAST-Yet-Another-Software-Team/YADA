@@ -55,6 +55,6 @@
   </div>
 
   <div class="mt-auto w-full pt-8">
-    <Button variant="primary" size="lg" fullWidth on:click={backOnline}>Back online</Button>
+    <Button variant="primary" size="lg" fullWidth onclick={backOnline}>Back online</Button>
   </div>
 </div>

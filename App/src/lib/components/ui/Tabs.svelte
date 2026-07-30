@@ -1,8 +1,7 @@
 <script lang="ts">
   type Tab = { value: string; label: string };
 
-  export let tabs: Tab[] = [];
-  export let active = '';
+  let { tabs = [], active = $bindable('') }: { tabs?: Tab[]; active?: string } = $props();
 
   function select(value: string) {
     active = value;
@@ -18,7 +17,7 @@
       class="flex-1 rounded-sm px-3 py-2 text-sm font-semibold transition {active === tab.value
         ? 'bg-surface text-ink shadow-xs'
         : 'text-ink-secondary hover:text-ink'}"
-      on:click={() => select(tab.value)}
+      onclick={() => select(tab.value)}
     >
       {tab.label}
     </button>

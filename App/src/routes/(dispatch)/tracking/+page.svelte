@@ -243,7 +243,7 @@
 >
 	<div class="relative min-h-[40svh] flex-1 lg:min-h-0">
 		<div class="absolute left-4 top-4 z-10 lg:hidden">
-			<IconButton ariaLabel="Back" on:click={goBack}>
+			<IconButton ariaLabel="Back" onclick={goBack}>
 				<svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2"
 					><path d="m15 18-6-6 6-6" /></svg
 				>
@@ -305,8 +305,8 @@
 
 		<div class="mt-auto flex flex-col gap-2 lg:pt-4">
 			<div class="flex gap-3 lg:flex-col">
-				<Button variant="ghost" size="sm" on:click={cancel}>Cancel request</Button>
-				<Button variant="primary" size="sm" on:click={markDelivered}>Mark delivered</Button>
+				<Button variant="ghost" size="sm" onclick={cancel}>Cancel request</Button>
+				<Button variant="primary" size="sm" onclick={markDelivered}>Mark delivered</Button>
 			</div>
 		</div>
 	</aside>

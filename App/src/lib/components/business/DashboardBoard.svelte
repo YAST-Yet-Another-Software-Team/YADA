@@ -1,14 +1,18 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { boardColumns } from '$lib/client/data/mock-trips';
 	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
 
 	type TripStatus = DashboardTripRecord['status'];
 
-	export let trips: DashboardTripRecord[] = [];
-	export let deliveredToday: DashboardTripRecord[] = [];
-
-	const dispatch = createEventDispatcher<{ select: DashboardTripRecord }>();
+	let {
+		trips = [],
+		deliveredToday = [],
+		onselect
+	}: {
+		trips?: DashboardTripRecord[];
+		deliveredToday?: DashboardTripRecord[];
+		onselect?: (trip: DashboardTripRecord) => void;
+	} = $props();
 
 	function columnTrips(key: TripStatus | 'delivered') {
 		if (key === 'delivered') return deliveredToday;
@@ -31,8 +35,8 @@
 						'en_route'
 							? 'border-primary'
 							: 'border-border'} {column.key === 'delivered' ? 'opacity-60' : ''}"
-						on:click={() => {
-							if (column.key !== 'delivered') dispatch('select', trip);
+						onclick={() => {
+							if (column.key !== 'delivered') onselect?.(trip);
 						}}
 					>
 						{#if column.key === 'delivered'}

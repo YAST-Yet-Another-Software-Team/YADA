@@ -1,12 +1,26 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
+  import type { HTMLButtonAttributes } from 'svelte/elements';
+
   type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   type Size = 'sm' | 'md' | 'lg';
 
-  export let variant: Variant = 'primary';
-  export let size: Size = 'md';
-  export let disabled = false;
-  export let fullWidth = false;
-  export let type: 'button' | 'submit' | 'reset' = 'button';
+  let {
+    variant = 'primary',
+    size = 'md',
+    disabled = false,
+    fullWidth = false,
+    type = 'button',
+    children,
+    ...rest
+  }: {
+    variant?: Variant;
+    size?: Size;
+    disabled?: boolean;
+    fullWidth?: boolean;
+    type?: 'button' | 'submit' | 'reset';
+    children?: Snippet;
+  } & HTMLButtonAttributes = $props();
 
   const sizeClass: Record<Size, string> = {
     sm: 'px-3.5 py-2 text-sm',
@@ -32,7 +46,7 @@
   class="inline-flex items-center justify-center gap-2 rounded-md font-semibold transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 {sizeClass[
     size
   ]} {variantClass[variant]} {fullWidth ? 'w-full' : ''}"
-  on:click
+  {...rest}
 >
-  <slot />
+  {@render children?.()}
 </button>

@@ -76,6 +76,6 @@
 	>
 		<StatusPill status="searching" />
 		<p class="text-sm text-ink-secondary">Matching a nearby motor rider in KNUST / Ayeduase…</p>
-		<Button variant="ghost" size="sm" on:click={cancel}>Cancel</Button>
+		<Button variant="ghost" size="sm" onclick={cancel}>Cancel</Button>
 	</aside>
 </div>

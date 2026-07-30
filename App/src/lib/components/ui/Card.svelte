@@ -1,7 +1,9 @@
 <script lang="ts">
-  export let padding = 'p-4';
+  import type { Snippet } from 'svelte';
+
+  let { padding = 'p-4', children }: { padding?: string; children?: Snippet } = $props();
 </script>
 
 <article class="rounded-lg border border-border bg-surface shadow-xs {padding}">
-  <slot />
+  {@render children?.()}
 </article>

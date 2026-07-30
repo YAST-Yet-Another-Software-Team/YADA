@@ -1,11 +1,14 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
 
-	export let trips: DashboardTripRecord[] = [];
-
-	const dispatch = createEventDispatcher<{ select: DashboardTripRecord }>();
+	let {
+		trips = [],
+		onselect
+	}: {
+		trips?: DashboardTripRecord[];
+		onselect?: (trip: DashboardTripRecord) => void;
+	} = $props();
 </script>
 
 <div class="overflow-x-auto rounded-lg border border-border bg-surface">
@@ -23,8 +26,8 @@
 			{#each trips as trip (trip.id)}
 				<tr
 					class="cursor-pointer border-b border-border last:border-0 transition hover:bg-primary-subtle"
-					on:click={() => dispatch('select', trip)}
-					on:keydown={(e) => e.key === 'Enter' && dispatch('select', trip)}
+					onclick={() => onselect?.(trip)}
+					onkeydown={(e) => e.key === 'Enter' && onselect?.(trip)}
 					tabindex="0"
 					role="button"
 				>

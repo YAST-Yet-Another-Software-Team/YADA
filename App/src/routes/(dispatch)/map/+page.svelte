@@ -48,16 +48,16 @@
 	let mapZoom: number | null = null;
 
 	function handleSearchSelect(
-		event: CustomEvent<{ address: string; lat: number; lng: number; inZone?: boolean }>
+		detail: { address: string; lat: number; lng: number; inZone?: boolean }
 	) {
-		if (event.detail.inZone === false) return;
+		if (detail.inZone === false) return;
 
 		searchedLocation = {
-			address: event.detail.address,
-			lat: event.detail.lat,
-			lng: event.detail.lng
+			address: detail.address,
+			lat: detail.lat,
+			lng: detail.lng
 		};
-		mapCenter = { lat: event.detail.lat, lng: event.detail.lng };
+		mapCenter = { lat: detail.lat, lng: detail.lng };
 		mapZoom = 17;
 	}
 
@@ -180,7 +180,7 @@
 				<AddressAutocomplete
 					placeholder="Search KNUST / Ayeduase address..."
 					bind:value={searchValue}
-					on:select={handleSearchSelect}
+					onselect={handleSearchSelect}
 				/>
 			</div>
 		</div>

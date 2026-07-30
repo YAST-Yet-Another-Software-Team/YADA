@@ -251,7 +251,7 @@
 							${data.activeTrip.estimatedPayout.toFixed(2)}
 						</p>
 					</div>
-					<Button variant="primary" size="sm" on:click={openActiveTrip}>Continue trip</Button>
+					<Button variant="primary" size="sm" onclick={openActiveTrip}>Continue trip</Button>
 				</div>
 			</div>
 		{:else if $courierOnline && currentRequest}
@@ -277,7 +277,7 @@
 							variant="ghost"
 							size="sm"
 							disabled={decliningId === currentRequest.id}
-							on:click={() => declineRequest(currentRequest.id)}
+							onclick={() => declineRequest(currentRequest.id)}
 						>
 							{decliningId === currentRequest.id ? 'Declining…' : 'Decline'}
 						</Button>
@@ -285,7 +285,7 @@
 							variant="primary"
 							size="sm"
 							disabled={acceptingId === currentRequest.id}
-							on:click={() => acceptRequest(currentRequest.id)}
+							onclick={() => acceptRequest(currentRequest.id)}
 						>
 							{acceptingId === currentRequest.id ? 'Accepting…' : 'Accept'}
 						</Button>
@@ -303,12 +303,12 @@
 
 		{#if $courierOnline}
 			{#if data.pendingRequests.length === 0 || data.activeTrip}
-				<Button variant="ghost" size="lg" fullWidth on:click={goOffline}>Go offline</Button>
+				<Button variant="ghost" size="lg" fullWidth onclick={goOffline}>Go offline</Button>
 			{:else}
-				<Button variant="ghost" size="sm" fullWidth on:click={goOffline}>Go offline</Button>
+				<Button variant="ghost" size="sm" fullWidth onclick={goOffline}>Go offline</Button>
 			{/if}
 		{:else}
-			<Button variant="primary" size="lg" fullWidth on:click={goOnline}>Go online</Button>
+			<Button variant="primary" size="lg" fullWidth onclick={goOnline}>Go online</Button>
 		{/if}
 	</div>
 </div>

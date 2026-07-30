@@ -1,6 +1,15 @@
 <script lang="ts">
-	export let title: string;
-	export let backHref = '/courier/settings';
+	import type { Snippet } from 'svelte';
+
+	let {
+		title,
+		backHref = '/courier/settings',
+		children
+	}: {
+		title: string;
+		backHref?: string;
+		children?: Snippet;
+	} = $props();
 </script>
 
 <div class="flex flex-1 flex-col bg-neutral-100">
@@ -17,6 +26,6 @@
 		<h1 class="text-lg font-bold text-ink">{title}</h1>
 	</header>
 	<div class="flex flex-1 flex-col px-4 pb-6 pt-2">
-		<slot />
+		{@render children?.()}
 	</div>
 </div>

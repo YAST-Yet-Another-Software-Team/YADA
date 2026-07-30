@@ -183,7 +183,7 @@
         </svg>
       </IconButton>
       <div class="flex-1"></div>
-      <Button variant="primary" size="sm" disabled={completing} on:click={markDelivered}>
+      <Button variant="primary" size="sm" disabled={completing} onclick={markDelivered}>
         {completing ? 'Completing…' : 'Mark delivered'}
       </Button>
     </div>

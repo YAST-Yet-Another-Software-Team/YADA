@@ -175,9 +175,9 @@
     {/if}
 
     <div class="flex items-center gap-3">
-      <Button variant="ghost" size="sm" on:click={() => goto('/courier/home')}>Back home</Button>
+      <Button variant="ghost" size="sm" onclick={() => goto('/courier/home')}>Back home</Button>
       <div class="flex-1"></div>
-      <Button variant="primary" size="sm" disabled={confirming} on:click={confirmPickup}>
+      <Button variant="primary" size="sm" disabled={confirming} onclick={confirmPickup}>
         {confirming ? 'Updating…' : 'Confirm pickup'}
       </Button>
     </div>

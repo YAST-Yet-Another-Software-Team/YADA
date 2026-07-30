@@ -1,11 +1,19 @@
 <script lang="ts">
   type Option = { value: string; label: string };
 
-  export let label = '';
-  export let value = '';
-  export let options: Option[] = [];
-  export let disabled = false;
-  export let id = `select-${Math.random().toString(36).slice(2, 9)}`;
+  let {
+    label = '',
+    value = $bindable(''),
+    options = [],
+    disabled = false,
+    id = `select-${Math.random().toString(36).slice(2, 9)}`
+  }: {
+    label?: string;
+    value?: string;
+    options?: Option[];
+    disabled?: boolean;
+    id?: string;
+  } = $props();
 </script>
 
 <label class="flex w-full flex-col gap-1.5" for={id}>
