@@ -7,7 +7,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
-	import type { DashboardTripRecord } from '$lib/server/dashboard-data';
+	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
 	import { dashboardView } from '$lib/stores/dashboard-view';
 
 	export let data: {
@@ -69,7 +69,7 @@
 					class="rounded-sm px-3 py-1.5 text-sm font-semibold transition {$dashboardView === 'table'
 						? 'bg-surface text-ink shadow-xs'
 						: 'text-ink-secondary hover:text-ink'}"
-					on:click={() => setView('table')}
+					onclick={() => setView('table')}
 				>
 					Table
 				</button>
@@ -78,14 +78,14 @@
 					class="rounded-sm px-3 py-1.5 text-sm font-semibold transition {$dashboardView === 'board'
 						? 'bg-surface text-ink shadow-xs'
 						: 'text-ink-secondary hover:text-ink'}"
-					on:click={() => setView('board')}
+					onclick={() => setView('board')}
 				>
 					Board
 				</button>
 			</div>
 
 			<div class="hidden lg:block">
-				<Button variant="primary" size="sm" on:click={newRequest}>+ New request</Button>
+				<Button variant="primary" size="sm" onclick={newRequest}>+ New request</Button>
 			</div>
 		</div>
 	</div>
@@ -120,7 +120,7 @@
 	<section class="flex flex-col gap-3 lg:hidden">
 		<h2 class="text-base font-semibold text-ink">Active requests</h2>
 		{#each data.dashboard.activeTrips as trip (trip.id)}
-			<button type="button" class="w-full text-left" on:click={() => selectTrip(trip)}>
+			<button type="button" class="w-full text-left" onclick={() => selectTrip(trip)}>
 				<Card>
 					<div class="flex items-center justify-between gap-3">
 						<div>
@@ -144,18 +144,18 @@
 				<h2 class="text-base font-semibold text-ink">Active requests</h2>
 				<p class="text-sm text-ink-tertiary">Click a row to see the rider on the map</p>
 			</div>
-			<DashboardTable trips={data.dashboard.activeTrips} on:select={(e) => selectTrip(e.detail)} />
+			<DashboardTable trips={data.dashboard.activeTrips} onselect={selectTrip} />
 		{:else}
 			<DashboardBoard
 				trips={data.dashboard.activeTrips}
 				{deliveredToday}
-				on:select={(e) => selectTrip(e.detail)}
+				onselect={selectTrip}
 			/>
 		{/if}
 	</section>
 
 	<div class="fixed bottom-0 left-0 right-0 border-t border-border bg-surface p-4 lg:hidden">
-		<Button variant="primary" size="lg" fullWidth on:click={newRequest}>+ New request</Button>
+		<Button variant="primary" size="lg" fullWidth onclick={newRequest}>+ New request</Button>
 	</div>
 </div>
 
@@ -166,7 +166,7 @@
 			type="button"
 			class="absolute inset-0 cursor-default"
 			aria-label="Close map panel"
-			on:click={closePanel}
+			onclick={closePanel}
 		></button>
 		<aside
 			class="relative z-10 flex h-full w-full max-w-lg flex-col border-l border-border bg-surface shadow-lg"
@@ -180,7 +180,7 @@
 				<button
 					type="button"
 					class="rounded-md px-2 py-1 text-sm font-semibold text-ink-secondary hover:bg-neutral-100"
-					on:click={closePanel}
+					onclick={closePanel}
 				>
 					Close
 				</button>

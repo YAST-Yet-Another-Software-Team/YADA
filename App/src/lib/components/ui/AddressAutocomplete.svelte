@@ -1,19 +1,42 @@
 <script lang="ts">
-	import { createEventDispatcher, onDestroy } from 'svelte';
+	import { onDestroy, type Snippet } from 'svelte';
 	import Input from './Input.svelte';
-	import { loadGoogleMapsPlaces } from '$lib/maps/google-maps-loader';
-	import { MAPS_ENABLED } from '$lib/maps/maps-enabled';
-	import { containsPoint, getZoneBounds, KUMASI_CENTER } from '$lib/geo/service-area';
-	import { geoErrorMessage, type GeoErrorCode } from '$lib/geo/errors';
-	import { createClientGeocodeCache, placeCacheKey } from '$lib/geo/geocode-cache';
+	import { loadGoogleMapsPlaces } from '$lib/client/maps/google-maps-loader';
+	import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
+	import { containsPoint, getZoneBounds, KUMASI_CENTER } from '$lib/shared/geo/service-area';
+	import { geoErrorMessage, type GeoErrorCode } from '$lib/shared/geo/errors';
+	import { createClientGeocodeCache, placeCacheKey } from '$lib/shared/geo/geocode-cache';
 
-	export let label = '';
-	export let placeholder = 'Search KNUST / Ayeduase address...';
-	export let value = '';
-	export let disabled = false;
-	export let iconColor = 'text-primary';
-	/** When true, reject selections outside the Kumasi KNUST zone. */
-	export let enforceZone = true;
+	type SelectDetail = {
+		address: string;
+		lat: number;
+		lng: number;
+		placeId?: string;
+		inZone: boolean;
+	};
+
+	let {
+		label = '',
+		placeholder = 'Search KNUST / Ayeduase address...',
+		value = $bindable(''),
+		disabled = false,
+		iconColor = 'text-primary',
+		/** When true, reject selections outside the Kumasi KNUST zone. */
+		enforceZone = true,
+		icon,
+		onselect,
+		onerror
+	}: {
+		label?: string;
+		placeholder?: string;
+		value?: string;
+		disabled?: boolean;
+		iconColor?: string;
+		enforceZone?: boolean;
+		icon?: Snippet;
+		onselect?: (detail: SelectDetail) => void;
+		onerror?: (detail: { code: GeoErrorCode; message: string }) => void;
+	} = $props();
 
 	type LocalSuggestion = {
 		id: string;
@@ -50,25 +73,14 @@
 		location?: { lat: () => number; lng: () => number } | { lat: number; lng: number };
 	};
 
-	const dispatch = createEventDispatcher<{
-		select: {
-			address: string;
-			lat: number;
-			lng: number;
-			placeId?: string;
-			inZone: boolean;
-		};
-		error: { code: GeoErrorCode; message: string };
-	}>();
-
-	let inputRef: HTMLInputElement | null = null;
-	let googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
-	let suggestions: Suggestion[] = [];
-	let isOpen = false;
-	let selectedIndex = -1;
-	let loading = false;
-	let resolving = false;
-	let errorMessage = '';
+	let inputRef = $state<HTMLInputElement | null>(null);
+	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
+	let suggestions = $state<Suggestion[]>([]);
+	let isOpen = $state(false);
+	let selectedIndex = $state(-1);
+	let loading = $state(false);
+	let resolving = $state(false);
+	let errorMessage = $state('');
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let sessionToken: unknown = null;
 	let placesReady = false;
@@ -179,7 +191,7 @@
 
 			if (!Places.AutocompleteSuggestion?.fetchAutocompleteSuggestions) {
 				errorMessage = 'Places autocomplete is unavailable in this browser build.';
-				dispatch('error', { code: 'unavailable', message: errorMessage });
+				onerror?.({ code: 'unavailable', message: errorMessage });
 				return;
 			}
 
@@ -232,7 +244,7 @@
 		} catch (error) {
 			console.error('Autocomplete suggestions failed', error);
 			errorMessage = geoErrorMessage('unavailable');
-			dispatch('error', { code: 'unavailable', message: errorMessage });
+			onerror?.({ code: 'unavailable', message: errorMessage });
 			suggestions = [];
 			isOpen = false;
 		} finally {
@@ -262,11 +274,11 @@
 			const inZone = containsPoint({ lat: suggestion.lat, lng: suggestion.lng });
 			if (enforceZone && !inZone) {
 				errorMessage = geoErrorMessage('out_of_zone');
-				dispatch('error', { code: 'out_of_zone', message: errorMessage });
+				onerror?.({ code: 'out_of_zone', message: errorMessage });
 				return;
 			}
 
-			dispatch('select', {
+			onselect?.({
 				address: suggestion.fullAddress,
 				lat: suggestion.lat,
 				lng: suggestion.lng,
@@ -288,7 +300,7 @@
 			const location = place.location;
 			if (!location) {
 				errorMessage = geoErrorMessage('no_results');
-				dispatch('error', { code: 'no_results', message: errorMessage });
+				onerror?.({ code: 'no_results', message: errorMessage });
 				return;
 			}
 
@@ -318,16 +330,16 @@
 			const inZone = containsPoint({ lat, lng });
 			if (enforceZone && !inZone) {
 				errorMessage = geoErrorMessage('out_of_zone');
-				dispatch('error', { code: 'out_of_zone', message: errorMessage });
-				dispatch('select', { address, lat, lng, placeId, inZone: false });
+				onerror?.({ code: 'out_of_zone', message: errorMessage });
+				onselect?.({ address, lat, lng, placeId, inZone: false });
 				return;
 			}
 
-			dispatch('select', { address, lat, lng, placeId, inZone: true });
+			onselect?.({ address, lat, lng, placeId, inZone: true });
 		} catch (error) {
 			console.error('Failed to resolve place', error);
 			errorMessage = geoErrorMessage('unavailable');
-			dispatch('error', { code: 'unavailable', message: errorMessage });
+			onerror?.({ code: 'unavailable', message: errorMessage });
 		} finally {
 			resolving = false;
 		}
@@ -364,6 +376,23 @@
 </script>
 
 <div class="relative z-40 w-full">
+	{#snippet iconSnippet()}
+		{#if icon}
+			{@render icon()}
+		{:else}
+			<svg
+				viewBox="0 0 24 24"
+				class="h-4 w-4 {iconColor}"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" />
+				<circle cx="12" cy="10" r="2.5" />
+			</svg>
+		{/if}
+	{/snippet}
+
 	<Input
 		{label}
 		{placeholder}
@@ -371,28 +400,14 @@
 		bind:value
 		bind:inputRef
 		autocomplete="off"
-		on:input={handleInput}
-		on:keydown={handleKeyDown}
-		on:blur={handleBlur}
-		on:focus={() => {
+		oninput={handleInput}
+		onkeydown={handleKeyDown}
+		onblur={handleBlur}
+		onfocus={() => {
 			if (value.trim()) void fetchSuggestions(value);
 		}}
-	>
-		<svelte:fragment slot="icon">
-			<slot name="icon">
-				<svg
-					viewBox="0 0 24 24"
-					class="h-4 w-4 {iconColor}"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" />
-					<circle cx="12" cy="10" r="2.5" />
-				</svg>
-			</slot>
-		</svelte:fragment>
-	</Input>
+		icon={iconSnippet}
+	/>
 
 	{#if loading || resolving}
 		<p class="mt-1 text-[10px] font-semibold uppercase tracking-wide text-ink-tertiary">
@@ -413,7 +428,10 @@
 						selectedIndex
 							? 'bg-primary-subtle'
 							: ''}"
-						on:mousedown|preventDefault={() => selectSuggestion(suggestion)}
+						onmousedown={(e) => {
+							e.preventDefault();
+							selectSuggestion(suggestion);
+						}}
 					>
 						<svg
 							viewBox="0 0 24 24"

@@ -4,7 +4,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import Tabs from '$lib/components/ui/Tabs.svelte';
-	import type { DashboardTripRecord } from '$lib/server/dashboard-data';
+	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
 
 	export let data: {
 		historyTrips: DashboardTripRecord[];
@@ -87,7 +87,7 @@
 			<p class="py-8 text-center text-sm text-ink-secondary">No active orders right now.</p>
 		{:else}
 			{#each mobileList as order (order.id)}
-				<button type="button" class="w-full text-left" on:click={() => openDetails(order)}>
+				<button type="button" class="w-full text-left" onclick={() => openDetails(order)}>
 					<Card>
 						<div class="flex items-center justify-between gap-3">
 							<div>
@@ -118,8 +118,8 @@
 				{#each filtered as trip (trip.id)}
 					<tr
 						class="cursor-pointer border-b border-border last:border-0 transition hover:bg-primary-subtle"
-						on:click={() => openDetails(trip)}
-						on:keydown={(e) => e.key === 'Enter' && openDetails(trip)}
+						onclick={() => openDetails(trip)}
+						onkeydown={(e) => e.key === 'Enter' && openDetails(trip)}
 						tabindex="0"
 						role="button"
 					>
@@ -135,7 +135,7 @@
 	</div>
 
 	<div class="lg:hidden">
-		<Button variant="primary" size="lg" fullWidth on:click={requestNew}>Request a courier</Button>
+		<Button variant="primary" size="lg" fullWidth onclick={requestNew}>Request a courier</Button>
 	</div>
 </div>
 
@@ -145,7 +145,7 @@
 			type="button"
 			class="absolute inset-0 cursor-default"
 			aria-label="Close order details"
-			on:click={closeDetails}
+			onclick={closeDetails}
 		></button>
 		<aside
 			class="relative z-10 flex h-full w-full max-w-md flex-col border-l border-border bg-surface p-6 shadow-lg"
@@ -158,7 +158,7 @@
 				<button
 					type="button"
 					class="rounded-md px-2 py-1 text-sm font-semibold text-ink-secondary hover:bg-neutral-100"
-					on:click={closeDetails}
+					onclick={closeDetails}
 				>
 					Close
 				</button>

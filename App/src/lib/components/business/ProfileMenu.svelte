@@ -1,30 +1,30 @@
 <script lang="ts">
-	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { auth } from '$lib/stores/auth';
 
-	const dispatch = createEventDispatcher<{ close: void }>();
+	let { open = false, onclose }: { open?: boolean; onclose?: () => void } = $props();
 
-	export let open = false;
-
-	$: user = $auth.user;
-	$: initials = (user?.name || 'Y').split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() || 'Y';
-	$: displayName = user?.name || 'YADA user';
-	$: businessName = user?.role === 'courier' ? 'Courier workspace' : 'Business workspace';
-	$: email = user?.email || 'No email on file';
-	$: phone = user?.phone || 'No phone on file';
+	const user = $derived($auth.user);
+	const initials = $derived(
+		(user?.name || 'Y').split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() || 'Y'
+	);
+	const displayName = $derived(user?.name || 'YADA user');
+	const businessName = $derived(user?.role === 'courier' ? 'Courier workspace' : 'Business workspace');
+	const email = $derived(user?.email || 'No email on file');
+	const phone = $derived(user?.phone || 'No phone on file');
 
 	function onDocClick(e: MouseEvent) {
 		const target = e.target as HTMLElement | null;
 		if (!target?.closest('[data-profile-menu]')) {
-			dispatch('close');
+			onclose?.();
 		}
 	}
 
 	function signOut(e: MouseEvent) {
 		e.stopPropagation();
-		dispatch('close');
+		onclose?.();
 		void auth.signOut('/');
 	}
 
@@ -67,7 +67,7 @@
 			</div>
 		</dl>
 		<div class="border-t border-border pt-3">
-			<Button variant="ghost" size="sm" fullWidth on:click={signOut}>Sign out</Button>
+			<Button variant="ghost" size="sm" fullWidth onclick={signOut}>Sign out</Button>
 		</div>
 	</div>
 {/if}

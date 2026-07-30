@@ -1,7 +1,13 @@
 <script lang="ts">
-  export let initials = '??';
-  export let size = 48;
-  export let status: 'online' | 'offline' | null = null;
+  let {
+    initials = '??',
+    size = 48,
+    status = null
+  }: {
+    initials?: string;
+    size?: number;
+    status?: 'online' | 'offline' | null;
+  } = $props();
 </script>
 
 <div class="relative shrink-0" style="width:{size}px;height:{size}px">

@@ -3,9 +3,9 @@ import type { RequestHandler } from './$types';
 import { and, eq, inArray } from 'drizzle-orm';
 
 import { db } from '$lib/server/db';
-import { courierProfiles, deliveryRequests, tripEvents } from '$lib/server/schema';
-import { geoErrorMessage } from '$lib/geo/errors';
-import { getIo } from '$lib/server/socket-instance';
+import { courierProfiles, deliveryRequests, tripEvents } from '$lib/server/db/schema';
+import { geoErrorMessage } from '$lib/shared/geo/errors';
+import { getIo } from '$lib/server/realtime/instance';
 
 type LocationBody = {
 	lat?: number;

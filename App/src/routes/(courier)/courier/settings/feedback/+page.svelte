@@ -34,7 +34,7 @@
 				placeholder="Ideas, bugs, or delivery experience notes…"
 			></textarea>
 			<div class="mt-3">
-				<Button variant="primary" fullWidth disabled={!message.trim()} on:click={submit}>
+				<Button variant="primary" fullWidth disabled={!message.trim()} onclick={submit}>
 					Send feedback
 				</Button>
 			</div>

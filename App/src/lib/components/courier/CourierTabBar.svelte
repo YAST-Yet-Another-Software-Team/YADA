@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	const tabs = [
 		{
@@ -32,10 +32,12 @@
 		}
 	];
 
-	$: path = $page.url.pathname;
-	$: activeIndex = Math.max(
-		0,
-		tabs.findIndex((tab) => tab.match.some((m) => path === m || path.startsWith(`${m}/`)))
+	const path = $derived(page.url.pathname);
+	const activeIndex = $derived(
+		Math.max(
+			0,
+			tabs.findIndex((tab) => tab.match.some((m) => path === m || path.startsWith(`${m}/`)))
+		)
 	);
 
 	function isActive(match: string[]) {

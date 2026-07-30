@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   export type MapMarkerRole = 'pickup' | 'dropoff' | 'rider' | 'business' | 'search';
 
   export type MapMarker = {
@@ -13,44 +13,55 @@
 </script>
 
 <script lang="ts">
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import { loadGoogleMaps } from '$lib/maps/google-maps-loader';
-  import { MAPS_ENABLED } from '$lib/maps/maps-enabled';
+  import { onDestroy, onMount, type Snippet } from 'svelte';
+  import { loadGoogleMaps } from '$lib/client/maps/google-maps-loader';
+  import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
   import {
     KUMASI_CENTER,
     KUMASI_DEFAULT_ZOOM,
     type LatLng
-  } from '$lib/geo/service-area';
+  } from '$lib/shared/geo/service-area';
 
-  export let routeLabel = false;
-  export let interactive = false;
-  /** @deprecated Zone outline removed from UI; prop kept so callers don't break. */
-  export let showZone = false;
-  /** Thin brand red wash over the map (YADA primary). */
-  export let brandTint = true;
-  export let locationUnavailable = false;
-  export let followId: string | null = null;
-  export let markers: MapMarker[] = [];
-  export let polylinePath: LatLng[] = [];
-  export let center: LatLng | null = null;
-  export let zoom: number | null = null;
+  let {
+    routeLabel = false,
+    interactive = false,
+    /** Thin brand red wash over the map (YADA primary). */
+    brandTint = true,
+    locationUnavailable = false,
+    followId = null,
+    markers = [],
+    polylinePath = $bindable([]),
+    center = null,
+    zoom = null,
+    children,
+    onpick,
+    onready
+  }: {
+    routeLabel?: boolean;
+    interactive?: boolean;
+    /** @deprecated Zone outline removed from UI; prop kept so callers don't break. */
+    showZone?: boolean;
+    brandTint?: boolean;
+    locationUnavailable?: boolean;
+    followId?: string | null;
+    markers?: MapMarker[];
+    polylinePath?: LatLng[];
+    center?: LatLng | null;
+    zoom?: number | null;
+    children?: Snippet;
+    onpick?: (detail: { lat: number; lng: number }) => void;
+    onready?: (detail: { map: google.maps.Map }) => void;
+  } = $props();
 
-  let mapElement: HTMLDivElement | null = null;
-  let mapState: 'fallback' | 'loading' | 'ready' | 'error' = 'fallback';
-  let map: google.maps.Map | null = null;
+  let mapElement = $state<HTMLDivElement | null>(null);
+  let mapState = $state<'fallback' | 'loading' | 'ready' | 'error'>('fallback');
+  let map = $state<google.maps.Map | null>(null);
   let clickListener: google.maps.MapsEventListener | null = null;
-  let googleMaps: typeof google.maps | null = null;
+  let googleMaps = $state<typeof google.maps | null>(null);
   let renderedMarkers: google.maps.Marker[] = [];
   let routePolyline: google.maps.Polyline | null = null;
   let lastCenteredKey = '';
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
-  const dispatch = createEventDispatcher<{
-    pick: { lat: number; lng: number };
-    ready: { map: google.maps.Map };
-  }>();
-
-  // silence unused prop (callers may still pass showZone)
-  $: void showZone;
 
   const ROLE_COLORS: Record<MapMarkerRole, string> = {
     pickup: '#f59e0b',
@@ -124,7 +135,7 @@
             return;
           }
 
-          dispatch('pick', {
+          onpick?.({
             lat: event.latLng.lat(),
             lng: event.latLng.lng()
           });
@@ -135,7 +146,7 @@
       lastCenteredKey = centerKey(center ?? KUMASI_CENTER);
       syncMarkers();
       syncPolyline();
-      dispatch('ready', { map });
+      onready?.({ map });
     } catch (error) {
       console.error('Unable to load Google Maps.', error);
       mapState = 'error';
@@ -210,27 +221,35 @@
     });
   }
 
-  $: if (mapState === 'ready' && map && center) {
-    const key = centerKey(center);
-    if (key && key !== lastCenteredKey) {
-      lastCenteredKey = key;
-      panToPoint(center, zoom);
+  $effect(() => {
+    if (mapState === 'ready' && map && center) {
+      const key = centerKey(center);
+      if (key && key !== lastCenteredKey) {
+        lastCenteredKey = key;
+        panToPoint(center, zoom);
+      }
     }
-  }
+  });
 
-  $: if (mapState === 'ready' && map && zoom != null) {
-    map.setZoom(zoom);
-  }
+  $effect(() => {
+    if (mapState === 'ready' && map && zoom != null) {
+      map.setZoom(zoom);
+    }
+  });
 
-  $: if (mapState === 'ready') {
-    markers;
-    syncMarkers();
-  }
+  $effect(() => {
+    if (mapState === 'ready') {
+      markers;
+      syncMarkers();
+    }
+  });
 
-  $: if (mapState === 'ready') {
-    polylinePath;
-    syncPolyline();
-  }
+  $effect(() => {
+    if (mapState === 'ready') {
+      polylinePath;
+      syncPolyline();
+    }
+  });
 
   onDestroy(() => {
     clickListener?.remove();
@@ -294,5 +313,5 @@
     ></div>
   {/if}
 
-  <slot />
+  {@render children?.()}
 </div>

@@ -1,6 +1,6 @@
 import { loadGoogleMapsRoutes } from './google-maps-loader';
-import type { LatLng } from '$lib/geo/service-area';
-import { GeoError, geoErrorMessage } from '$lib/geo/errors';
+import type { LatLng } from '$lib/shared/geo/service-area';
+import { GeoError, geoErrorMessage } from '$lib/shared/geo/errors';
 import { clientRouteCache, routeCacheKey } from './route-cache';
 
 export type DrivingRouteResult = {

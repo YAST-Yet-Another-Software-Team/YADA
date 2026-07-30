@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 
-import { getCourierTripHistory } from '$lib/server/courier-data';
+import { getCourierTripHistory } from '$lib/server/data/courier';
 
 export async function load({ locals }) {
   if (!locals.user?.id) {

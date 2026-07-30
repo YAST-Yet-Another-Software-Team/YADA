@@ -1,8 +1,11 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import BrandLogo from '$lib/components/BrandLogo.svelte';
 	import ProfileMenu from '$lib/components/business/ProfileMenu.svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
+	import type { Snippet } from 'svelte';
+
+	let { actions }: { actions?: Snippet } = $props();
 
 	const links = [
 		{ href: '/dashboard', label: 'Dashboard', match: ['/dashboard'] },
@@ -11,9 +14,9 @@
 		{ href: '/history', label: 'History', match: ['/history'] }
 	];
 
-	let profileOpen = false;
+	let profileOpen = $state(false);
 
-	$: path = $page.url.pathname;
+	const path = $derived(page.url.pathname);
 
 	function isActive(match: string[]) {
 		return match.some((m) => path === m || path.startsWith(`${m}/`));
@@ -61,17 +64,17 @@
 		</nav>
 
 		<div class="relative flex items-center gap-3" data-profile-menu>
-			<slot name="actions" />
+			{@render actions?.()}
 			<button
 				type="button"
 				class="rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-[color:var(--color-focus-ring)]"
 				aria-label="Open business profile"
 				aria-expanded={profileOpen}
-				on:click={toggleProfile}
+				onclick={toggleProfile}
 			>
 				<Avatar initials="JM" size={34} />
 			</button>
-			<ProfileMenu open={profileOpen} on:close={() => (profileOpen = false)} />
+			<ProfileMenu open={profileOpen} onclose={() => (profileOpen = false)} />
 		</div>
 	</div>
 </header>

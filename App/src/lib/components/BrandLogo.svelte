@@ -1,7 +1,12 @@
 <script lang="ts">
-	export let href = '/dashboard';
-	/** sm: nav/mobile header · md: auth · lg: landing hero */
-	export let size: 'sm' | 'md' | 'lg' = 'sm';
+	let {
+		href = '/dashboard',
+		/** sm: nav/mobile header · md: auth · lg: landing hero */
+		size = 'sm'
+	}: {
+		href?: string;
+		size?: 'sm' | 'md' | 'lg';
+	} = $props();
 
 	const sizeClass = {
 		sm: 'h-9 w-auto',

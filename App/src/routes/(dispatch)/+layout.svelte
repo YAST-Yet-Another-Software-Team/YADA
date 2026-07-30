@@ -35,7 +35,7 @@
 					>
 						<Avatar initials="JM" size={28} />
 					</button>
-					<ProfileMenu open={profileOpen} on:close={() => (profileOpen = false)} />
+					<ProfileMenu open={profileOpen} onclose={() => (profileOpen = false)} />
 				</div>
 			</div>
 			<nav class="flex items-stretch gap-1 overflow-x-auto px-2" aria-label="Business">

@@ -1,7 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
 
-import { db } from './db';
-import { businessProfiles, courierProfiles, deliveryRequests, users } from './schema';
+import { db } from '../db';
+import { businessProfiles, courierProfiles, deliveryRequests, users } from '../db/schema';
 
 export type DashboardTripRecord = {
 	id: string;

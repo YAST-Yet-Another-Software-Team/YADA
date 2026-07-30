@@ -32,7 +32,7 @@
 				</p>
 				<p class="font-semibold text-ink">#4521 · 88 Elm St</p>
 				<p class="text-sm text-ink-secondary">Pickup at YADA Kitchen — 221 Baker St</p>
-				<Button variant="primary" size="sm" on:click={openActive}>Open active trip</Button>
+				<Button variant="primary" size="sm" onclick={openActive}>Open active trip</Button>
 			</div>
 		</Card>
 		<p class="text-center text-sm text-ink-tertiary">
@@ -42,7 +42,7 @@
 		<div class="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
 			<p class="font-semibold text-ink">No active orders</p>
 			<p class="text-sm text-ink-secondary">Go online from Home to start receiving requests.</p>
-			<Button variant="primary" on:click={() => goto('/courier/home')}>Go to Home</Button>
+			<Button variant="primary" onclick={() => goto('/courier/home')}>Go to Home</Button>
 		</div>
 	{/if}
 </div>

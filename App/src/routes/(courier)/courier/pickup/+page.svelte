@@ -3,9 +3,9 @@
   import { onDestroy, onMount } from 'svelte';
   import MapBackdrop from '$lib/components/MapBackdrop.svelte';
   import Button from '$lib/components/ui/Button.svelte';
-  import { KUMASI_CENTER, type LatLng, distanceToPolylineKm } from '$lib/geo/service-area';
-  import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/maps/routing';
-  import { startCourierLocationReporter } from '$lib/realtime/courier-location';
+  import { KUMASI_CENTER, type LatLng, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+  import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
+  import { startCourierLocationReporter } from '$lib/client/realtime/courier-location';
 
   export let data: {
     trip: {
@@ -175,9 +175,9 @@
     {/if}
 
     <div class="flex items-center gap-3">
-      <Button variant="ghost" size="sm" on:click={() => goto('/courier/home')}>Back home</Button>
+      <Button variant="ghost" size="sm" onclick={() => goto('/courier/home')}>Back home</Button>
       <div class="flex-1"></div>
-      <Button variant="primary" size="sm" disabled={confirming} on:click={confirmPickup}>
+      <Button variant="primary" size="sm" disabled={confirming} onclick={confirmPickup}>
         {confirming ? 'Updating…' : 'Confirm pickup'}
       </Button>
     </div>

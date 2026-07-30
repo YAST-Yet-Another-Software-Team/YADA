@@ -1,8 +1,14 @@
 <script lang="ts">
 	/** Motorcycle / scooter pin — Bolt-style rider mark for map overlays */
-	export let size = 36;
-	export let label = 'Rider';
-	export let accent = false;
+	let {
+		size = 36,
+		label = 'Rider',
+		accent = false
+	}: {
+		size?: number;
+		label?: string;
+		accent?: boolean;
+	} = $props();
 </script>
 
 <div class="relative flex flex-col items-center" style="width:{size + 8}px" title={label}>

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import { handler } from './build/handler.js';

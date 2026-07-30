@@ -9,21 +9,21 @@
 	type Role = 'business' | 'courier';
 	type Mode = 'sign-in' | 'sign-up';
 
-	let mode: Mode = 'sign-in';
-	let role: Role = 'business';
-	let name = '';
-	let phone = '';
-	let email = '';
-	let password = '';
-	let rememberMe = false;
-	let isLoading = true;
-	let isSubmitting = false;
+	let mode = $state<Mode>('sign-in');
+	let role = $state<Role>('business');
+	let name = $state('');
+	let phone = $state('');
+	let email = $state('');
+	let password = $state('');
+	let rememberMe = $state(false);
+	let isLoading = $state(true);
+	let isSubmitting = $state(false);
 
 	// Forgot-password mini flow
-	let showForgotPassword = false;
-	let resetEmail = '';
-	let resetSent = false;
-	let isResetting = false;
+	let showForgotPassword = $state(false);
+	let resetEmail = $state('');
+	let resetSent = $state(false);
+	let isResetting = $state(false);
 
 	function destinationFor(userRole: string | null | undefined) {
 		const normalizedRole = String(userRole ?? '').toLowerCase();
@@ -102,13 +102,14 @@
 		}
 	}
 
-	$: canSubmit =
+	const canSubmit = $derived(
 		email.trim().includes('@') &&
 		password.trim().length >= 6 &&
 		(mode === 'sign-in' ||
-			(name.trim().length > 1 && (role === 'business' || phone.trim().length > 6)));
+			(name.trim().length > 1 && (role === 'business' || phone.trim().length > 6)))
+	);
 
-	$: canRequestReset = resetEmail.trim().includes('@');
+	const canRequestReset = $derived(resetEmail.trim().includes('@'));
 
 	const dotGrid = Array.from({ length: 20 });
 	const miniDotGrid = Array.from({ length: 12 });
@@ -234,7 +235,7 @@
 									fullWidth
 									type="button"
 									disabled={isResetting || !canRequestReset}
-									on:click={requestReset}
+									onclick={requestReset}
 								>
 									{isResetting ? 'Sending…' : 'Send reset link'}
 								</Button>
@@ -243,13 +244,13 @@
 							<button
 								type="button"
 								class="text-center text-sm font-semibold text-primary underline-offset-2 hover:underline"
-								on:click={closeForgotPassword}
+								onclick={closeForgotPassword}
 							>
 								Back to sign in
 							</button>
 						</div>
 					{:else}
-						<form class="mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4" on:submit|preventDefault={submitAuth} transition:slide={{ duration: 220 }}>
+						<form class="mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4" onsubmit={(e) => { e.preventDefault(); submitAuth(); }} transition:slide={{ duration: 220 }}>
 							{#if mode === 'sign-up'}
 								<div class="grid grid-cols-2 gap-2 rounded-full border border-border bg-surface-sunken p-1">
 									<button
@@ -257,7 +258,7 @@
 										class="rounded-full px-3 py-2 text-sm font-medium transition {role === 'business'
 											? 'bg-primary text-primary-on shadow-sm'
 											: 'text-ink-secondary hover:text-ink'}"
-										on:click={() => (role = 'business')}
+										onclick={() => (role = 'business')}
 									>
 										Business
 									</button>
@@ -266,7 +267,7 @@
 										class="rounded-full px-3 py-2 text-sm font-medium transition {role === 'courier'
 											? 'bg-primary text-primary-on shadow-sm'
 											: 'text-ink-secondary hover:text-ink'}"
-										on:click={() => (role = 'courier')}
+										onclick={() => (role = 'courier')}
 									>
 										Courier
 									</button>
@@ -294,7 +295,7 @@
 										<input type="checkbox" bind:checked={rememberMe} class="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
 										Remember me
 									</label>
-									<button type="button" class="font-medium text-primary hover:underline" on:click={openForgotPassword}>
+									<button type="button" class="font-medium text-primary hover:underline" onclick={openForgotPassword}>
 										Forgot password?
 									</button>
 								</div>
@@ -315,7 +316,7 @@
 								<button
 									type="button"
 									class="font-semibold text-primary underline-offset-2 hover:underline"
-									on:click={() => {
+									onclick={() => {
 										mode = mode === 'sign-up' ? 'sign-in' : 'sign-up';
 									}}
 								>

@@ -1,7 +1,7 @@
 <script lang="ts">
   type Status = 'searching' | 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled';
 
-  export let status: Status = 'searching';
+  let { status = 'searching' }: { status?: Status } = $props();
 
   const statusMap: Record<
     Status,
@@ -45,7 +45,7 @@
     }
   };
 
-  $: s = statusMap[status] ?? statusMap.searching;
+  const s = $derived(statusMap[status] ?? statusMap.searching);
 </script>
 
 <span

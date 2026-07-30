@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 
-import { getCourierHomeData } from '$lib/server/courier-data';
+import { getCourierHomeData } from '$lib/server/data/courier';
 
 export async function load({ locals }) {
 	if (!locals.user?.id) {

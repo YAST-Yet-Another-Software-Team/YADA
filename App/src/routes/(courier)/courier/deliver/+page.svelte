@@ -4,9 +4,9 @@
   import MapBackdrop from '$lib/components/MapBackdrop.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
-  import { KUMASI_CENTER, type LatLng, distanceToPolylineKm } from '$lib/geo/service-area';
-  import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/maps/routing';
-  import { startCourierLocationReporter } from '$lib/realtime/courier-location';
+  import { KUMASI_CENTER, type LatLng, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+  import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
+  import { startCourierLocationReporter } from '$lib/client/realtime/courier-location';
 
   export let data: {
     trip: {
@@ -183,7 +183,7 @@
         </svg>
       </IconButton>
       <div class="flex-1"></div>
-      <Button variant="primary" size="sm" disabled={completing} on:click={markDelivered}>
+      <Button variant="primary" size="sm" disabled={completing} onclick={markDelivered}>
         {completing ? 'Completing…' : 'Mark delivered'}
       </Button>
     </div>

@@ -5,11 +5,11 @@
 	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import { getCurrentDeviceLocation, startDeviceLocationWatcher } from '$lib/geo/device-location';
-	import { reverseGeocode } from '$lib/maps/geocode-client';
-	import { computeDrivingRoute } from '$lib/maps/routing';
-	import { containsPoint, KUMASI_CENTER, type LatLng } from '$lib/geo/service-area';
-	import { geoErrorMessage, type GeoErrorCode } from '$lib/geo/errors';
+	import { getCurrentDeviceLocation, startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
+	import { reverseGeocode } from '$lib/client/maps/geocode-client';
+	import { computeDrivingRoute } from '$lib/client/maps/routing';
+	import { containsPoint, KUMASI_CENTER, type LatLng } from '$lib/shared/geo/service-area';
+	import { geoErrorMessage, type GeoErrorCode } from '$lib/shared/geo/errors';
 
 	type LocationMode = 'pickup' | 'dropoff';
 
@@ -115,46 +115,46 @@
 		zoneError = '';
 	}
 
-	function handleMapPick(event: CustomEvent<LatLng>) {
-		void applyPoint(activeLocation, event.detail);
+	function handleMapPick(point: LatLng) {
+		void applyPoint(activeLocation, point);
 	}
 
 	function handlePickupSelect(
-		event: CustomEvent<{ address: string; lat: number; lng: number; placeId?: string; inZone: boolean }>
+		detail: { address: string; lat: number; lng: number; placeId?: string; inZone: boolean }
 	) {
 		activeLocation = 'pickup';
-		if (!event.detail.inZone) {
+		if (!detail.inZone) {
 			zoneError = geoErrorMessage('out_of_zone');
 			pickupPoint = null;
 			return;
 		}
 		void applyPoint(
 			'pickup',
-			{ lat: event.detail.lat, lng: event.detail.lng },
-			event.detail.address,
-			event.detail.placeId
+			{ lat: detail.lat, lng: detail.lng },
+			detail.address,
+			detail.placeId
 		);
 	}
 
 	function handleDropoffSelect(
-		event: CustomEvent<{ address: string; lat: number; lng: number; placeId?: string; inZone: boolean }>
+		detail: { address: string; lat: number; lng: number; placeId?: string; inZone: boolean }
 	) {
 		activeLocation = 'dropoff';
-		if (!event.detail.inZone) {
+		if (!detail.inZone) {
 			zoneError = geoErrorMessage('out_of_zone');
 			dropoffPoint = null;
 			return;
 		}
 		void applyPoint(
 			'dropoff',
-			{ lat: event.detail.lat, lng: event.detail.lng },
-			event.detail.address,
-			event.detail.placeId
+			{ lat: detail.lat, lng: detail.lng },
+			detail.address,
+			detail.placeId
 		);
 	}
 
-	function handleGeoError(event: CustomEvent<{ code: GeoErrorCode; message: string }>) {
-		zoneError = event.detail.message;
+	function handleGeoError(detail: { code: GeoErrorCode; message: string }) {
+		zoneError = detail.message;
 	}
 
 	async function findRider() {
@@ -270,7 +270,7 @@
 				center={mapCenter}
 				zoom={mapZoom}
 				markers={mapMarkers}
-				on:pick={handleMapPick}
+				onpick={handleMapPick}
 			/>
 		</div>
 
@@ -296,8 +296,8 @@
 						placeholder="Business / pickup address"
 						bind:value={pickup}
 						iconColor="text-primary"
-						on:select={handlePickupSelect}
-						on:error={handleGeoError}
+						onselect={handlePickupSelect}
+						onerror={handleGeoError}
 					/>
 				</div>
 			</section>
@@ -309,8 +309,8 @@
 						placeholder="Customer delivery address"
 						bind:value={dropoff}
 						iconColor="text-secondary"
-						on:select={handleDropoffSelect}
-						on:error={handleGeoError}
+						onselect={handleDropoffSelect}
+						onerror={handleGeoError}
 					/>
 				</div>
 			</section>
@@ -326,7 +326,7 @@
 					size="lg"
 					fullWidth
 					disabled={!canSubmit}
-					on:click={findRider}
+					onclick={findRider}
 				>
 					{submitting ? 'Saving…' : 'Find a rider'}
 				</Button>

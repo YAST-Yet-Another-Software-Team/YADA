@@ -1,14 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-import { appEnv } from '$lib/server/env';
-import { GeoError, geoErrorMessage, mapGoogleStatusToGeoError } from '$lib/geo/errors';
+import { env } from '$env/dynamic/private';
+import { GeoError, geoErrorMessage, mapGoogleStatusToGeoError } from '$lib/shared/geo/errors';
 import {
 	reverseCacheKey,
 	serverGeocodeCache,
 	type CachedGeocode
-} from '$lib/geo/geocode-cache';
-import { containsPoint } from '$lib/geo/service-area';
+} from '$lib/shared/geo/geocode-cache';
+import { containsPoint } from '$lib/shared/geo/service-area';
 
 type ReverseBody = {
 	lat?: number;
@@ -20,13 +20,14 @@ async function geocodeReverse(lat: number, lng: number): Promise<CachedGeocode> 
 	const cached = serverGeocodeCache.get(key);
 	if (cached) return cached;
 
-	if (!appEnv.googleMapsApiKey) {
+	const apiKey = env.GOOGLE_MAPS_API_KEY;
+	if (!apiKey) {
 		throw new GeoError('unavailable', 'GOOGLE_MAPS_API_KEY is not configured.');
 	}
 
 	const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
 	url.searchParams.set('latlng', `${lat},${lng}`);
-	url.searchParams.set('key', appEnv.googleMapsApiKey);
+	url.searchParams.set('key', apiKey);
 
 	const response = await fetch(url);
 	if (response.status === 429) {

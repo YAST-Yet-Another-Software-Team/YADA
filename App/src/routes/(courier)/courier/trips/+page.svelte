@@ -53,13 +53,13 @@
         <button
           type="button"
           class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-primary shadow-sm"
-          on:click={() => goto('/courier/home')}
+          onclick={() => goto('/courier/home')}
         >
           <span class="h-2 w-2 rounded-full {$courierOnline ? 'bg-success' : 'bg-neutral-400'}"></span>
           {$courierOnline ? 'Online' : 'Offline'}
         </button>
 
-        <IconButton ariaLabel="Back to home" on:click={() => goto('/courier/home')}>
+        <IconButton ariaLabel="Back to home" onclick={() => goto('/courier/home')}>
           <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2">
             <path d="m15 18-6-6 6-6" />
           </svg>
@@ -93,7 +93,7 @@
         <button
           type="button"
           class="rounded-full bg-primary-subtle px-3 py-2 text-xs font-semibold text-primary"
-          on:click={() => goto('/courier/home')}
+          onclick={() => goto('/courier/home')}
         >
           Home
         </button>

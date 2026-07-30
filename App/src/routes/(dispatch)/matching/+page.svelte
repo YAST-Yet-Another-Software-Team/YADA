@@ -5,7 +5,7 @@
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
-	import { KUMASI_CENTER } from '$lib/geo/service-area';
+	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let center = KUMASI_CENTER;
@@ -76,6 +76,6 @@
 	>
 		<StatusPill status="searching" />
 		<p class="text-sm text-ink-secondary">Matching a nearby motor rider in KNUST / Ayeduase…</p>
-		<Button variant="ghost" size="sm" on:click={cancel}>Cancel</Button>
+		<Button variant="ghost" size="sm" onclick={cancel}>Cancel</Button>
 	</aside>
 </div>
