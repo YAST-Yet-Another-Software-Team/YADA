@@ -10,7 +10,7 @@ import { AuthError, authErrorMessage, networkError } from './errors';
 
 const AUTH_ROLES: readonly AuthRole[] = ['business', 'courier'];
 
-/** Mirrors toAuthRole() in $lib/server/auth. The *type* is now shared, but the
+/** Mirrors toAuthRole() in ./auth.server. The *type* is now shared, but the
  *  runtime narrowing still can't be — that lives in a server-only module. */
 function toRole(value: unknown): AuthRole {
   return AUTH_ROLES.includes(value as AuthRole) ? (value as AuthRole) : 'business';

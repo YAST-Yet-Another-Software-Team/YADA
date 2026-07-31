@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-import { apiError, requireApiUser } from '$lib/server/api-guard';
+import { apiError } from '$lib/server/api-guard';
 import { geocodeReverse, geocodeFailureResponse } from '$lib/server/geocode';
 import { geoErrorMessage } from '$lib/shared/geo/errors';
 import { containsPoint } from '$lib/shared/geo/service-area';
@@ -14,8 +14,7 @@ type ReverseBody = {
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// This proxies Google Geocoding on the server key — an open endpoint is
 	// someone else's free geocoding at your billing account's expense.
-	const guard = requireApiUser(locals);
-	if (guard.error) return guard.error;
+	if (!locals.user) return apiError(401, 'denied', 'Sign in required.');
 
 	try {
 		const body = (await request.json()) as ReverseBody;

@@ -7,8 +7,8 @@ import { env } from '$env/dynamic/private';
 
 import type { AuthRole } from '$lib/utils/types';
 
-import { db } from './db';
-import * as schema from './db/schema';
+import { db } from '$lib/server/db';
+import * as schema from '$lib/server/db/schema';
 
 const authUrl = env.BETTER_AUTH_URL ?? 'http://localhost:5173';
 const trustedOrigins = [

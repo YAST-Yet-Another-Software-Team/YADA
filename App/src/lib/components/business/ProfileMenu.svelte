@@ -2,7 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { getSession } from '$lib/auth/session.svelte';
+	import { getSession } from '$auth/session.svelte';
 	import { initials } from '$lib/shared/text';
 
 	let { open = false, onclose }: { open?: boolean; onclose?: () => void } = $props();

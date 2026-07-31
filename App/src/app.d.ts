@@ -1,4 +1,4 @@
-import type { auth } from '$lib/server/auth';
+import type { auth } from '$auth/auth.server';
 import type { SessionUser } from '$lib/utils/types';
 
 declare global {

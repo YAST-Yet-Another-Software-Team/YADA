@@ -5,8 +5,8 @@
 	import Input from '$lib/components/ui/Input.svelte';
 	import Tabs from '$lib/components/ui/Tabs.svelte';
 	import SettingsSubpage from '$lib/components/courier/SettingsSubpage.svelte';
-	import { getSession } from '$lib/auth/session.svelte';
-	import { messageOf } from '$lib/auth/errors';
+	import { getSession } from '$auth/session.svelte';
+	import { messageOf } from '$auth/errors';
 
 	const editTabs = [
 		{ value: 'profile', label: 'Profile' },

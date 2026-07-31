@@ -1,12 +1,11 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/Button.svelte';
-	import { getSession } from '$lib/auth/session.svelte';
-	import { AUTH_ROUTE, homeFor } from '$lib/auth/routes';
+	import { getSession } from '$auth/session.svelte';
 
 	/** Deep-link straight into a sign-up, pre-set to a role. Only this page has
 	 *  role-specific calls to action, so it owns the URL shape. */
 	function signUpHref(role: 'business' | 'courier') {
-		return `${AUTH_ROUTE}?mode=sign-up&role=${role}`;
+		return `/auth?mode=sign-up&role=${role}`;
 	}
 
 	// Provided by the root layout, seeded from locals.user during SSR — so a
@@ -15,7 +14,7 @@
 	const session = getSession();
 
 	const signedIn = $derived(session.user !== null);
-	const workspaceHref = $derived(homeFor(session.user?.role));
+	const workspaceHref = $derived(session.user?.role === 'courier' ? '/courier/home' : '/dashboard');
 	const workspaceLabel = $derived(
 		session.user?.role === 'courier' ? 'Go to your trips' : 'Go to your dashboard'
 	);
@@ -92,7 +91,7 @@
 						<Button variant="primary" size="sm">{workspaceLabel}</Button>
 					</a>
 				{:else}
-					<a href={AUTH_ROUTE} class="hidden sm:block">
+					<a href="/auth" class="hidden sm:block">
 						<Button variant="ghost" size="sm">Sign in</Button>
 					</a>
 					<a href={signUpHref('business')}>
@@ -129,7 +128,7 @@
 						<a href={signUpHref('business')} class="sm:w-auto">
 							<Button variant="primary" size="lg" fullWidth>Create an account</Button>
 						</a>
-						<a href={AUTH_ROUTE} class="sm:w-auto">
+						<a href="/auth" class="sm:w-auto">
 							<Button variant="outline" size="lg" fullWidth>I already have one</Button>
 						</a>
 					{/if}
@@ -304,7 +303,7 @@
 				Serving Kumasi — KNUST and Ayeduase.
 			</p>
 			{#if !signedIn}
-				<a href={AUTH_ROUTE} class="text-sm font-semibold text-primary hover:underline">
+				<a href="/auth" class="text-sm font-semibold text-primary hover:underline">
 					Sign in
 				</a>
 			{/if}

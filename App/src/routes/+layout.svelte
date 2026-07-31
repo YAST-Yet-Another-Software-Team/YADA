@@ -1,7 +1,7 @@
 <script lang="ts">
   import '$lib/styles/app.css';
   import type { Snippet } from 'svelte';
-  import { createSession } from '$lib/auth/session.svelte';
+  import { createSession } from '$auth/session.svelte';
   import type { AuthUser } from '$lib/utils/types';
 
   let { data, children }: { data: { user: AuthUser | null }; children: Snippet } = $props();

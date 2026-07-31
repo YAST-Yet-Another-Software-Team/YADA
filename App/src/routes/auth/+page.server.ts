@@ -1,9 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 
-import { authErrorMessage } from '$lib/auth/errors';
-import { homeFor } from '$lib/auth/routes';
-import { auth, toAuthRole } from '$lib/server/auth';
+import { authErrorMessage } from './errors';
+import { auth, toAuthRole } from './auth.server';
 
 /**
  * Better Auth's default `minPasswordLength`. Checked here as well as by Better
@@ -11,6 +10,16 @@ import { auth, toAuthRole } from '$lib/server/auth';
  * banner, and so the rule survives with JavaScript disabled.
  */
 const MIN_PASSWORD_LENGTH = 8;
+
+/**
+ * Where a role belongs once signed in — couriers to their home, everyone else
+ * to the dashboard. The workspace layout gates and the landing page carry the
+ * same two URLs inline; this helper exists because this file redirects on
+ * three separate paths.
+ */
+function homeFor(role: string | null | undefined) {
+	return role === 'courier' ? '/courier/home' : '/dashboard';
+}
 
 type Fields = {
 	email?: string;
@@ -86,7 +95,7 @@ export const actions = {
 		const name = String(data.get('name') ?? '').trim();
 		const phone = String(data.get('phone') ?? '').trim();
 		// `toAuthRole` clamps anything unexpected to `business`; the create hook in
-		// $lib/server/auth clamps it again, so a forged value can't mint an admin.
+		// ./auth.server clamps it again, so a forged value can't mint an admin.
 		const role = toAuthRole(data.get('role'));
 		const fields: Fields = { email, name, phone, role };
 
@@ -119,7 +128,7 @@ export const actions = {
 					password,
 					name,
 					// `role` is declared `input: false`, so Better Auth drops it from the
-					// *typed* body — but the `user.create.before` hook in $lib/server/auth
+					// *typed* body — but the `user.create.before` hook in ./auth.server
 					// reads it off the raw body and clamps it through `toAuthRole`. Passing
 					// it here is how sign-up picks a workspace; the cast only silences the
 					// narrowed type, it doesn't widen what the server will accept.

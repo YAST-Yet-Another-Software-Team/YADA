@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { eq } from 'drizzle-orm';
 
-import { apiError, requireApiUser } from '$lib/server/api-guard';
+import { apiError } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
 import { deliveryRequests, tripEvents } from '$lib/server/db/schema';
 import { assertInZone, containsPoint } from '$lib/shared/geo/service-area';
@@ -30,9 +30,9 @@ function toCoordinateColumn(value: number) {
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const guard = requireApiUser(locals, 'business');
-	if (guard.error) return guard.error;
-	const { user } = guard;
+	const user = locals.user;
+	if (!user) return apiError(401, 'denied', 'Sign in required.');
+	if (user.role !== 'business') return apiError(403, 'denied', 'Business account required.');
 
 	try {
 		const body = (await request.json()) as CreateTripBody;
@@ -116,9 +116,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 };
 
 export const GET: RequestHandler = async ({ url, locals }) => {
-	const guard = requireApiUser(locals);
-	if (guard.error) return guard.error;
-	const { user } = guard;
+	const user = locals.user;
+	if (!user) return apiError(401, 'denied', 'Sign in required.');
 
 	const tripId = url.searchParams.get('id');
 	if (!isUuid(tripId)) {

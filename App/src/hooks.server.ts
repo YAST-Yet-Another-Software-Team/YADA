@@ -1,4 +1,4 @@
-import { auth, toAuthRole } from '$lib/server/auth';
+import { auth, toAuthRole } from '$auth/auth.server';
 import { building } from '$app/environment';
 import type { Handle } from '@sveltejs/kit';
 

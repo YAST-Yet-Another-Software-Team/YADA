@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { getSession } from '$lib/auth/session.svelte';
+	import { getSession } from '$auth/session.svelte';
 	import { getCourierOnline } from '../courier-online.svelte';
 	import { initials } from '$lib/shared/text';
 

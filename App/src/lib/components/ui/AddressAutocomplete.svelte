@@ -7,6 +7,7 @@
 	import { geoErrorMessage } from '$lib/shared/geo/errors';
 	import type { GeoErrorCode } from '$lib/utils/types';
 	import { createClientGeocodeCache, placeCacheKey } from '$lib/shared/geo/geocode-cache';
+	import { LOCAL_SUGGESTIONS } from '$lib/mock/addresses';
 
 	type SelectDetail = {
 		address: string;
@@ -80,47 +81,6 @@
 	let sessionToken: unknown = null;
 	let placesReady = false;
 	const cache = createClientGeocodeCache();
-	const LOCAL_SUGGESTIONS = [
-		{
-			id: 'ayeduase-gate',
-			mainText: 'Ayeduase Gate',
-			secondaryText: 'near KNUST, Kumasi',
-			fullAddress: 'Ayeduase Gate, near KNUST, Kumasi',
-			lat: 6.6785,
-			lng: -1.5645
-		},
-		{
-			id: 'knust-commercial',
-			mainText: 'KNUST Commercial Area',
-			secondaryText: 'Kumasi',
-			fullAddress: 'KNUST Commercial Area, Kumasi',
-			lat: 6.6745,
-			lng: -1.5716
-		},
-		{
-			id: 'unity-hall',
-			mainText: 'Unity Hall',
-			secondaryText: 'KNUST, Kumasi',
-			fullAddress: 'Unity Hall, KNUST',
-			lat: 6.6798,
-			lng: -1.5732
-		},
-		{
-			id: 'ayeduase-new-site',
-			mainText: 'Ayeduase New Site',
-			secondaryText: 'Kumasi',
-			fullAddress: 'Ayeduase New Site, Kumasi',
-			lat: 6.682,
-			lng: -1.56
-		}
-	] satisfies Array<{
-		id: string;
-		mainText: string;
-		secondaryText: string;
-		fullAddress: string;
-		lat: number;
-		lng: number;
-	}>;
 
 	async function ensurePlaces() {
 		if (placesReady || !googleMapsApiKey) return placesReady;
