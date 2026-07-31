@@ -82,12 +82,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		recordedAt: recordedAt.toISOString()
 	};
 
+	// Only the trip's own room; membership is verified per join against
+	// GET /api/trips?id=, so a fix only reaches that delivery's participants.
 	const io = getIo();
-	if (io) {
-		if (tripId) {
-			io.to(`trip:${tripId}`).emit('rider:location', payload);
-		}
-		io.to('dispatch:riders').emit('rider:location', payload);
+	if (io && tripId) {
+		io.to(`trip:${tripId}`).emit('rider:location', payload);
 	}
 
 	return json({ ok: true, location: payload });

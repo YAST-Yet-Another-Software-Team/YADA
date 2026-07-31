@@ -85,24 +85,12 @@ export function attachRealtimeHandlers(io, { getAppOrigin }) {
   });
 
   io.on('connection', (socket) => {
-    /** @type {SocketUser} */
-    const user = socket.data.user;
+    // The handshake already rejected anonymous sockets; per-room authorization
+    // is checked at join time, so the resolved user isn't needed again here.
     /** @type {string} */
     const cookie = socket.data.cookie;
 
     socket.emit('yada:ready', { connectedAt: new Date().toISOString() });
-
-    // The live rider feed is business-facing. Couriers publish their own position
-    // through POST /api/location and have no reason to read everyone else's.
-    socket.on('dispatch:join', () => {
-      if (user.role === 'business') {
-        socket.join('dispatch:riders');
-      }
-    });
-
-    socket.on('dispatch:leave', () => {
-      socket.leave('dispatch:riders');
-    });
 
     socket.on('trip:join', async (tripId) => {
       if (typeof tripId !== 'string' || tripId.length === 0) return;
@@ -120,7 +108,7 @@ export function attachRealtimeHandlers(io, { getAppOrigin }) {
     // Deliberately no `rider:location` listener. Positions are broadcast only by
     // POST /api/location, which authenticates the courier, checks they own the
     // trip, and persists the fix before emitting. Rebroadcasting whatever a client
-    // sent let anyone forge a courier's position on the dispatch map.
+    // sent let anyone forge a courier's position.
   });
 }
 

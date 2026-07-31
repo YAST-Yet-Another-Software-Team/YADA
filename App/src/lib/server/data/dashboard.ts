@@ -6,21 +6,6 @@ import type { DashboardTripRecord } from '$lib/utils/types';
 import { db } from '../db';
 import { businessProfiles, courierProfiles, deliveryRequests, users } from '../db/schema';
 
-export type DispatchRiderRecord = {
-	id: string;
-	userId: string;
-	name: string;
-	vehicle: string;
-	distanceKm: number;
-	lat: number;
-	lng: number;
-	lastLocationAt: string | null;
-	stale: boolean;
-	mapX: number;
-	mapY: number;
-};
-
-const STALE_LOCATION_MS = 30_000;
 
 function formatTripId(id: string) {
 	return id.startsWith('YD-') ? id : `YD-${id.slice(0, 4).toUpperCase()}`;
@@ -108,55 +93,6 @@ export async function getDashboardTrips(ownerId: string) {
 		activeTrips,
 		historyTrips
 	};
-}
-
-export async function getAvailableRiders(ownerId: string): Promise<DispatchRiderRecord[]> {
-	const profile = (
-		await db.select().from(businessProfiles).where(eq(businessProfiles.userId, ownerId)).limit(1)
-	)[0];
-
-	const riders = await db
-		.select({
-			id: courierProfiles.id,
-			userId: courierProfiles.userId,
-			vehicleType: courierProfiles.vehicleType,
-			currentLatitude: courierProfiles.currentLatitude,
-			currentLongitude: courierProfiles.currentLongitude,
-			lastLocationAt: courierProfiles.lastLocationAt,
-			name: users.name
-		})
-		.from(courierProfiles)
-		.innerJoin(users, eq(courierProfiles.userId, users.id))
-		.where(eq(courierProfiles.active, true));
-
-	const businessLatitude = profile ? Number(profile.latitude) : 6.6785;
-	const businessLongitude = profile ? Number(profile.longitude) : -1.5645;
-
-	return riders.map((rider, index) => {
-		const riderLatitude = Number(rider.currentLatitude ?? businessLatitude + 0.004 * (index + 1));
-		const riderLongitude = Number(rider.currentLongitude ?? businessLongitude + 0.003 * (index + 1));
-		const distanceKm = Math.max(
-			0.2,
-			Math.round(Math.hypot(riderLatitude - businessLatitude, riderLongitude - businessLongitude) * 111 * 10) /
-				10
-		);
-		const lastAt = rider.lastLocationAt ? new Date(rider.lastLocationAt).getTime() : 0;
-		const stale = !lastAt || Date.now() - lastAt > STALE_LOCATION_MS;
-
-		return {
-			id: rider.id,
-			userId: rider.userId,
-			name: rider.name,
-			vehicle: rider.vehicleType,
-			distanceKm,
-			lat: riderLatitude,
-			lng: riderLongitude,
-			lastLocationAt: rider.lastLocationAt ? new Date(rider.lastLocationAt).toISOString() : null,
-			stale,
-			mapX: 50,
-			mapY: 50
-		};
-	});
 }
 
 export async function seedTestBusinessUser() {
