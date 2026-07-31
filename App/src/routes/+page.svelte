@@ -1,5 +1,4 @@
 <script lang="ts">
-	import BrandLogo from '$lib/components/BrandLogo.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { getSession } from '$lib/auth/session.svelte';
 	import { AUTH_ROUTE, homeFor, signUpHref } from '$lib/shared/routes';
@@ -77,7 +76,9 @@
 	<!-- Header -->
 	<header class="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur">
 		<div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-			<BrandLogo href="/" size="sm" />
+			<a href="/" class="inline-flex shrink-0 items-center" aria-label="YADA home">
+				<img src="/logo.svg" alt="" class="h-8 w-auto" />
+			</a>
 
 			<div class="flex items-center gap-2 sm:gap-3">
 				{#if signedIn}
@@ -106,7 +107,7 @@
 				<h1
 					class="mt-4 text-4xl font-bold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-6xl"
 				>
-					Every delivery,<br />on time.
+					Find Riders,<br />with ease.
 				</h1>
 				<p class="mt-5 max-w-lg text-base leading-relaxed text-ink-secondary sm:text-lg">
 					YADA puts the business that sent the parcel and the courier carrying it on the same
@@ -290,7 +291,9 @@
 		<div
 			class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row sm:px-6"
 		>
-			<BrandLogo href="/" size="sm" />
+			<a href="/" class="inline-flex shrink-0 items-center" aria-label="YADA home">
+				<img src="/logo.svg" alt="" class="h-8 w-auto" />
+			</a>
 			<p class="text-sm text-ink-tertiary">
 				Serving Kumasi — KNUST and Ayeduase.
 			</p>

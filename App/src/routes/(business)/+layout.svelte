@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { page } from "$app/state";
-  import BrandLogo from "$lib/components/BrandLogo.svelte";
   import ProfileMenu from "$lib/components/business/ProfileMenu.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import { getSession } from "$lib/auth/session.svelte";
@@ -57,7 +56,13 @@
   <!-- Mobile chrome -->
   <header class="border-b border-border bg-surface lg:hidden">
     <div class="flex items-center justify-between gap-3 px-4 pt-3">
-      <BrandLogo href="/dashboard" size="sm" />
+      <a
+        href="/dashboard"
+        class="inline-flex shrink-0 items-center"
+        aria-label="YADA home"
+      >
+        <img src="/logo.svg" alt="" class="h-8 w-auto" />
+      </a>
       <div class="relative" data-profile-menu>
         <button
           type="button"
@@ -102,7 +107,13 @@
       class="mx-auto flex h-[58px] max-w-7xl items-stretch justify-between gap-4 border-b border-border px-6"
     >
       <div class="flex items-center">
-        <BrandLogo href="/dashboard" size="sm" />
+        <a
+          href="/dashboard"
+          class="inline-flex shrink-0 items-center"
+          aria-label="YADA home"
+        >
+          <img src="/logo.svg" alt="" class="h-8 w-auto" />
+        </a>
       </div>
 
       <nav class="flex h-full items-stretch gap-1" aria-label="Business">

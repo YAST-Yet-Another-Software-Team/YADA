@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import BrandLogo from '$lib/components/BrandLogo.svelte';
 	import Alert from '$lib/components/ui/Alert.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
@@ -137,9 +136,13 @@
 					{/each}
 				</div>
 
-				<div class="relative z-10 rounded-lg bg-surface p-1.5 shadow-sm">
-					<BrandLogo href="/" size="sm" />
-				</div>
+				<a
+					href="/"
+					class="relative z-10 inline-flex rounded-lg bg-surface p-1.5 shadow-sm"
+					aria-label="YADA home"
+				>
+					<img src="/logo.svg" alt="" class="h-8 w-auto" />
+				</a>
 
 				<div class="relative z-10 flex items-center gap-3">
 					<div class="relative h-px w-12 border-t-2 border-dashed border-primary-on/40">
@@ -207,9 +210,13 @@
 			<section class="flex flex-col justify-center p-5 sm:p-6 lg:items-center lg:p-12">
 				<div class="mx-auto w-full max-w-sm">
 					<div class="flex flex-col items-center text-center">
-						<div class="hidden rounded-lg bg-surface p-3 shadow-md lg:block">
-							<BrandLogo href="/" size="md" />
-						</div>
+						<a
+							href="/"
+							class="hidden rounded-lg bg-surface p-3 shadow-md lg:inline-flex"
+							aria-label="YADA home"
+						>
+							<img src="/logo.svg" alt="" class="h-14 w-auto" />
+						</a>
 						<h2 class="mt-3 text-xl font-semibold tracking-tight text-ink lg:mt-5 lg:text-2xl">
 							{#if showForgotPassword}
 								{resetSent ? 'Check your email' : 'Reset your password'}

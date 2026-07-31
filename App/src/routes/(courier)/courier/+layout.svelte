@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { page } from '$app/state';
-	import BrandLogo from '$lib/components/BrandLogo.svelte';
 	import CourierTabBar from '$lib/components/courier/CourierTabBar.svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import { getSession } from '$lib/auth/session.svelte';
@@ -33,7 +32,9 @@
 		<header
 			class="z-20 flex shrink-0 items-center justify-between border-b border-border bg-surface px-4 py-2.5"
 		>
-			<BrandLogo href="/courier/home" size="sm" />
+			<a href="/courier/home" class="inline-flex shrink-0 items-center" aria-label="YADA home">
+				<img src="/logo.svg" alt="" class="h-8 w-auto" />
+			</a>
 			<a
 				href="/courier/profile"
 				class="rounded-full outline-none ring-primary focus-visible:ring-2"
