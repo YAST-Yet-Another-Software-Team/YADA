@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 
-import type { AuthRole, SessionUser } from './auth';
+import type { AuthRole, SessionUser } from '$lib/utils/types';
 
 /**
  * The error envelope every `/api` route answers with: `ok` for the happy-path

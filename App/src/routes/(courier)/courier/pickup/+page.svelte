@@ -4,7 +4,8 @@
   import MapBackdrop from '$lib/components/MapBackdrop.svelte';
   import Alert from '$lib/components/ui/Alert.svelte';
   import Button from '$lib/components/ui/Button.svelte';
-  import { KUMASI_CENTER, type LatLng, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+  import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+  import type { LatLng } from '$lib/utils/types';
   import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
   import { startCourierLocationReporter } from '$lib/client/realtime/courier-location';
 

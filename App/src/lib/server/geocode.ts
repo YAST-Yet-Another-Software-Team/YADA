@@ -4,9 +4,9 @@ import { GeoError, geoErrorMessage, mapGoogleStatusToGeoError } from '$lib/share
 import {
   forwardCacheKey,
   reverseCacheKey,
-  serverGeocodeCache,
-  type CachedGeocode
+  serverGeocodeCache
 } from '$lib/shared/geo/geocode-cache';
+import type { CachedGeocode } from '$lib/utils/types';
 
 import { apiError } from './api-guard';
 

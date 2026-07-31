@@ -1,7 +1,13 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/Button.svelte';
 	import { getSession } from '$lib/auth/session.svelte';
-	import { AUTH_ROUTE, homeFor, signUpHref } from '$lib/shared/routes';
+	import { AUTH_ROUTE, homeFor } from '$lib/auth/routes';
+
+	/** Deep-link straight into a sign-up, pre-set to a role. Only this page has
+	 *  role-specific calls to action, so it owns the URL shape. */
+	function signUpHref(role: 'business' | 'courier') {
+		return `${AUTH_ROUTE}?mode=sign-up&role=${role}`;
+	}
 
 	// Provided by the root layout, seeded from locals.user during SSR — so a
 	// signed-in visitor's header renders correct on the first paint rather than

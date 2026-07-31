@@ -6,7 +6,7 @@ import { apiError, requireApiUser } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
 import { deliveryRequests } from '$lib/server/db/schema';
 import { recordStatusChange } from '$lib/server/data/trip-events';
-import type { TripStatus } from '$lib/shared/trip-status';
+import type { TripStatus } from '$lib/utils/types';
 import { isUuid } from '$lib/shared/uuid';
 
 /** The transitions a courier can drive from their trip screens. */

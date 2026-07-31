@@ -1,7 +1,7 @@
+import type { LatLng } from '$lib/utils/types';
+
 import zone from './kumasi-knust-zone.json';
 import { GeoError, geoErrorMessage } from './errors';
-
-export type LatLng = { lat: number; lng: number };
 
 export const KUMASI_CENTER: LatLng = {
   lat: zone.properties.center.lat,

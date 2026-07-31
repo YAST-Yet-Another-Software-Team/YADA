@@ -1,7 +1,7 @@
 import { roundCoord } from '$lib/shared/geo/geocode-cache';
 import { TtlCache } from '$lib/shared/ttl-cache';
 
-import type { DrivingRouteResult } from './routing';
+import type { DrivingRouteResult } from '$lib/utils/types';
 
 export function routeCacheKey(
 	origin: { lat: number; lng: number },

@@ -1,17 +1,8 @@
 import { getContext, setContext } from 'svelte';
 
+import type { AuthRole, AuthUser } from '$lib/utils/types';
+
 import { AuthError, authErrorMessage, networkError } from './errors';
-
-export type AuthRole = 'business' | 'courier';
-
-export type AuthUser = {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  role: AuthRole;
-  image: string | null;
-};
 
 // ---------------------------------------------------------------------------
 // Response plumbing — stateless, so it stays outside the class
@@ -19,8 +10,8 @@ export type AuthUser = {
 
 const AUTH_ROLES: readonly AuthRole[] = ['business', 'courier'];
 
-/** Mirrors toAuthRole() in $lib/server/auth — kept separate so the client bundle
- *  doesn't pull in the server module. */
+/** Mirrors toAuthRole() in $lib/server/auth. The *type* is now shared, but the
+ *  runtime narrowing still can't be — that lives in a server-only module. */
 function toRole(value: unknown): AuthRole {
   return AUTH_ROLES.includes(value as AuthRole) ? (value as AuthRole) : 'business';
 }

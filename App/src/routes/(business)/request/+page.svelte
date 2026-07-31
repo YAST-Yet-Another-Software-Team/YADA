@@ -9,8 +9,10 @@
 	import { getCurrentDeviceLocation, startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
 	import { reverseGeocode } from '$lib/client/maps/geocode-client';
 	import { computeDrivingRoute } from '$lib/client/maps/routing';
-	import { containsPoint, KUMASI_CENTER, type LatLng } from '$lib/shared/geo/service-area';
-	import { geoErrorMessage, type GeoErrorCode } from '$lib/shared/geo/errors';
+	import { containsPoint, KUMASI_CENTER } from '$lib/shared/geo/service-area';
+	import type { LatLng } from '$lib/utils/types';
+	import { geoErrorMessage } from '$lib/shared/geo/errors';
+	import type { GeoErrorCode } from '$lib/utils/types';
 
 	type LocationMode = 'pickup' | 'dropoff';
 

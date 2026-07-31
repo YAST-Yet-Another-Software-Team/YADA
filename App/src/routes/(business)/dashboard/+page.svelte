@@ -6,7 +6,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
-	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
+	import type { DashboardTripRecord } from '$lib/utils/types';
 	import { DashboardViewPreference } from './dashboard-view.svelte';
 
 	let {

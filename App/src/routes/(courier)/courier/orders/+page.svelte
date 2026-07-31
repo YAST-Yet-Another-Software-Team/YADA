@@ -3,7 +3,8 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
-	import { courierTripHref, type TripStage } from '$lib/shared/trip-status';
+	import { courierTripHref } from '$lib/shared/trip-status';
+	import type { TripStage } from '$lib/utils/types';
 	import { getCourierOnline } from '../courier-online.svelte';
 
 	let {

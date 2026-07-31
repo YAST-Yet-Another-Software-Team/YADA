@@ -1,13 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 
-export type RiderLocationEvent = {
-  courierId?: string;
-  tripId: string | null;
-  lat: number;
-  lng: number;
-  heading?: number | null;
-  recordedAt: string;
-};
+import type { RiderLocationEvent } from '$lib/utils/types';
 
 let socket: Socket | null = null;
 

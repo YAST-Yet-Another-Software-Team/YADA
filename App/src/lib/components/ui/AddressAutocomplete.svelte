@@ -4,7 +4,8 @@
 	import { loadGoogleMapsPlaces } from '$lib/client/maps/google-maps-loader';
 	import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
 	import { containsPoint, getZoneBounds, KUMASI_CENTER } from '$lib/shared/geo/service-area';
-	import { geoErrorMessage, type GeoErrorCode } from '$lib/shared/geo/errors';
+	import { geoErrorMessage } from '$lib/shared/geo/errors';
+	import type { GeoErrorCode } from '$lib/utils/types';
 	import { createClientGeocodeCache, placeCacheKey } from '$lib/shared/geo/geocode-cache';
 
 	type SelectDetail = {

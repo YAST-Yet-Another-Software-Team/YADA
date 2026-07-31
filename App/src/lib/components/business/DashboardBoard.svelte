@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { boardColumns } from '$lib/client/data/mock-trips';
-	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
+	import type { DashboardTripRecord } from '$lib/utils/types';
 
 	type TripStatus = DashboardTripRecord['status'];
 

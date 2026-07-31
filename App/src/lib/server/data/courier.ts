@@ -1,36 +1,11 @@
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 
-import {
-  ACTIVE_TRIP_STATUSES,
-  CLOSED_TRIP_STATUSES,
-  toTripStage,
-  type TripStage
-} from '$lib/shared/trip-status';
+import { ACTIVE_TRIP_STATUSES, CLOSED_TRIP_STATUSES, toTripStage } from '$lib/shared/trip-status';
 import { initials } from '$lib/shared/text';
+import type { CourierRequest, CourierTrip } from '$lib/utils/types';
 
 import { db } from '../db';
 import { deliveryRequests, users } from '../db/schema';
-
-export type CourierRequest = {
-  id: string;
-  businessName: string;
-  pickupAddress: string;
-  dropoffAddress: string;
-  pickupLat: number | null;
-  pickupLng: number | null;
-  dropoffLat: number | null;
-  dropoffLng: number | null;
-  notes: string | null;
-  requestedAt: string;
-};
-
-export type CourierTrip = CourierRequest & {
-  status: TripStage;
-  acceptedAt: string | null;
-  completedAt: string | null;
-  estimatedDistanceKm: number | null;
-  estimatedDurationMinutes: number | null;
-};
 
 export type CourierHomeSummary = {
   completedTrips: number;

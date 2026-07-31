@@ -1,5 +1,5 @@
-import type { LatLng } from '$lib/shared/geo/service-area';
-import type { GeoErrorCode } from '$lib/shared/geo/errors';
+import type { LatLng } from '$lib/utils/types';
+import type { GeoErrorCode } from '$lib/utils/types';
 import {
 	createClientGeocodeCache,
 	forwardCacheKey,

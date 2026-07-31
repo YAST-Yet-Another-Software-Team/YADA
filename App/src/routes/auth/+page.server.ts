@@ -1,5 +1,4 @@
 import { redirect } from '@sveltejs/kit';
-
 import { homeFor } from '$lib/server/auth-guard';
 
 /**

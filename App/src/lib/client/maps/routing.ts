@@ -1,17 +1,7 @@
 import { loadGoogleMapsRoutes } from './google-maps-loader';
-import type { LatLng } from '$lib/shared/geo/service-area';
+import type { DrivingRouteResult, LatLng } from '$lib/utils/types';
 import { GeoError, geoErrorMessage } from '$lib/shared/geo/errors';
 import { clientRouteCache, routeCacheKey } from './route-cache';
-
-export type DrivingRouteResult = {
-  distanceMeters: number;
-  durationSeconds: number;
-  distanceText: string;
-  durationText: string;
-  path: LatLng[];
-  distanceKm: number;
-  durationMinutes: number;
-};
 
 type RouteCacheEntry = {
   key: string;

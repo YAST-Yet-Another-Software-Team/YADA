@@ -1,10 +1,4 @@
-export type GeoErrorCode =
-  | 'quota'
-  | 'denied'
-  | 'no_results'
-  | 'out_of_zone'
-  | 'unavailable'
-  | 'invalid_request';
+import type { GeoErrorCode } from '$lib/utils/types';
 
 export class GeoError extends Error {
   readonly code: GeoErrorCode;

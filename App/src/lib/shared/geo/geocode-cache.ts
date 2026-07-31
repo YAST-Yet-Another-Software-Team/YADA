@@ -1,11 +1,6 @@
-import { TtlCache } from '../ttl-cache';
+import type { CachedGeocode } from '$lib/utils/types';
 
-export type CachedGeocode = {
-  address: string;
-  lat: number;
-  lng: number;
-  placeId?: string;
-};
+import { TtlCache } from '../ttl-cache';
 
 /** Coordinates are cached to ~1 m, so near-identical fixes share an entry. */
 export function roundCoord(value: number) {

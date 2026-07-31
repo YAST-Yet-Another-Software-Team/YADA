@@ -1,8 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 
-import { AUTH_ROUTE, homeFor } from '$lib/shared/routes';
+import { AUTH_ROUTE, homeFor } from '$lib/auth/routes';
 
-import type { AuthRole, SessionUser } from './auth';
+import type { AuthRole, SessionUser } from '$lib/utils/types';
 
 /** A workspace is a role: every account belongs to exactly one of them. */
 export type Workspace = AuthRole;

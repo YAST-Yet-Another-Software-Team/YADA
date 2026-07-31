@@ -7,16 +7,14 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import IconButton from '$lib/components/ui/IconButton.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
-	import { KUMASI_CENTER, type LatLng, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+	import type { LatLng } from '$lib/utils/types';
 	import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
-	import {
-		joinTripRoom,
-		leaveTripRoom,
-		onRiderLocation,
-		type RiderLocationEvent
-	} from '$lib/client/realtime/client';
+	import { joinTripRoom, leaveTripRoom, onRiderLocation } from '$lib/client/realtime/client';
+	import type { RiderLocationEvent } from '$lib/utils/types';
 	import { LOCATION_STALE_MS } from '$lib/client/realtime/courier-location';
-	import { toDispatchStage, type TripStatus } from '$lib/shared/trip-status';
+	import { toDispatchStage } from '$lib/shared/trip-status';
+	import type { TripStatus } from '$lib/utils/types';
 
 	type ActiveTrip = {
 		id: string;

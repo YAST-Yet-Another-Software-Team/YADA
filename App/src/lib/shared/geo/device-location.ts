@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 
-import type { LatLng } from './service-area';
+import type { LatLng } from '$lib/utils/types';
 
 export async function getCurrentDeviceLocation(): Promise<LatLng | null> {
 	if (!browser || !navigator.geolocation) return null;

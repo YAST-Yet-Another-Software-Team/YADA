@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 
-import type { CourierTrip } from './data/courier';
+import type { CourierTrip } from '$lib/utils/types';
 
 /**
  * Unwrap a courier trip lookup for a page that can't render without one.

@@ -1,27 +1,10 @@
 import { desc, eq } from 'drizzle-orm';
 
-import { toDispatchStage, type TripStage } from '$lib/shared/trip-status';
+import { toDispatchStage } from '$lib/shared/trip-status';
+import type { DashboardTripRecord } from '$lib/utils/types';
 
 import { db } from '../db';
 import { businessProfiles, courierProfiles, deliveryRequests, users } from '../db/schema';
-
-export type DashboardTripRecord = {
-	id: string;
-	rawId: string;
-	rider: string | null;
-	destination: string;
-	pickup: string | null;
-	eta: string | null;
-	status: TripStage;
-	completedAt: string | null;
-	notes: string | null;
-	pickupLat?: number | null;
-	pickupLng?: number | null;
-	dropoffLat?: number | null;
-	dropoffLng?: number | null;
-	mapX?: number;
-	mapY?: number;
-};
 
 export type DispatchRiderRecord = {
 	id: string;

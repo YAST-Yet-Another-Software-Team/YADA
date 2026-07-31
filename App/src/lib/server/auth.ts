@@ -5,6 +5,8 @@ import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
 import { env } from '$env/dynamic/private';
 
+import type { AuthRole } from '$lib/utils/types';
+
 import { db } from './db';
 import * as schema from './db/schema';
 
@@ -17,13 +19,7 @@ const trustedOrigins = [
     .filter(Boolean)
 ];
 
-/**
- * The two kinds of account YADA has: a business that requests deliveries, and a
- * courier that makes them. Anything else on a sign-up request is not a role.
- */
-const AUTH_ROLES = ['business', 'courier'] as const;
-
-export type AuthRole = (typeof AUTH_ROLES)[number];
+const AUTH_ROLES = ['business', 'courier'] as const satisfies readonly AuthRole[];
 
 /**
  * Narrow an untrusted `role` to the role union.
@@ -106,11 +102,3 @@ export const auth = betterAuth({
   plugins: [dash(), sveltekitCookies(getRequestEvent)]
 });
 
-export interface SessionUser {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  role: AuthRole;
-  image: string | null;
-}

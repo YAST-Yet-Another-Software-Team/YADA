@@ -5,7 +5,7 @@
 	import Input from '$lib/components/ui/Input.svelte';
 	import { getSession } from '$lib/auth/session.svelte';
 	import { messageOf } from '$lib/auth/errors';
-	import { homeFor } from '$lib/shared/routes';
+	import { homeFor } from '$lib/auth/routes';
 	import { slide } from 'svelte/transition';
 
 	type Role = 'business' | 'courier';

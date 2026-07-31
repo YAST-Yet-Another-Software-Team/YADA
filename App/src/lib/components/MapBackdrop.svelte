@@ -16,11 +16,8 @@
   import { onDestroy, onMount, type Snippet } from 'svelte';
   import { loadGoogleMaps } from '$lib/client/maps/google-maps-loader';
   import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
-  import {
-    KUMASI_CENTER,
-    KUMASI_DEFAULT_ZOOM,
-    type LatLng
-  } from '$lib/shared/geo/service-area';
+  import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
+  import type { LatLng } from '$lib/utils/types';
   import { MAP_COLORS, MAP_ROLE_COLORS } from '$lib/styles/map-colors';
 
   let {
