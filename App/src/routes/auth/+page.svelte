@@ -1,119 +1,65 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import Alert from '$lib/components/ui/Alert.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
-	import { getSession } from '$lib/auth/session.svelte';
-	import { messageOf } from '$lib/auth/errors';
-	import { homeFor } from '$lib/auth/routes';
 	import { slide } from 'svelte/transition';
 
 	type Role = 'business' | 'courier';
-	type Mode = 'sign-in' | 'sign-up';
+	type Mode = 'sign-in' | 'sign-up' | 'reset';
 
-	const session = getSession();
+	/** Whatever the last `fail()` from an action returned, or `{ sent: true }`. */
+	let {
+		form
+	}: {
+		form: {
+			message?: string;
+			email?: string;
+			name?: string;
+			phone?: string;
+			role?: string;
+			sent?: boolean;
+		} | null;
+	} = $props();
 
-	// The landing page links here with ?mode=sign-up&role=courier, so a visitor
-	// who clicked "Sign up as a courier" lands on the form they asked for rather
-	// than on sign-in with two more clicks to go. Read once, at init: after that
-	// the toggles below own the state, and re-deriving would fight them.
-	const params = page.url.searchParams;
-
-	let mode = $state<Mode>(params.get('mode') === 'sign-up' ? 'sign-up' : 'sign-in');
-	let role = $state<Role>(params.get('role') === 'courier' ? 'courier' : 'business');
-	let name = $state('');
-	let phone = $state('');
-	let email = $state('');
-	let password = $state('');
-	let rememberMe = $state(false);
-	let isSubmitting = $state(false);
-	let authError = $state<string | null>(null);
-
-	// Forgot-password mini flow
-	let showForgotPassword = $state(false);
-	let resetEmail = $state('');
-	let resetSent = $state(false);
-	let isResetting = $state(false);
-	let resetError = $state<string | null>(null);
-
-	async function submitAuth() {
-		if (isSubmitting) return;
-		isSubmitting = true;
-		authError = null;
-
-		try {
-			if (mode === 'sign-up') {
-				const displayName =
-					name.trim() ||
-					(role === 'business' ? email.split('@')[0] || 'Business user' : 'Courier');
-				await session.signUp(
-					email,
-					password,
-					displayName,
-					role === 'courier' ? phone : undefined,
-					role
-				);
-				window.location.replace(homeFor(role));
-				return;
-			}
-
-			const user = await session.signIn(email, password, rememberMe);
-			window.location.replace(homeFor(user?.role));
-		} catch (error) {
-			// The store hands back copy already written for this screen; anything
-			// else is a bug, so it goes to the console and the user gets the
-			// generic line rather than a stack trace.
-			console.error('Auth request failed.', error);
-			authError = messageOf(error);
-		} finally {
-			isSubmitting = false;
-		}
-	}
-
-	function openForgotPassword() {
-		resetEmail = email;
-		resetSent = false;
-		resetError = null;
-		showForgotPassword = true;
-	}
-
-	function closeForgotPassword() {
-		showForgotPassword = false;
-		resetSent = false;
-		resetError = null;
-	}
-
-	async function requestReset() {
-		if (isResetting || !resetEmail.trim().includes('@')) return;
-		isResetting = true;
-		resetError = null;
-
-		try {
-			await session.requestPasswordReset(resetEmail.trim());
-			resetSent = true;
-		} catch (error) {
-			console.error('Password reset request failed.', error);
-			resetSent = false;
-			resetError = messageOf(error);
-		} finally {
-			isResetting = false;
-		}
-	}
-
-	/** Better Auth's default `minPasswordLength`. Enforced server-side on sign-up;
-	 *  sign-in stays permissive so an older short password can still get in. */
-	const MIN_PASSWORD_LENGTH = 8;
-
-	const canSubmit = $derived(
-		email.trim().includes('@') &&
-		(mode === 'sign-in'
-			? password.length > 0
-			: password.length >= MIN_PASSWORD_LENGTH &&
-				name.trim().length > 1 &&
-				(role === 'business' || phone.trim().length > 6))
+	// Which panel is on screen lives in the URL, not in component state, so the
+	// mode toggle is an ordinary link. That keeps it working with JavaScript off
+	// and makes ?mode=sign-up&role=courier from the landing page the same
+	// mechanism rather than a special case read once at init.
+	const mode = $derived<Mode>(
+		page.url.searchParams.get('mode') === 'sign-up'
+			? 'sign-up'
+			: page.url.searchParams.get('mode') === 'reset'
+				? 'reset'
+				: 'sign-in'
 	);
 
-	const canRequestReset = $derived(resetEmail.trim().includes('@'));
+	// Role is a radio inside the form: `bind:group` drives the phone field's
+	// visibility here, and the same input submits the value to the action.
+	let role = $state<Role>(
+		page.url.searchParams.get('role') === 'courier' ? 'courier' : 'business'
+	);
+
+	$effect(() => {
+		if (form?.role === 'courier' || form?.role === 'business') role = form.role;
+	});
+
+	let submitting = $state(false);
+
+	/** Flip the pending flag around the request; `update()` applies the result. */
+	const track = () => {
+		submitting = true;
+
+		return async ({ update }: { update: () => Promise<void> }) => {
+			await update();
+			submitting = false;
+		};
+	};
+
+	/** Better Auth's default `minPasswordLength`, mirrored from the action so the
+	 *  hint matches what the server will actually accept. */
+	const MIN_PASSWORD_LENGTH = 8;
 
 	const dotGrid = Array.from({ length: 20 });
 	const miniDotGrid = Array.from({ length: 12 });
@@ -218,16 +164,16 @@
 							<img src="/logo.svg" alt="" class="h-14 w-auto" />
 						</a>
 						<h2 class="mt-3 text-xl font-semibold tracking-tight text-ink lg:mt-5 lg:text-2xl">
-							{#if showForgotPassword}
-								{resetSent ? 'Check your email' : 'Reset your password'}
+							{#if mode === 'reset'}
+								{form?.sent ? 'Check your email' : 'Reset your password'}
 							{:else}
 								{mode === 'sign-up' ? 'Create your account' : 'Hello! Welcome back'}
 							{/if}
 						</h2>
 						<p class="mt-1 text-sm leading-relaxed text-ink-secondary lg:mt-1.5">
-							{#if showForgotPassword}
-								{resetSent
-									? `If an account exists for ${resetEmail}, we've sent a reset link.`
+							{#if mode === 'reset'}
+								{form?.sent
+									? `If an account exists for ${form.email}, we've sent a reset link.`
 									: "Enter the email linked to your account and we'll send you a reset link."}
 							{:else}
 								{mode === 'sign-up'
@@ -237,121 +183,163 @@
 						</p>
 					</div>
 
-					{#if showForgotPassword}
-						<div class="mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4" transition:slide={{ duration: 220 }}>
-							{#if resetError}
-								<Alert>{resetError}</Alert>
+					{#if mode === 'reset'}
+						<form
+							method="POST"
+							action="?/reset"
+							use:enhance={track}
+							class="mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4"
+							transition:slide={{ duration: 220 }}
+						>
+							{#if form?.message}
+								<Alert>{form.message}</Alert>
 							{/if}
 
-							{#if !resetSent}
-								<Input label="Email" type="email" placeholder="Enter your email address" bind:value={resetEmail} />
-								<Button
-									variant="primary"
-									size="lg"
-									fullWidth
-									type="button"
-									disabled={isResetting || !canRequestReset}
-									onclick={requestReset}
-								>
-									{isResetting ? 'Sending…' : 'Send reset link'}
+							{#if !form?.sent}
+								<Input
+									label="Email"
+									type="email"
+									name="email"
+									placeholder="Enter your email address"
+									autocomplete="email"
+									required
+									value={form?.email ?? ''}
+								/>
+								<Button variant="primary" size="lg" fullWidth type="submit" disabled={submitting}>
+									{submitting ? 'Sending…' : 'Send reset link'}
 								</Button>
 							{/if}
 
-							<button
-								type="button"
+							<a
+								href="/auth"
 								class="text-center text-sm font-semibold text-primary underline-offset-2 hover:underline"
-								onclick={closeForgotPassword}
 							>
 								Back to sign in
-							</button>
-						</div>
+							</a>
+						</form>
 					{:else}
-						<form class="mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4" onsubmit={(e) => { e.preventDefault(); submitAuth(); }} transition:slide={{ duration: 220 }}>
-							{#if authError}
-								<Alert>{authError}</Alert>
+						<form
+							method="POST"
+							action={mode === 'sign-up' ? '?/signup' : '?/signin'}
+							use:enhance={track}
+							class="mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4"
+							transition:slide={{ duration: 220 }}
+						>
+							{#if form?.message}
+								<Alert>{form.message}</Alert>
 							{/if}
 
 							{#if mode === 'sign-up'}
-								<div class="grid grid-cols-2 gap-2 rounded-full border border-border bg-surface-sunken p-1">
-									<button
-										type="button"
-										class="rounded-full px-3 py-2 text-sm font-medium transition {role === 'business'
-											? 'bg-primary text-primary-on shadow-sm'
-											: 'text-ink-secondary hover:text-ink'}"
-										onclick={() => (role = 'business')}
-									>
-										Business
-									</button>
-									<button
-										type="button"
-										class="rounded-full px-3 py-2 text-sm font-medium transition {role === 'courier'
-											? 'bg-primary text-primary-on shadow-sm'
-											: 'text-ink-secondary hover:text-ink'}"
-										onclick={() => (role = 'courier')}
-									>
-										Courier
-									</button>
-								</div>
+								<!-- Radios, not buttons: `bind:group` shows the right fields here and
+								     the same input carries the role to the action. -->
+								<fieldset class="grid grid-cols-2 gap-2 rounded-full border border-border bg-surface-sunken p-1">
+									<legend class="sr-only">I am signing up as</legend>
+									{#each [{ value: 'business', label: 'Business' }, { value: 'courier', label: 'Courier' }] as option}
+										<label
+											class="cursor-pointer rounded-full px-3 py-2 text-center text-sm font-medium transition {role ===
+											option.value
+												? 'bg-primary text-primary-on shadow-sm'
+												: 'text-ink-secondary hover:text-ink'}"
+										>
+											<input
+												type="radio"
+												name="role"
+												value={option.value}
+												bind:group={role}
+												class="sr-only"
+											/>
+											{option.label}
+										</label>
+									{/each}
+								</fieldset>
 
 								{#if role === 'business'}
-									<Input label="Business name" type="text" placeholder="Favorie Kitchen" bind:value={name} />
+									<Input
+										label="Business name"
+										type="text"
+										name="name"
+										placeholder="Favorie Kitchen"
+										autocomplete="organization"
+										required
+										value={form?.name ?? ''}
+									/>
 								{:else}
-									<Input label="Full name" type="text" placeholder="Kwame Asante" bind:value={name} />
-									<Input label="Phone number" type="tel" placeholder="(555) 000-0000" bind:value={phone} />
+									<Input
+										label="Full name"
+										type="text"
+										name="name"
+										placeholder="Kwame Asante"
+										autocomplete="name"
+										required
+										value={form?.name ?? ''}
+									/>
+									<Input
+										label="Phone number"
+										type="tel"
+										name="phone"
+										placeholder="(555) 000-0000"
+										autocomplete="tel"
+										required
+										value={form?.phone ?? ''}
+									/>
 								{/if}
 							{/if}
 
 							<Input
 								label={mode === 'sign-up' && role === 'business' ? 'Work email' : 'Email'}
 								type="email"
+								name="email"
 								placeholder="Enter your email address"
-								bind:value={email}
+								autocomplete="email"
+								required
+								value={form?.email ?? ''}
 							/>
 							<Input
 								label="Password"
 								type="password"
+								name="password"
 								placeholder={mode === 'sign-up'
 									? `At least ${MIN_PASSWORD_LENGTH} characters`
 									: 'Enter your password'}
-								bind:value={password}
+								autocomplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
+								minlength={mode === 'sign-up' ? MIN_PASSWORD_LENGTH : undefined}
+								required
 							/>
 
 							{#if mode === 'sign-in'}
 								<div class="flex items-center justify-between text-sm">
 									<label class="flex items-center gap-2 text-ink-secondary">
-										<input type="checkbox" bind:checked={rememberMe} class="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+										<input
+											type="checkbox"
+											name="rememberMe"
+											class="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+										/>
 										Remember me
 									</label>
-									<button type="button" class="font-medium text-primary hover:underline" onclick={openForgotPassword}>
+									<a href="/auth?mode=reset" class="font-medium text-primary hover:underline">
 										Forgot password?
-									</button>
+									</a>
 								</div>
 							{/if}
 
-							<Button
-								variant="primary"
-								size="lg"
-								fullWidth
-								type="submit"
-								disabled={isSubmitting || !canSubmit}
-							>
-								{mode === 'sign-up' ? 'Create account' : 'Login'}
+							<Button variant="primary" size="lg" fullWidth type="submit" disabled={submitting}>
+								{#if submitting}
+									{mode === 'sign-up' ? 'Creating account…' : 'Signing in…'}
+								{:else}
+									{mode === 'sign-up' ? 'Create account' : 'Login'}
+								{/if}
 							</Button>
 
 							<div class="flex items-center justify-center gap-2 text-sm text-ink-secondary">
 								<span>{mode === 'sign-up' ? 'Already have an account?' : "Don't have an account?"}</span>
-								<button
-									type="button"
+								<!-- A link, so switching modes works without JavaScript and drops the
+								     other mode's error along with the query string. -->
+								<a
+									href={mode === 'sign-up' ? '/auth' : '/auth?mode=sign-up'}
 									class="font-semibold text-primary underline-offset-2 hover:underline"
-									onclick={() => {
-										mode = mode === 'sign-up' ? 'sign-in' : 'sign-up';
-										// The other mode's rules are different; a stale failure
-										// would read as a rejection of the form now on screen.
-										authError = null;
-									}}
 								>
 									{mode === 'sign-up' ? 'Sign in' : 'Create account'}
-								</button>
+								</a>
 							</div>
 						</form>
 					{/if}

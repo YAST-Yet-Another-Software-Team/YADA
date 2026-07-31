@@ -7,10 +7,6 @@ import type { AuthRole, SessionUser } from '$lib/utils/types';
 /** A workspace is a role: every account belongs to exactly one of them. */
 export type Workspace = AuthRole;
 
-// Re-exported so server code has one import for "where do I send this user",
-// while the definitions stay in a module the browser can also import.
-export { homeFor };
-
 /**
  * Gate a route group on an authenticated user of the right workspace.
  *
