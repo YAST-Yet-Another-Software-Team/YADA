@@ -19,7 +19,7 @@
     {
       href: "/dashboard",
       label: "Dashboard",
-      short: "Home",
+      short: "Dashboard",
       match: ["/dashboard"],
     },
     {
@@ -28,7 +28,6 @@
       short: "Request",
       match: ["/request", "/matching", "/tracking"],
     },
-    { href: "/map", label: "Map", short: "Map", match: ["/map"] },
     {
       href: "/history",
       label: "History",

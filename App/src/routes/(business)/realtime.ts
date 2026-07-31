@@ -5,10 +5,10 @@ import type { RiderLocationEvent } from '$lib/utils/types';
 /**
  * The business workspace's live connection.
  *
- * Only `(business)` reads live rider positions — the map watches every courier,
- * tracking watches one trip — so this sits in the route group rather than
- * `$lib`. Couriers publish their position through `POST /api/location`, which is
- * a different mechanism entirely (see `(courier)/courier/location-reporter`).
+ * Only `(business)` reads live rider positions — tracking watches one trip — so
+ * this sits in the route group rather than `$lib`. Couriers publish their
+ * position through `POST /api/location`, which is a different mechanism
+ * entirely (see `(courier)/courier/location-reporter`).
  */
 
 let socket: Socket | null = null;
@@ -35,16 +35,6 @@ export function joinTripRoom(tripId: string) {
 export function leaveTripRoom(tripId: string) {
   const s = getRealtimeSocket();
   s?.emit('trip:leave', tripId);
-}
-
-export function joinDispatchRiders() {
-  const s = getRealtimeSocket();
-  s?.emit('dispatch:join');
-}
-
-export function leaveDispatchRiders() {
-  const s = getRealtimeSocket();
-  s?.emit('dispatch:leave');
 }
 
 export function onRiderLocation(handler: (payload: RiderLocationEvent) => void) {

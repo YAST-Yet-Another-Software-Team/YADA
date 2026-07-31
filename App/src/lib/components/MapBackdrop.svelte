@@ -1,7 +1,7 @@
 <script module lang="ts">
-  export type MapMarkerRole = 'pickup' | 'dropoff' | 'rider' | 'business' | 'search';
+  type MapMarkerRole = 'pickup' | 'dropoff' | 'rider' | 'business' | 'search';
 
-  export type MapMarker = {
+  type MapMarker = {
     id: string;
     lat: number;
     lng: number;
@@ -23,8 +23,6 @@
   let {
     routeLabel = false,
     interactive = false,
-    /** Thin brand red wash over the map (YADA primary). */
-    brandTint = true,
     locationUnavailable = false,
     followId = null,
     markers = [],
@@ -36,7 +34,6 @@
   }: {
     routeLabel?: boolean;
     interactive?: boolean;
-    brandTint?: boolean;
     locationUnavailable?: boolean;
     followId?: string | null;
     markers?: MapMarker[];
@@ -279,10 +276,6 @@
     >
       Location unavailable — showing last known position
     </div>
-  {/if}
-
-  {#if brandTint}
-    <div class="pointer-events-none absolute inset-0 z-[1] bg-primary/10" aria-hidden="true"></div>
   {/if}
 
   {@render children?.()}
