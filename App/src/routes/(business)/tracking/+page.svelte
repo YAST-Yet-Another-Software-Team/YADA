@@ -10,11 +10,9 @@
 	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
 	import type { LatLng } from '$lib/utils/types';
 	import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
-	import { joinTripRoom, leaveTripRoom, onRiderLocation } from '$lib/client/realtime/client';
-	import type { RiderLocationEvent } from '$lib/utils/types';
-	import { LOCATION_STALE_MS } from '$lib/client/realtime/courier-location';
+	import { joinTripRoom, leaveTripRoom, LOCATION_STALE_MS, onRiderLocation } from '../realtime';
 	import { toDispatchStage } from '$lib/shared/trip-status';
-	import type { TripStatus } from '$lib/utils/types';
+	import type { RiderLocationEvent, TripStatus } from '$lib/utils/types';
 
 	type ActiveTrip = {
 		id: string;

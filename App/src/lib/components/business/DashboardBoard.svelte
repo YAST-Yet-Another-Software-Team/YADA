@@ -1,8 +1,13 @@
 <script lang="ts">
-	import { boardColumns } from '$lib/client/data/mock-trips';
-	import type { DashboardTripRecord } from '$lib/utils/types';
+	import type { DashboardTripRecord, TripStage } from '$lib/utils/types';
 
-	type TripStatus = DashboardTripRecord['status'];
+	/** The board's columns, left to right. Only this component reads them. */
+	const boardColumns: Array<{ key: TripStage; title: string }> = [
+		{ key: 'searching', title: 'Finding rider' },
+		{ key: 'assigned', title: 'Assigned' },
+		{ key: 'en_route', title: 'En route' },
+		{ key: 'delivered', title: 'Delivered today' }
+	];
 
 	let {
 		trips = [],
@@ -14,7 +19,7 @@
 		onselect?: (trip: DashboardTripRecord) => void;
 	} = $props();
 
-	function columnTrips(key: TripStatus | 'delivered') {
+	function columnTrips(key: TripStage) {
 		if (key === 'delivered') return deliveredToday;
 		return trips.filter((t) => t.status === key);
 	}

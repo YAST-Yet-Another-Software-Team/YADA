@@ -1,12 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { page } from '$app/state';
-	import CourierTabBar from '$lib/components/courier/CourierTabBar.svelte';
+	import CourierTabBar from './CourierTabBar.svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import { getSession } from '$lib/auth/session.svelte';
 	import { createCourierOnline } from './courier-online.svelte';
 	import { initials } from '$lib/shared/text';
-	import { isFocusedTrip, isHome } from '$lib/shared/courier-routes';
+	import { isFocusedTrip, isHome } from './tabs';
 
 	let { children }: { children: Snippet } = $props();
 

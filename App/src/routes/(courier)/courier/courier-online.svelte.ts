@@ -1,8 +1,30 @@
 import { getContext, setContext } from 'svelte';
 
-import { readStored, writeStored } from '$lib/shared/local-storage';
-
 const STORAGE_KEY = 'yada.courierOnline';
+
+/**
+ * Persistence for this one flag.
+ *
+ * Both directions fail quiet: `localStorage` doesn't exist during SSR, and it
+ * throws outright when storage is disabled (Safari private browsing, hardened
+ * settings) or over quota. Staying online is never worth an exception, and the
+ * in-memory value still applies for the session either way.
+ */
+function readOnline(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeOnline(online: boolean) {
+  try {
+    localStorage.setItem(STORAGE_KEY, online ? 'true' : 'false');
+  } catch {
+    // Absent, disabled, or over quota.
+  }
+}
 
 /**
  * Whether the courier is currently accepting delivery requests.
@@ -21,12 +43,12 @@ export class CourierOnline {
 
   /** Adopt the persisted value. Safe to call more than once. */
   hydrate() {
-    this.#online = readStored(STORAGE_KEY) === 'true';
+    this.#online = readOnline();
   }
 
   set(online: boolean) {
     this.#online = online;
-    writeStored(STORAGE_KEY, online ? 'true' : 'false');
+    writeOnline(online);
   }
 
   goOnline() {

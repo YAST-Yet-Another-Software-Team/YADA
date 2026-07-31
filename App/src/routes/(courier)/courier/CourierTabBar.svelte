@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { activeTabIndex, COURIER_TABS, isTabActive } from '$lib/shared/courier-routes';
+	import { activeTabIndex, COURIER_TABS, isTabActive } from './tabs';
 
 	const tabs = COURIER_TABS;
 

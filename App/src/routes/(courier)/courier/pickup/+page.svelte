@@ -7,7 +7,7 @@
   import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
   import type { LatLng } from '$lib/utils/types';
   import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
-  import { startCourierLocationReporter } from '$lib/client/realtime/courier-location';
+  import { startCourierLocationReporter } from '../location-reporter';
 
   let {
     data

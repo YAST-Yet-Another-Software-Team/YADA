@@ -8,10 +8,10 @@
 	import {
 		joinDispatchRiders,
 		leaveDispatchRiders,
+		LOCATION_STALE_MS,
 		onRiderLocation
-	} from '$lib/client/realtime/client';
+	} from '../realtime';
 	import type { RiderLocationEvent } from '$lib/utils/types';
-	import { LOCATION_STALE_MS } from '$lib/client/realtime/courier-location';
 
 	type AvailableRider = {
 		id: string;

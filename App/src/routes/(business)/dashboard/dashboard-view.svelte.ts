@@ -1,8 +1,30 @@
-import { readStored, writeStored } from '$lib/shared/local-storage';
-
 export type DashboardView = 'table' | 'board';
 
 const STORAGE_KEY = 'yada.dashboardView';
+
+/**
+ * Persistence for this one preference.
+ *
+ * Both directions fail quiet: `localStorage` doesn't exist during SSR, and it
+ * throws outright when storage is disabled (Safari private browsing, hardened
+ * settings) or over quota. A view preference is never worth an exception, and
+ * the in-memory value still applies for the session either way.
+ */
+function readView(): DashboardView {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === 'board' ? 'board' : 'table';
+  } catch {
+    return 'table';
+  }
+}
+
+function writeView(view: DashboardView) {
+  try {
+    localStorage.setItem(STORAGE_KEY, view);
+  } catch {
+    // Absent, disabled, or over quota.
+  }
+}
 
 /**
  * Whether the dashboard lists trips as a table or a kanban board.
@@ -21,11 +43,11 @@ export class DashboardViewPreference {
 
   /** Adopt the persisted preference. Safe to call more than once. */
   hydrate() {
-    this.#view = readStored(STORAGE_KEY) === 'board' ? 'board' : 'table';
+    this.#view = readView();
   }
 
   set(view: DashboardView) {
     this.#view = view;
-    writeStored(STORAGE_KEY, view);
+    writeView(view);
   }
 }

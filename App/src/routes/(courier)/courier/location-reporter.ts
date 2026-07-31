@@ -1,4 +1,17 @@
+/**
+ * Publishing the courier's own position while a delivery is live.
+ *
+ * Only the pickup and deliver screens use this, so it lives in the courier
+ * workspace. The business side of the same feature — receiving those positions
+ * over Socket.IO — is `(business)/realtime`.
+ */
+
 const THROTTLE_MS = 2500;
+
+/**
+ * How old the last fix may be before it's reported as stale. The business map
+ * applies the same 30s policy to what it receives, as its own constant.
+ */
 const STALE_MS = 30_000;
 
 /**
@@ -78,5 +91,3 @@ export function startCourierLocationReporter(options: {
 
   return stop;
 }
-
-export { STALE_MS as LOCATION_STALE_MS };

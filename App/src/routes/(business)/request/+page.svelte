@@ -1,3 +1,64 @@
+<script module lang="ts">
+	import { createClientGeocodeCache, reverseCacheKey } from '$lib/shared/geo/geocode-cache';
+	import type { GeoErrorCode as GeoCode, LatLng as Point } from '$lib/utils/types';
+
+	type GeocodeResult = {
+		address: string;
+		lat: number;
+		lng: number;
+		placeId?: string;
+		inZone: boolean;
+	};
+
+	type GeocodeResponse =
+		| { ok: true; result: GeocodeResult }
+		| { ok: false; code: GeoCode; message: string; result?: GeocodeResult };
+
+	/**
+	 * Module scope, not instance scope: the cache has to outlive a visit to this
+	 * page, or navigating away and back re-bills every lookup against the Maps
+	 * quota. This is the only screen that reverse-geocodes.
+	 */
+	const geocodeCache = createClientGeocodeCache();
+
+	async function reverseGeocode(point: Point): Promise<GeocodeResponse> {
+		const key = reverseCacheKey(point.lat, point.lng);
+		const cached = geocodeCache.get(key);
+
+		if (cached) {
+			const { containsPoint: inside } = await import('$lib/shared/geo/service-area');
+			return {
+				ok: true,
+				result: {
+					address: cached.address,
+					lat: cached.lat,
+					lng: cached.lng,
+					placeId: cached.placeId,
+					inZone: inside({ lat: point.lat, lng: point.lng })
+				}
+			};
+		}
+
+		const response = await fetch('/api/geo/reverse', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(point)
+		});
+		const data = (await response.json()) as GeocodeResponse;
+
+		if (data.ok) {
+			geocodeCache.set(key, {
+				address: data.result.address,
+				lat: data.result.lat,
+				lng: data.result.lng,
+				placeId: data.result.placeId
+			});
+		}
+
+		return data;
+	}
+</script>
+
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
@@ -7,7 +68,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import { getCurrentDeviceLocation, startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
-	import { reverseGeocode } from '$lib/client/maps/geocode-client';
 	import { computeDrivingRoute } from '$lib/client/maps/routing';
 	import { containsPoint, KUMASI_CENTER } from '$lib/shared/geo/service-area';
 	import type { LatLng } from '$lib/utils/types';
