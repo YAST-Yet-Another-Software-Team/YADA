@@ -2,12 +2,13 @@
 	import { onDestroy, onMount } from 'svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { auth } from '$lib/stores/auth';
+	import { getSession } from '$lib/auth/session.svelte';
 	import { initials } from '$lib/shared/text';
 
 	let { open = false, onclose }: { open?: boolean; onclose?: () => void } = $props();
 
-	const user = $derived($auth.user);
+	const session = getSession();
+	const user = $derived(session.user);
 	const avatarInitials = $derived(initials(user?.name, 'Y'));
 	const displayName = $derived(user?.name || 'YADA user');
 	const businessName = $derived(user?.role === 'courier' ? 'Courier workspace' : 'Business workspace');
@@ -24,7 +25,7 @@
 	function signOut(e: MouseEvent) {
 		e.stopPropagation();
 		onclose?.();
-		void auth.signOut('/');
+		void session.signOut('/');
 	}
 
 	onMount(() => {
@@ -53,15 +54,15 @@
 		</div>
 		<dl class="mb-4 space-y-2.5 text-sm">
 			<div>
-				<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Email</dt>
+				<dt class="text-eyebrow text-ink-tertiary">Email</dt>
 				<dd class="text-ink">{email}</dd>
 			</div>
 			<div>
-				<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Phone</dt>
+				<dt class="text-eyebrow text-ink-tertiary">Phone</dt>
 				<dd class="text-ink">{phone}</dd>
 			</div>
 			<div>
-				<dt class="text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">Role</dt>
+				<dt class="text-eyebrow text-ink-tertiary">Role</dt>
 				<dd class="text-ink">{user?.role ?? 'business'}</dd>
 			</div>
 		</dl>

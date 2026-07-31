@@ -1,8 +1,13 @@
 <script lang="ts">
-	import { boardColumns } from '$lib/client/data/mock-trips';
-	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
+	import type { DashboardTripRecord, TripStage } from '$lib/utils/types';
 
-	type TripStatus = DashboardTripRecord['status'];
+	/** The board's columns, left to right. Only this component reads them. */
+	const boardColumns: Array<{ key: TripStage; title: string }> = [
+		{ key: 'searching', title: 'Finding rider' },
+		{ key: 'assigned', title: 'Assigned' },
+		{ key: 'en_route', title: 'En route' },
+		{ key: 'delivered', title: 'Delivered today' }
+	];
 
 	let {
 		trips = [],
@@ -14,7 +19,7 @@
 		onselect?: (trip: DashboardTripRecord) => void;
 	} = $props();
 
-	function columnTrips(key: TripStatus | 'delivered') {
+	function columnTrips(key: TripStage) {
 		if (key === 'delivered') return deliveredToday;
 		return trips.filter((t) => t.status === key);
 	}
@@ -24,7 +29,7 @@
 	{#each boardColumns as column}
 		{@const cards = columnTrips(column.key)}
 		<section class="flex min-h-[220px] flex-col rounded-lg border border-border bg-surface-sunken p-3">
-			<h3 class="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-ink-tertiary">
+			<h3 class="mb-3 text-eyebrow text-ink-tertiary">
 				{column.title} ({cards.length})
 			</h3>
 			<div class="flex flex-1 flex-col gap-2">

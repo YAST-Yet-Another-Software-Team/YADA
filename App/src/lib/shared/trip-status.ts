@@ -4,15 +4,7 @@
  * code can import it without pulling the database in.
  */
 
-/** The `trip_status` enum as stored in the database. */
-export type TripStatus =
-  | 'requested'
-  | 'accepted'
-  | 'courier_arriving'
-  | 'arrived'
-  | 'in_progress'
-  | 'completed'
-  | 'cancelled';
+import type { TripStage, TripStatus } from '$lib/utils/types';
 
 /** A courier is on the hook for the trip: assigned but not yet finished. */
 export const ACTIVE_TRIP_STATUSES = [
@@ -24,9 +16,6 @@ export const ACTIVE_TRIP_STATUSES = [
 
 /** The trip is over, one way or the other. */
 export const CLOSED_TRIP_STATUSES = ['completed', 'cancelled'] as const satisfies readonly TripStatus[];
-
-/** The six states the UI renders — see `StatusPill`. */
-export type TripStage = 'searching' | 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled';
 
 /**
  * Collapse a stored status to the stage the courier app shows, which keeps
@@ -50,6 +39,16 @@ export function toTripStage(status: string): TripStage {
     default:
       return 'searching';
   }
+}
+
+/**
+ * The courier screen that owns a trip at its current stage: once the parcel is
+ * in transit the job is delivery, before that it's still pickup. Shared so Home
+ * and Orders can't disagree about where "Open active trip" goes.
+ */
+export function courierTripHref(trip: { id: string; status: TripStage }) {
+  const route = trip.status === 'en_route' ? '/courier/deliver' : '/courier/pickup';
+  return `${route}?tripId=${encodeURIComponent(trip.id)}`;
 }
 
 /**

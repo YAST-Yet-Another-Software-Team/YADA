@@ -7,7 +7,7 @@
 </svelte:head>
 
 <SettingsSubpage title="Terms of Service">
-	<article class="rounded-2xl bg-surface p-4 shadow-sm">
+	<article class="rounded-lg bg-surface p-4 shadow-sm">
 		<p class="text-sm leading-relaxed text-ink-secondary">
 			By using YADA as a courier, you agree to accept delivery offers only when you can complete them
 			safely and on time within the service area.

@@ -1,5 +1,5 @@
 import type { auth } from '$lib/server/auth';
-import type { SessionUser } from '$lib/server/auth';
+import type { SessionUser } from '$lib/utils/types';
 
 declare global {
   namespace App {

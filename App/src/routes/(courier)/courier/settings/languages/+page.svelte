@@ -29,7 +29,7 @@
 </svelte:head>
 
 <SettingsSubpage title="Preferred Languages">
-	<div class="overflow-hidden rounded-2xl bg-surface shadow-sm">
+	<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 		{#each options as option, i}
 			<button
 				type="button"
@@ -38,7 +38,7 @@
 					: ''}"
 				onclick={() => select(option.id)}
 			>
-				<span class="flex-1 text-[15px] font-medium text-ink">{option.label}</span>
+				<span class="flex-1 text-base font-medium text-ink">{option.label}</span>
 				{#if language === option.id}
 					<svg
 						viewBox="0 0 24 24"

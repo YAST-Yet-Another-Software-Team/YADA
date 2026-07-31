@@ -18,11 +18,11 @@
 
 <SettingsSubpage title="Feedback">
 	{#if sent}
-		<div class="rounded-2xl bg-surface p-4 text-sm text-ink-secondary shadow-sm">
+		<div class="rounded-lg bg-surface p-4 text-sm text-ink-secondary shadow-sm">
 			Thanks — your feedback was saved on this device. We’ll wire this to support soon.
 		</div>
 	{:else}
-		<div class="rounded-2xl bg-surface p-4 shadow-sm">
+		<div class="rounded-lg bg-surface p-4 shadow-sm">
 			<label class="block text-sm font-medium text-ink" for="feedback">
 				Tell us what to improve
 			</label>

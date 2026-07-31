@@ -11,24 +11,24 @@
 </svelte:head>
 
 <SettingsSubpage title="Notification Settings">
-	<div class="overflow-hidden rounded-2xl bg-surface shadow-sm">
+	<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 		<label class="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
 			<span>
-				<span class="block text-[15px] font-medium text-ink">Delivery offers</span>
+				<span class="block text-base font-medium text-ink">Delivery offers</span>
 				<span class="mt-0.5 block text-xs text-ink-tertiary">New nearby requests</span>
 			</span>
 			<input type="checkbox" class="toggle" bind:checked={offers} />
 		</label>
 		<label class="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
 			<span>
-				<span class="block text-[15px] font-medium text-ink">Trip updates</span>
+				<span class="block text-base font-medium text-ink">Trip updates</span>
 				<span class="mt-0.5 block text-xs text-ink-tertiary">Pickup and delivery status</span>
 			</span>
 			<input type="checkbox" class="toggle" bind:checked={status} />
 		</label>
 		<label class="flex items-center justify-between gap-3 px-4 py-3.5">
 			<span>
-				<span class="block text-[15px] font-medium text-ink">Tips & promotions</span>
+				<span class="block text-base font-medium text-ink">Tips & promotions</span>
 				<span class="mt-0.5 block text-xs text-ink-tertiary">Occasional product news</span>
 			</span>
 			<input type="checkbox" class="toggle" bind:checked={tips} />
@@ -41,10 +41,10 @@
 		width: 2.75rem;
 		height: 1.625rem;
 		appearance: none;
-		border-radius: 999px;
-		background: #d1d5db;
+		border-radius: var(--radius-full);
+		background: var(--neutral-300);
 		position: relative;
-		transition: background 0.2s ease;
+		transition: background var(--duration-normal) var(--ease-standard);
 		cursor: pointer;
 		flex-shrink: 0;
 	}
@@ -56,14 +56,14 @@
 		left: 2px;
 		width: 1.25rem;
 		height: 1.25rem;
-		border-radius: 999px;
-		background: white;
-		box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
-		transition: transform 0.2s ease;
+		border-radius: var(--radius-full);
+		background: var(--color-surface);
+		box-shadow: var(--shadow-xs);
+		transition: transform var(--duration-normal) var(--ease-standard);
 	}
 
 	.toggle:checked {
-		background: var(--color-primary, #e11d48);
+		background: var(--color-primary);
 	}
 
 	.toggle:checked::after {

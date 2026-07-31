@@ -16,11 +16,9 @@
   import { onDestroy, onMount, type Snippet } from 'svelte';
   import { loadGoogleMaps } from '$lib/client/maps/google-maps-loader';
   import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
-  import {
-    KUMASI_CENTER,
-    KUMASI_DEFAULT_ZOOM,
-    type LatLng
-  } from '$lib/shared/geo/service-area';
+  import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
+  import type { LatLng } from '$lib/utils/types';
+  import { MAP_COLORS, MAP_ROLE_COLORS } from '$lib/styles/map-colors';
 
   let {
     routeLabel = false,
@@ -34,13 +32,10 @@
     center = null,
     zoom = null,
     children,
-    onpick,
-    onready
+    onpick
   }: {
     routeLabel?: boolean;
     interactive?: boolean;
-    /** @deprecated Zone outline removed from UI; prop kept so callers don't break. */
-    showZone?: boolean;
     brandTint?: boolean;
     locationUnavailable?: boolean;
     followId?: string | null;
@@ -50,7 +45,6 @@
     zoom?: number | null;
     children?: Snippet;
     onpick?: (detail: { lat: number; lng: number }) => void;
-    onready?: (detail: { map: google.maps.Map }) => void;
   } = $props();
 
   let mapElement = $state<HTMLDivElement | null>(null);
@@ -63,26 +57,9 @@
   let lastCenteredKey = '';
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
-  const ROLE_COLORS: Record<MapMarkerRole, string> = {
-    pickup: '#f59e0b',
-    dropoff: '#ef4444',
-    rider: '#0ea5e9',
-    business: '#16a34a',
-    search: '#ef4444'
-  };
-
-  export function getMap(): google.maps.Map | null {
-    return map;
-  }
-
-  export function setPolyline(path: LatLng[]) {
-    polylinePath = path;
-    syncPolyline();
-  }
-
   function markerColor(marker: MapMarker) {
-    if (marker.role) return ROLE_COLORS[marker.role];
-    return marker.accent ? '#ef4444' : '#f59e0b';
+    if (marker.role) return MAP_ROLE_COLORS[marker.role];
+    return marker.accent ? MAP_COLORS.primary : MAP_COLORS.secondary;
   }
 
   function centerKey(point: LatLng | null) {
@@ -146,7 +123,6 @@
       lastCenteredKey = centerKey(center ?? KUMASI_CENTER);
       syncMarkers();
       syncPolyline();
-      onready?.({ map });
     } catch (error) {
       console.error('Unable to load Google Maps.', error);
       mapState = 'error';
@@ -178,7 +154,7 @@
               path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
               fillColor: color,
               fillOpacity: marker.stale ? 0.5 : 1,
-              strokeColor: '#ffffff',
+              strokeColor: MAP_COLORS.surface,
               strokeWeight: 1.5,
               scale: 1.6,
               anchor: new currentGoogleMaps.Point(12, 22)
@@ -187,7 +163,7 @@
               path: currentGoogleMaps.SymbolPath.CIRCLE,
               fillColor: color,
               fillOpacity: marker.stale ? 0.5 : 1,
-              strokeColor: '#ffffff',
+              strokeColor: MAP_COLORS.surface,
               strokeWeight: 2,
               scale: marker.role === 'rider' ? 12 : 10
             }
@@ -215,7 +191,7 @@
     routePolyline = new googleMaps.Polyline({
       map,
       path: polylinePath,
-      strokeColor: '#ef4444',
+      strokeColor: MAP_COLORS.primary,
       strokeOpacity: 0.9,
       strokeWeight: 4
     });
@@ -306,11 +282,7 @@
   {/if}
 
   {#if brandTint}
-    <div
-      class="pointer-events-none absolute inset-0 z-[1]"
-      style="background: color-mix(in srgb, var(--color-primary, #e11d48) 10%, transparent);"
-      aria-hidden="true"
-    ></div>
+    <div class="pointer-events-none absolute inset-0 z-[1] bg-primary/10" aria-hidden="true"></div>
   {/if}
 
   {@render children?.()}

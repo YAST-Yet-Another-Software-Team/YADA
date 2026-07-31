@@ -7,7 +7,7 @@
 </svelte:head>
 
 <SettingsSubpage title="About Us">
-	<article class="rounded-2xl bg-surface p-4 shadow-sm">
+	<article class="rounded-lg bg-surface p-4 shadow-sm">
 		<p class="text-base font-semibold text-ink">YADA</p>
 		<p class="mt-1 text-sm text-ink-tertiary">Courier · Favorie delivery</p>
 		<p class="mt-3 text-sm leading-relaxed text-ink-secondary">

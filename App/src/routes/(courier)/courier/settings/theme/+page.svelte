@@ -29,7 +29,7 @@
 </svelte:head>
 
 <SettingsSubpage title="Theme">
-	<div class="overflow-hidden rounded-2xl bg-surface shadow-sm">
+	<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 		{#each options as option, i}
 			<button
 				type="button"
@@ -39,7 +39,7 @@
 				onclick={() => select(option.id)}
 			>
 				<span class="flex-1">
-					<span class="block text-[15px] font-medium text-ink">{option.label}</span>
+					<span class="block text-base font-medium text-ink">{option.label}</span>
 					<span class="mt-0.5 block text-xs text-ink-tertiary">{option.hint}</span>
 				</span>
 				{#if theme === option.id}

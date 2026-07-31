@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { onDestroy, type Snippet } from 'svelte';
+	import { onDestroy } from 'svelte';
 	import Input from './Input.svelte';
 	import { loadGoogleMapsPlaces } from '$lib/client/maps/google-maps-loader';
 	import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
 	import { containsPoint, getZoneBounds, KUMASI_CENTER } from '$lib/shared/geo/service-area';
-	import { geoErrorMessage, type GeoErrorCode } from '$lib/shared/geo/errors';
+	import { geoErrorMessage } from '$lib/shared/geo/errors';
+	import type { GeoErrorCode } from '$lib/utils/types';
 	import { createClientGeocodeCache, placeCacheKey } from '$lib/shared/geo/geocode-cache';
 
 	type SelectDetail = {
@@ -16,24 +17,18 @@
 	};
 
 	let {
-		label = '',
 		placeholder = 'Search KNUST / Ayeduase address...',
 		value = $bindable(''),
-		disabled = false,
 		iconColor = 'text-primary',
 		/** When true, reject selections outside the Kumasi KNUST zone. */
 		enforceZone = true,
-		icon,
 		onselect,
 		onerror
 	}: {
-		label?: string;
 		placeholder?: string;
 		value?: string;
-		disabled?: boolean;
 		iconColor?: string;
 		enforceZone?: boolean;
-		icon?: Snippet;
 		onselect?: (detail: SelectDetail) => void;
 		onerror?: (detail: { code: GeoErrorCode; message: string }) => void;
 	} = $props();
@@ -377,26 +372,20 @@
 
 <div class="relative z-40 w-full">
 	{#snippet iconSnippet()}
-		{#if icon}
-			{@render icon()}
-		{:else}
-			<svg
-				viewBox="0 0 24 24"
-				class="h-4 w-4 {iconColor}"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-			>
-				<path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" />
-				<circle cx="12" cy="10" r="2.5" />
-			</svg>
-		{/if}
+		<svg
+			viewBox="0 0 24 24"
+			class="h-4 w-4 {iconColor}"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2"
+		>
+			<path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" />
+			<circle cx="12" cy="10" r="2.5" />
+		</svg>
 	{/snippet}
 
 	<Input
-		{label}
 		{placeholder}
-		{disabled}
 		bind:value
 		bind:inputRef
 		autocomplete="off"
@@ -410,7 +399,7 @@
 	/>
 
 	{#if loading || resolving}
-		<p class="mt-1 text-[10px] font-semibold uppercase tracking-wide text-ink-tertiary">
+		<p class="mt-1 text-eyebrow text-ink-tertiary">
 			{resolving ? 'Resolving location…' : 'Searching…'}
 		</p>
 	{/if}
@@ -446,7 +435,7 @@
 						<div class="min-w-0 flex-1">
 							<p class="truncate font-semibold text-ink">{suggestion.mainText}</p>
 							{#if suggestion.secondaryText}
-								<p class="truncate text-[11px] text-ink-secondary">{suggestion.secondaryText}</p>
+								<p class="truncate text-xs text-ink-secondary">{suggestion.secondaryText}</p>
 							{/if}
 						</div>
 					</button>
@@ -456,7 +445,7 @@
 	{/if}
 
 	{#if errorMessage}
-		<p class="mt-1.5 text-xs font-medium text-red-600">{errorMessage}</p>
+		<p class="mt-1.5 text-xs font-medium text-danger">{errorMessage}</p>
 	{/if}
 
 	{#if MAPS_ENABLED && !googleMapsApiKey}

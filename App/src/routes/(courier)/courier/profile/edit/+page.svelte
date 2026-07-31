@@ -1,19 +1,22 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import Alert from '$lib/components/ui/Alert.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Tabs from '$lib/components/ui/Tabs.svelte';
 	import SettingsSubpage from '$lib/components/courier/SettingsSubpage.svelte';
-	import { auth } from '$lib/stores/auth';
+	import { getSession } from '$lib/auth/session.svelte';
+	import { messageOf } from '$lib/auth/errors';
 
 	const editTabs = [
 		{ value: 'profile', label: 'Profile' },
 		{ value: 'password', label: 'Password' }
 	];
 
-	// The root layout hydrates the auth store before this page initialises, and the
+	// The root layout provides the session before this page initialises, and the
 	// courier layout guard guarantees there is a signed-in user by the time we get here.
-	const currentUser = $auth.user;
+	const session = getSession();
+	const currentUser = session.user;
 
 	let activeTab = $state('profile');
 	let name = $state(currentUser?.name ?? '');
@@ -29,7 +32,7 @@
 	const canSaveProfile = $derived(
 		ready &&
 			name.trim().length > 0 &&
-			(name.trim() !== ($auth.user?.name ?? '') || phone.trim() !== ($auth.user?.phone ?? ''))
+			(name.trim() !== (session.user?.name ?? '') || phone.trim() !== (session.user?.phone ?? ''))
 	);
 
 	const canSavePassword = $derived(
@@ -45,13 +48,14 @@
 		}
 
 		try {
-			await auth.updateProfile({ name: name.trim(), phone: phone.trim() });
+			await session.updateProfile({ name: name.trim(), phone: phone.trim() });
 			saved = true;
 			setTimeout(() => {
 				goto('/courier/profile');
 			}, 600);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Unable to save profile.';
+			console.error('Profile update failed.', err);
+			error = messageOf(err, 'Unable to save profile.');
 		}
 	}
 
@@ -69,13 +73,14 @@
 		}
 
 		try {
-			await auth.changePassword(currentPassword, newPassword);
+			await session.changePassword(currentPassword, newPassword);
 			saved = true;
 			currentPassword = '';
 			newPassword = '';
 			confirmPassword = '';
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Unable to change password.';
+			console.error('Password change failed.', err);
+			error = messageOf(err, 'Unable to change password.');
 		}
 	}
 </script>
@@ -100,7 +105,7 @@
 					void saveProfile();
 				}}
 			>
-				<div class="space-y-3 rounded-2xl bg-surface p-4 shadow-sm">
+				<div class="space-y-3 rounded-lg bg-surface p-4 shadow-sm">
 					<Input label="Full name" type="text" placeholder="Your name" bind:value={name} />
 					<Input label="Phone number" type="tel" placeholder="024 000 0000" bind:value={phone} />
 					<Input label="Email" type="email" bind:value={email} disabled />
@@ -110,10 +115,10 @@
 				</div>
 
 				{#if error && activeTab === 'profile'}
-					<p class="text-sm font-medium text-danger">{error}</p>
+					<Alert>{error}</Alert>
 				{/if}
 				{#if saved && activeTab === 'profile'}
-					<p class="text-sm font-medium text-success">Profile saved.</p>
+					<Alert variant="success">Profile saved.</Alert>
 				{/if}
 
 				<div class="mt-auto pt-2">
@@ -121,9 +126,9 @@
 						type="submit"
 						variant="primary"
 						fullWidth
-						disabled={!canSaveProfile || $auth.isLoading}
+						disabled={!canSaveProfile || session.isLoading}
 					>
-						{$auth.isLoading ? 'Saving…' : 'Save changes'}
+						{session.isLoading ? 'Saving…' : 'Save changes'}
 					</Button>
 				</div>
 			</form>
@@ -135,7 +140,7 @@
 					void savePassword();
 				}}
 			>
-				<div class="space-y-3 rounded-2xl bg-surface p-4 shadow-sm">
+				<div class="space-y-3 rounded-lg bg-surface p-4 shadow-sm">
 					<Input
 						label="Current password"
 						type="password"
@@ -157,15 +162,15 @@
 				</div>
 
 				{#if error && activeTab === 'password'}
-					<p class="text-sm font-medium text-danger">{error}</p>
+					<Alert>{error}</Alert>
 				{/if}
 				{#if saved && activeTab === 'password'}
-					<p class="text-sm font-medium text-success">Password updated.</p>
+					<Alert variant="success">Password updated.</Alert>
 				{/if}
 
 				<div class="mt-auto pt-2">
-					<Button type="submit" variant="primary" fullWidth disabled={!canSavePassword || $auth.isLoading}>
-						{$auth.isLoading ? 'Updating…' : 'Update password'}
+					<Button type="submit" variant="primary" fullWidth disabled={!canSavePassword || session.isLoading}>
+						{session.isLoading ? 'Updating…' : 'Update password'}
 					</Button>
 				</div>
 			</form>

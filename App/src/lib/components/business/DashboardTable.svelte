@@ -1,6 +1,6 @@
 <script lang="ts">
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
-	import type { DashboardTripRecord } from '$lib/server/data/dashboard';
+	import type { DashboardTripRecord } from '$lib/utils/types';
 
 	let {
 		trips = [],

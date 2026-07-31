@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { auth } from '$lib/stores/auth';
-	import { courierOnline } from '$lib/stores/courier-online';
+	import { getSession } from '$lib/auth/session.svelte';
+	import { getCourierOnline } from '../courier-online.svelte';
+
+	const session = getSession();
+	const online = getCourierOnline();
 
 	const THEME_KEY = 'yada.courierTheme';
 	const LANG_KEY = 'yada.courierLanguage';
@@ -22,8 +25,8 @@
 	});
 
 	function signOut() {
-		courierOnline.goOffline();
-		void auth.signOut('/');
+		online.goOffline();
+		void session.signOut('/');
 	}
 </script>
 
@@ -38,10 +41,10 @@
 
 	<div class="flex flex-1 flex-col gap-5 px-4 pb-6 pt-2">
 		<section>
-			<h2 class="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-tertiary">
+			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">
 				General
 			</h2>
-			<div class="overflow-hidden rounded-2xl bg-surface shadow-sm">
+			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 				<a href="/courier/settings/notifications" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
@@ -97,10 +100,10 @@
 		</section>
 
 		<section>
-			<h2 class="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-tertiary">
+			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">
 				Privacy
 			</h2>
-			<div class="overflow-hidden rounded-2xl bg-surface shadow-sm">
+			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 				<a href="/courier/settings/privacy" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
@@ -133,10 +136,10 @@
 		</section>
 
 		<section>
-			<h2 class="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-tertiary">
+			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">
 				About
 			</h2>
-			<div class="overflow-hidden rounded-2xl bg-surface shadow-sm">
+			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 				<a href="/courier/settings/feedback" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
@@ -178,16 +181,16 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.875rem 1rem;
-		border-bottom: 1px solid var(--color-border, #e5e7eb);
+		border-bottom: 1px solid var(--color-border);
 		color: inherit;
 		text-decoration: none;
 		background: transparent;
-		transition: background-color 0.15s ease;
+		transition: background-color var(--duration-fast) var(--ease-standard);
 	}
 
 	.settings-row:active,
 	.settings-row:hover {
-		background: color-mix(in srgb, var(--color-ink, #111) 4%, transparent);
+		background: color-mix(in oklab, var(--color-text-primary) 4%, transparent);
 	}
 
 	.settings-row-last {
@@ -201,23 +204,23 @@
 		flex-shrink: 0;
 		align-items: center;
 		justify-content: center;
-		color: var(--color-ink, #111);
+		color: var(--color-text-primary);
 	}
 
 	.settings-label {
 		flex: 1;
 		font-size: 0.9375rem;
 		font-weight: 500;
-		color: var(--color-ink, #111);
+		color: var(--color-text-primary);
 	}
 
 	.settings-value {
 		font-size: 0.8125rem;
-		color: var(--color-ink-tertiary, #9ca3af);
+		color: var(--color-text-tertiary);
 	}
 
 	.settings-chevron {
 		display: inline-flex;
-		color: var(--color-ink-tertiary, #9ca3af);
+		color: var(--color-text-tertiary);
 	}
 </style>

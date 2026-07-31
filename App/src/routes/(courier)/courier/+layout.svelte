@@ -1,24 +1,28 @@
 <script lang="ts">
-	import { onMount, type Snippet } from 'svelte';
-	import { page } from '$app/stores';
-	import BrandLogo from '$lib/components/BrandLogo.svelte';
-	import CourierTabBar from '$lib/components/courier/CourierTabBar.svelte';
+	import type { Snippet } from 'svelte';
+	import { page } from '$app/state';
+	import CourierTabBar from './CourierTabBar.svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
-	import { auth } from '$lib/stores/auth';
-	import { courierOnline } from '$lib/stores/courier-online';
+	import { getSession } from '$lib/auth/session.svelte';
+	import { createCourierOnline } from './courier-online.svelte';
 	import { initials } from '$lib/shared/text';
+	import { isFocusedTrip, isHome } from './tabs';
 
 	let { children }: { children: Snippet } = $props();
 
-	const path = $derived($page.url.pathname);
-	const isFocusedTrip = $derived(path === '/courier/pickup' || path === '/courier/deliver');
-	const isHome = $derived(path === '/courier/home');
-	const user = $derived($auth.user);
-	const avatarInitials = $derived(initials(user?.name, 'C'));
+	const session = getSession();
 
-	onMount(() => {
-		courierOnline.hydrate();
+	// Provided here for the whole courier workspace, and adopted from storage
+	// after mount — $effect never runs on the server, where there is none.
+	const online = createCourierOnline();
+	$effect(() => {
+		online.hydrate();
 	});
+
+	const path = $derived(page.url.pathname);
+	const focusedTrip = $derived(isFocusedTrip(path));
+	const home = $derived(isHome(path));
+	const avatarInitials = $derived(initials(session.user?.name, 'C'));
 </script>
 
 <div class="min-h-svh bg-neutral-200">
@@ -28,21 +32,23 @@
 		<header
 			class="z-20 flex shrink-0 items-center justify-between border-b border-border bg-surface px-4 py-2.5"
 		>
-			<BrandLogo href="/courier/home" size="sm" />
+			<a href="/courier/home" class="inline-flex shrink-0 items-center" aria-label="YADA home">
+				<img src="/logo.svg" alt="" class="h-8 w-auto" />
+			</a>
 			<a
 				href="/courier/profile"
 				class="rounded-full outline-none ring-primary focus-visible:ring-2"
 				aria-label="Open profile"
 			>
-				<Avatar initials={avatarInitials} size={32} status={$courierOnline ? 'online' : null} />
+				<Avatar initials={avatarInitials} size={32} status={online.online ? 'online' : null} />
 			</a>
 		</header>
 
-		<div class="flex min-h-0 flex-1 flex-col {isHome ? 'overflow-hidden' : 'overflow-y-auto'}">
+		<div class="flex min-h-0 flex-1 flex-col {home ? 'overflow-hidden' : 'overflow-y-auto'}">
 			{@render children()}
 		</div>
 
-		{#if !isFocusedTrip}
+		{#if !focusedTrip}
 			<CourierTabBar />
 		{/if}
 	</div>

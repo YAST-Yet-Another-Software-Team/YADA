@@ -1,36 +1,11 @@
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 
-import {
-  ACTIVE_TRIP_STATUSES,
-  CLOSED_TRIP_STATUSES,
-  toTripStage,
-  type TripStage
-} from '$lib/shared/trip-status';
+import { ACTIVE_TRIP_STATUSES, CLOSED_TRIP_STATUSES, toTripStage } from '$lib/shared/trip-status';
 import { initials } from '$lib/shared/text';
+import type { CourierRequest, CourierTrip } from '$lib/utils/types';
 
 import { db } from '../db';
 import { deliveryRequests, users } from '../db/schema';
-
-export type CourierRequest = {
-  id: string;
-  businessName: string;
-  pickupAddress: string;
-  dropoffAddress: string;
-  pickupLat: number | null;
-  pickupLng: number | null;
-  dropoffLat: number | null;
-  dropoffLng: number | null;
-  notes: string | null;
-  requestedAt: string;
-};
-
-export type CourierTrip = CourierRequest & {
-  status: TripStage;
-  acceptedAt: string | null;
-  completedAt: string | null;
-  estimatedDistanceKm: number | null;
-  estimatedDurationMinutes: number | null;
-};
 
 export type CourierHomeSummary = {
   completedTrips: number;
@@ -159,6 +134,24 @@ const byMostRecentlyCompleted = [
   desc(deliveryRequests.requestedAt)
 ] as const;
 
+/** The trip this courier is currently on the hook for. */
+const activeTripsFor = (userId: string) =>
+  and(
+    eq(deliveryRequests.assignedCourierId, userId),
+    inArray(deliveryRequests.status, [...ACTIVE_TRIP_STATUSES])
+  );
+
+/** Everything this courier has finished, delivered or cancelled. */
+const closedTripsFor = (userId: string) =>
+  and(
+    eq(deliveryRequests.assignedCourierId, userId),
+    inArray(deliveryRequests.status, [...CLOSED_TRIP_STATUSES])
+  );
+
+/** Offers on the board: requested, nobody assigned yet. Not courier-scoped. */
+const openRequests = () =>
+  and(eq(deliveryRequests.status, 'requested'), isNull(deliveryRequests.assignedCourierId));
+
 export async function getCourierHomeData(userId: string, courierName: string) {
   const [profileRow] = await db
     .select({ name: users.name })
@@ -167,30 +160,9 @@ export async function getCourierHomeData(userId: string, courierName: string) {
     .limit(1);
 
   const [activeRows, pendingRows, closedRows] = await Promise.all([
-    tripQuery()
-      .where(
-        and(
-          eq(deliveryRequests.assignedCourierId, userId),
-          inArray(deliveryRequests.status, [...ACTIVE_TRIP_STATUSES])
-        )
-      )
-      .orderBy(...byMostRecentlyAccepted)
-      .limit(1),
-
-    tripQuery()
-      .where(
-        and(eq(deliveryRequests.status, 'requested'), isNull(deliveryRequests.assignedCourierId))
-      )
-      .orderBy(desc(deliveryRequests.requestedAt)),
-
-    tripQuery()
-      .where(
-        and(
-          eq(deliveryRequests.assignedCourierId, userId),
-          inArray(deliveryRequests.status, [...CLOSED_TRIP_STATUSES])
-        )
-      )
-      .orderBy(...byMostRecentlyCompleted)
+    tripQuery().where(activeTripsFor(userId)).orderBy(...byMostRecentlyAccepted).limit(1),
+    tripQuery().where(openRequests()).orderBy(desc(deliveryRequests.requestedAt)),
+    tripQuery().where(closedTripsFor(userId)).orderBy(...byMostRecentlyCompleted)
   ]);
 
   const activeTripRow = activeRows[0] ?? null;
@@ -204,6 +176,23 @@ export async function getCourierHomeData(userId: string, courierName: string) {
 }
 
 /**
+ * The Orders tab: what this courier is carrying right now, plus the offers still
+ * on the board. Deliberately narrower than `getCourierHomeData` — no profile and
+ * no lifetime summary, neither of which the screen renders.
+ */
+export async function getCourierOrdersData(userId: string) {
+  const [activeRows, pendingRows] = await Promise.all([
+    tripQuery().where(activeTripsFor(userId)).orderBy(...byMostRecentlyAccepted).limit(1),
+    tripQuery().where(openRequests()).orderBy(desc(deliveryRequests.requestedAt))
+  ]);
+
+  return {
+    activeTrip: activeRows[0] ? toCourierTrip(activeRows[0]) : null,
+    pendingRequests: pendingRows.map(toCourierRequest)
+  };
+}
+
+/**
  * The courier's trip for the pickup/deliver screens: a specific one when an id
  * is given, otherwise whichever is currently live.
  */
@@ -212,10 +201,7 @@ export async function getCourierTripById(userId: string, tripId?: string | null)
     .where(
       tripId
         ? and(eq(deliveryRequests.assignedCourierId, userId), eq(deliveryRequests.id, tripId))
-        : and(
-            eq(deliveryRequests.assignedCourierId, userId),
-            inArray(deliveryRequests.status, [...ACTIVE_TRIP_STATUSES])
-          )
+        : activeTripsFor(userId)
     )
     .orderBy(...byMostRecentlyAccepted)
     .limit(1);
@@ -228,10 +214,7 @@ export async function getCourierLatestCompletedTrip(userId: string, tripId?: str
     .where(
       tripId
         ? and(eq(deliveryRequests.assignedCourierId, userId), eq(deliveryRequests.id, tripId))
-        : and(
-            eq(deliveryRequests.assignedCourierId, userId),
-            inArray(deliveryRequests.status, [...CLOSED_TRIP_STATUSES])
-          )
+        : closedTripsFor(userId)
     )
     .orderBy(...byMostRecentlyCompleted)
     .limit(1);
@@ -241,12 +224,7 @@ export async function getCourierLatestCompletedTrip(userId: string, tripId?: str
 
 export async function getCourierTripHistory(userId: string) {
   const rows = await tripQuery()
-    .where(
-      and(
-        eq(deliveryRequests.assignedCourierId, userId),
-        inArray(deliveryRequests.status, [...CLOSED_TRIP_STATUSES])
-      )
-    )
+    .where(closedTripsFor(userId))
     .orderBy(...byMostRecentlyCompleted);
 
   const historyTrips = rows.map(toCourierTrip);

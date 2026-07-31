@@ -2,10 +2,12 @@
   import { goto } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
   import MapBackdrop from '$lib/components/MapBackdrop.svelte';
+  import Alert from '$lib/components/ui/Alert.svelte';
   import Button from '$lib/components/ui/Button.svelte';
-  import { KUMASI_CENTER, type LatLng, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+  import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+  import type { LatLng } from '$lib/utils/types';
   import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
-  import { startCourierLocationReporter } from '$lib/client/realtime/courier-location';
+  import { startCourierLocationReporter } from '../location-reporter';
 
   let {
     data
@@ -173,11 +175,11 @@
     </div>
 
     {#if data.trip.notes}
-      <p class="rounded-2xl bg-neutral-50 px-3 py-2 text-sm text-ink-secondary">{data.trip.notes}</p>
+      <p class="rounded-lg bg-neutral-50 px-3 py-2 text-sm text-ink-secondary">{data.trip.notes}</p>
     {/if}
 
     {#if actionError}
-      <p class="rounded-2xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{actionError}</p>
+      <Alert>{actionError}</Alert>
     {/if}
 
     <div class="flex items-center gap-3">

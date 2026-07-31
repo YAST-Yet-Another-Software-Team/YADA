@@ -7,7 +7,7 @@
 </svelte:head>
 
 <SettingsSubpage title="Privacy Policy">
-	<article class="rounded-2xl bg-surface p-4 shadow-sm">
+	<article class="rounded-lg bg-surface p-4 shadow-sm">
 		<p class="text-sm leading-relaxed text-ink-secondary">
 			YADA collects account details, delivery locations, and device information needed to match
 			couriers with nearby businesses and complete trips safely.
