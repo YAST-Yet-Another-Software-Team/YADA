@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import Alert from '$lib/components/ui/Alert.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Tabs from '$lib/components/ui/Tabs.svelte';
 	import SettingsSubpage from '$lib/components/courier/SettingsSubpage.svelte';
 	import { getSession } from '$lib/auth/session.svelte';
+	import { messageOf } from '$lib/auth/errors';
 
 	const editTabs = [
 		{ value: 'profile', label: 'Profile' },
@@ -52,7 +54,8 @@
 				goto('/courier/profile');
 			}, 600);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Unable to save profile.';
+			console.error('Profile update failed.', err);
+			error = messageOf(err, 'Unable to save profile.');
 		}
 	}
 
@@ -76,7 +79,8 @@
 			newPassword = '';
 			confirmPassword = '';
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Unable to change password.';
+			console.error('Password change failed.', err);
+			error = messageOf(err, 'Unable to change password.');
 		}
 	}
 </script>
@@ -111,10 +115,10 @@
 				</div>
 
 				{#if error && activeTab === 'profile'}
-					<p class="text-sm font-medium text-danger">{error}</p>
+					<Alert>{error}</Alert>
 				{/if}
 				{#if saved && activeTab === 'profile'}
-					<p class="text-sm font-medium text-success">Profile saved.</p>
+					<Alert variant="success">Profile saved.</Alert>
 				{/if}
 
 				<div class="mt-auto pt-2">
@@ -158,10 +162,10 @@
 				</div>
 
 				{#if error && activeTab === 'password'}
-					<p class="text-sm font-medium text-danger">{error}</p>
+					<Alert>{error}</Alert>
 				{/if}
 				{#if saved && activeTab === 'password'}
-					<p class="text-sm font-medium text-success">Password updated.</p>
+					<Alert variant="success">Password updated.</Alert>
 				{/if}
 
 				<div class="mt-auto pt-2">

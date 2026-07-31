@@ -53,6 +53,16 @@ export function toTripStage(status: string): TripStage {
 }
 
 /**
+ * The courier screen that owns a trip at its current stage: once the parcel is
+ * in transit the job is delivery, before that it's still pickup. Shared so Home
+ * and Orders can't disagree about where "Open active trip" goes.
+ */
+export function courierTripHref(trip: { id: string; status: TripStage }) {
+  const route = trip.status === 'en_route' ? '/courier/deliver' : '/courier/pickup';
+  return `${route}?tripId=${encodeURIComponent(trip.id)}`;
+}
+
+/**
  * The same collapse for business-facing screens (dashboard, history, tracking),
  * which don't distinguish "arrived" from "en route" — to the sender the parcel
  * is in transit either way.

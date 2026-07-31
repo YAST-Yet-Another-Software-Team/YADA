@@ -1,48 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { activeTabIndex, COURIER_TABS, isTabActive } from '$lib/shared/courier-routes';
 
-	const tabs = [
-		{
-			href: '/courier/home',
-			label: 'Home',
-			match: ['/courier/home'],
-			icon: 'home'
-		},
-		{
-			href: '/courier/orders',
-			label: 'Orders',
-			match: [
-				'/courier/orders',
-				'/courier/pickup',
-				'/courier/deliver'
-			],
-			icon: 'orders'
-		},
-		{
-			href: '/courier/trips',
-			label: 'Trips',
-			match: ['/courier/trips', '/courier/complete'],
-			icon: 'trips'
-		},
-		{
-			href: '/courier/settings',
-			label: 'Settings',
-			match: ['/courier/settings'],
-			icon: 'settings'
-		}
-	];
+	const tabs = COURIER_TABS;
 
 	const path = $derived(page.url.pathname);
-	const activeIndex = $derived(
-		Math.max(
-			0,
-			tabs.findIndex((tab) => tab.match.some((m) => path === m || path.startsWith(`${m}/`)))
-		)
-	);
-
-	function isActive(match: string[]) {
-		return match.some((m) => path === m || path.startsWith(`${m}/`));
-	}
+	const activeIndex = $derived(activeTabIndex(path));
 </script>
 
 <nav
@@ -57,7 +20,7 @@
 		></span>
 
 		{#each tabs as tab}
-			{@const active = isActive(tab.match)}
+			{@const active = isTabActive(path, tab)}
 			<a
 				href={tab.href}
 				aria-current={active ? 'page' : undefined}

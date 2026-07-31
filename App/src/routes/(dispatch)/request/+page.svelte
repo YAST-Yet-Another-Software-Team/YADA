@@ -3,6 +3,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
+	import Alert from '$lib/components/ui/Alert.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import { getCurrentDeviceLocation, startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
@@ -287,7 +288,7 @@
 			</div>
 
 			{#if zoneError}
-				<p class="rounded-md bg-danger-subtle px-3 py-2 text-xs font-medium text-danger">{zoneError}</p>
+				<Alert>{zoneError}</Alert>
 			{/if}
 
 			<section class="space-y-2">

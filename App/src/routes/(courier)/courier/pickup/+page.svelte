@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
   import MapBackdrop from '$lib/components/MapBackdrop.svelte';
+  import Alert from '$lib/components/ui/Alert.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import { KUMASI_CENTER, type LatLng, distanceToPolylineKm } from '$lib/shared/geo/service-area';
   import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
@@ -177,7 +178,7 @@
     {/if}
 
     {#if actionError}
-      <p class="rounded-lg bg-danger-subtle px-3 py-2 text-sm font-medium text-danger">{actionError}</p>
+      <Alert>{actionError}</Alert>
     {/if}
 
     <div class="flex items-center gap-3">

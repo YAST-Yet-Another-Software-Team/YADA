@@ -35,13 +35,10 @@
     center = null,
     zoom = null,
     children,
-    onpick,
-    onready
+    onpick
   }: {
     routeLabel?: boolean;
     interactive?: boolean;
-    /** @deprecated Zone outline removed from UI; prop kept so callers don't break. */
-    showZone?: boolean;
     brandTint?: boolean;
     locationUnavailable?: boolean;
     followId?: string | null;
@@ -51,7 +48,6 @@
     zoom?: number | null;
     children?: Snippet;
     onpick?: (detail: { lat: number; lng: number }) => void;
-    onready?: (detail: { map: google.maps.Map }) => void;
   } = $props();
 
   let mapElement = $state<HTMLDivElement | null>(null);
@@ -63,15 +59,6 @@
   let routePolyline: google.maps.Polyline | null = null;
   let lastCenteredKey = '';
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
-
-  export function getMap(): google.maps.Map | null {
-    return map;
-  }
-
-  export function setPolyline(path: LatLng[]) {
-    polylinePath = path;
-    syncPolyline();
-  }
 
   function markerColor(marker: MapMarker) {
     if (marker.role) return MAP_ROLE_COLORS[marker.role];
@@ -139,7 +126,6 @@
       lastCenteredKey = centerKey(center ?? KUMASI_CENTER);
       syncMarkers();
       syncPolyline();
-      onready?.({ map });
     } catch (error) {
       console.error('Unable to load Google Maps.', error);
       mapState = 'error';

@@ -1,5 +1,7 @@
 import { getContext, setContext } from 'svelte';
 
+import { AuthError, authErrorMessage, networkError } from './errors';
+
 export type AuthRole = 'business' | 'courier';
 
 export type AuthUser = {
@@ -59,18 +61,37 @@ async function readJson<T>(response: Response) {
   return (await response.json().catch(() => null)) as T | null;
 }
 
-/** Build an Error from Better Auth's error body, falling back to `message`. */
-async function errorFrom(response: Response, message: string) {
-  const payload = await readJson<{ message?: string; error?: { message?: string } }>(response);
-  return new Error(payload?.message || payload?.error?.message || message);
+/**
+ * Build an `AuthError` from Better Auth's error body.
+ *
+ * The body's own `message` is deliberately not used as the copy — it's
+ * developer English. It carries a `code`, and that is what `authErrorMessage`
+ * translates; `fallback` covers a body with neither.
+ */
+async function errorFrom(response: Response, fallback: string) {
+  const payload = await readJson<{ code?: string; error?: { code?: string } }>(response);
+  const code = payload?.code ?? payload?.error?.code ?? null;
+
+  return new AuthError(authErrorMessage(code, response.status, fallback), code, response.status);
 }
 
-function post(path: string, body: unknown) {
-  return fetch(path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+/**
+ * POST JSON, translating a failed *connection* into an `AuthError` too.
+ *
+ * Without this a dropped network rejects with a bare `TypeError: Failed to
+ * fetch`, which is indistinguishable at the call site from a bug and reads like
+ * one if it ever reaches the screen.
+ */
+async function post(path: string, body: unknown) {
+  try {
+    return await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch {
+    throw networkError();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +157,7 @@ export class Session {
         return this.#user;
       } catch (error) {
         this.#user = null;
-        throw error;
+        throw error instanceof AuthError ? error : networkError();
       }
     });
   }
@@ -146,7 +167,7 @@ export class Session {
       const response = await post('/api/auth/sign-in/email', { email, password, rememberMe });
 
       if (!response.ok) {
-        throw new Error('Unable to sign in.');
+        throw await errorFrom(response, 'Unable to sign in.');
       }
 
       this.#user = extractUser(await readJson<UserPayload>(response));
@@ -171,7 +192,7 @@ export class Session {
       });
 
       if (!response.ok) {
-        throw new Error('Unable to sign up.');
+        throw await errorFrom(response, 'Unable to create your account.');
       }
 
       this.#user = extractUser(await readJson<UserPayload>(response));
@@ -216,7 +237,7 @@ export class Session {
       const user = extractUser(await readJson<UserPayload>(response)) ?? (await this.refresh());
 
       if (!user) {
-        throw new Error('Unable to update profile.');
+        throw new AuthError('Unable to update profile.');
       }
 
       this.#user = user;

@@ -7,6 +7,7 @@
 	import { getSession } from '$lib/auth/session.svelte';
 	import { createCourierOnline } from './courier-online.svelte';
 	import { initials } from '$lib/shared/text';
+	import { isFocusedTrip, isHome } from '$lib/shared/courier-routes';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -20,8 +21,8 @@
 	});
 
 	const path = $derived(page.url.pathname);
-	const isFocusedTrip = $derived(path === '/courier/pickup' || path === '/courier/deliver');
-	const isHome = $derived(path === '/courier/home');
+	const focusedTrip = $derived(isFocusedTrip(path));
+	const home = $derived(isHome(path));
 	const avatarInitials = $derived(initials(session.user?.name, 'C'));
 </script>
 
@@ -42,11 +43,11 @@
 			</a>
 		</header>
 
-		<div class="flex min-h-0 flex-1 flex-col {isHome ? 'overflow-hidden' : 'overflow-y-auto'}">
+		<div class="flex min-h-0 flex-1 flex-col {home ? 'overflow-hidden' : 'overflow-y-auto'}">
 			{@render children()}
 		</div>
 
-		{#if !isFocusedTrip}
+		{#if !focusedTrip}
 			<CourierTabBar />
 		{/if}
 	</div>

@@ -1,8 +1,10 @@
 <script lang="ts">
 	import BrandLogo from '$lib/components/BrandLogo.svelte';
+	import Alert from '$lib/components/ui/Alert.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import { getSession } from '$lib/auth/session.svelte';
+	import { messageOf } from '$lib/auth/errors';
 	import { slide } from 'svelte/transition';
 
 	type Role = 'business' | 'courier';
@@ -18,12 +20,14 @@
 	let password = $state('');
 	let rememberMe = $state(false);
 	let isSubmitting = $state(false);
+	let authError = $state<string | null>(null);
 
 	// Forgot-password mini flow
 	let showForgotPassword = $state(false);
 	let resetEmail = $state('');
 	let resetSent = $state(false);
 	let isResetting = $state(false);
+	let resetError = $state<string | null>(null);
 
 	/** Mirrors homeFor() in $lib/server/auth-guard, which handles the server-side redirect. */
 	function destinationFor(userRole: string | null | undefined) {
@@ -33,6 +37,7 @@
 	async function submitAuth() {
 		if (isSubmitting) return;
 		isSubmitting = true;
+		authError = null;
 
 		try {
 			if (mode === 'sign-up') {
@@ -52,8 +57,12 @@
 
 			const user = await session.signIn(email, password, rememberMe);
 			window.location.replace(destinationFor(user?.role));
-		} catch {
-			// Keep the page calm — no technical error text.
+		} catch (error) {
+			// The store hands back copy already written for this screen; anything
+			// else is a bug, so it goes to the console and the user gets the
+			// generic line rather than a stack trace.
+			console.error('Auth request failed.', error);
+			authError = messageOf(error);
 		} finally {
 			isSubmitting = false;
 		}
@@ -62,32 +71,44 @@
 	function openForgotPassword() {
 		resetEmail = email;
 		resetSent = false;
+		resetError = null;
 		showForgotPassword = true;
 	}
 
 	function closeForgotPassword() {
 		showForgotPassword = false;
 		resetSent = false;
+		resetError = null;
 	}
 
 	async function requestReset() {
 		if (isResetting || !resetEmail.trim().includes('@')) return;
 		isResetting = true;
+		resetError = null;
+
 		try {
 			await session.requestPasswordReset(resetEmail.trim());
 			resetSent = true;
-		} catch {
+		} catch (error) {
+			console.error('Password reset request failed.', error);
 			resetSent = false;
+			resetError = messageOf(error);
 		} finally {
 			isResetting = false;
 		}
 	}
 
+	/** Better Auth's default `minPasswordLength`. Enforced server-side on sign-up;
+	 *  sign-in stays permissive so an older short password can still get in. */
+	const MIN_PASSWORD_LENGTH = 8;
+
 	const canSubmit = $derived(
 		email.trim().includes('@') &&
-		password.trim().length >= 6 &&
-		(mode === 'sign-in' ||
-			(name.trim().length > 1 && (role === 'business' || phone.trim().length > 6)))
+		(mode === 'sign-in'
+			? password.length > 0
+			: password.length >= MIN_PASSWORD_LENGTH &&
+				name.trim().length > 1 &&
+				(role === 'business' || phone.trim().length > 6))
 	);
 
 	const canRequestReset = $derived(resetEmail.trim().includes('@'));
@@ -208,6 +229,10 @@
 
 					{#if showForgotPassword}
 						<div class="mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4" transition:slide={{ duration: 220 }}>
+							{#if resetError}
+								<Alert>{resetError}</Alert>
+							{/if}
+
 							{#if !resetSent}
 								<Input label="Email" type="email" placeholder="Enter your email address" bind:value={resetEmail} />
 								<Button
@@ -232,6 +257,10 @@
 						</div>
 					{:else}
 						<form class="mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4" onsubmit={(e) => { e.preventDefault(); submitAuth(); }} transition:slide={{ duration: 220 }}>
+							{#if authError}
+								<Alert>{authError}</Alert>
+							{/if}
+
 							{#if mode === 'sign-up'}
 								<div class="grid grid-cols-2 gap-2 rounded-full border border-border bg-surface-sunken p-1">
 									<button
@@ -268,7 +297,14 @@
 								placeholder="Enter your email address"
 								bind:value={email}
 							/>
-							<Input label="Password" type="password" placeholder="Enter your password" bind:value={password} />
+							<Input
+								label="Password"
+								type="password"
+								placeholder={mode === 'sign-up'
+									? `At least ${MIN_PASSWORD_LENGTH} characters`
+									: 'Enter your password'}
+								bind:value={password}
+							/>
 
 							{#if mode === 'sign-in'}
 								<div class="flex items-center justify-between text-sm">
@@ -299,6 +335,9 @@
 									class="font-semibold text-primary underline-offset-2 hover:underline"
 									onclick={() => {
 										mode = mode === 'sign-up' ? 'sign-in' : 'sign-up';
+										// The other mode's rules are different; a stale failure
+										// would read as a rejection of the form now on screen.
+										authError = null;
 									}}
 								>
 									{mode === 'sign-up' ? 'Sign in' : 'Create account'}

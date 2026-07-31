@@ -2,11 +2,13 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
+	import Alert from '$lib/components/ui/Alert.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import { startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
 	import { getCourierOnline } from '../courier-online.svelte';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
+	import { courierTripHref } from '$lib/shared/trip-status';
 
 	let {
 		data
@@ -152,8 +154,7 @@
 
 	function openActiveTrip() {
 		if (!data.activeTrip) return;
-		const route = data.activeTrip.status === 'en_route' ? '/courier/deliver' : '/courier/pickup';
-		goto(`${route}?tripId=${encodeURIComponent(data.activeTrip.id)}`);
+		goto(courierTripHref(data.activeTrip));
 	}
 
 	function goOnline() {
@@ -263,9 +264,9 @@
 				</div>
 			</div>
 		{:else if online.online && currentRequest}
-			<div class="rounded-lg border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
+			<div class="space-y-3 rounded-lg border border-border bg-surface/95 p-3 shadow-sm backdrop-blur-sm">
 				{#if actionError}
-					<p class="mb-3 rounded-xl bg-danger-subtle px-3 py-2 text-xs font-medium text-danger">{actionError}</p>
+					<Alert>{actionError}</Alert>
 				{/if}
 				<div class="flex items-start justify-between gap-3">
 					<div>
@@ -301,11 +302,11 @@
 				</div>
 			</div>
 		{:else if online.online}
-			<div class="rounded-lg border border-border bg-surface/95 p-3 text-center text-sm text-ink-secondary shadow-sm backdrop-blur-sm">
+			<div class="space-y-2 rounded-lg border border-border bg-surface/95 p-3 text-center text-sm text-ink-secondary shadow-sm backdrop-blur-sm">
 				{#if actionError}
-					<p class="mb-2 rounded-xl bg-danger-subtle px-3 py-2 text-left text-xs font-medium text-danger">{actionError}</p>
+					<Alert>{actionError}</Alert>
 				{/if}
-				Today: {data.summary.tripsToday} deliveries
+				<p>Today: {data.summary.tripsToday} deliveries</p>
 			</div>
 		{/if}
 

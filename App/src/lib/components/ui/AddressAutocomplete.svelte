@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, type Snippet } from 'svelte';
+	import { onDestroy } from 'svelte';
 	import Input from './Input.svelte';
 	import { loadGoogleMapsPlaces } from '$lib/client/maps/google-maps-loader';
 	import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
@@ -16,24 +16,18 @@
 	};
 
 	let {
-		label = '',
 		placeholder = 'Search KNUST / Ayeduase address...',
 		value = $bindable(''),
-		disabled = false,
 		iconColor = 'text-primary',
 		/** When true, reject selections outside the Kumasi KNUST zone. */
 		enforceZone = true,
-		icon,
 		onselect,
 		onerror
 	}: {
-		label?: string;
 		placeholder?: string;
 		value?: string;
-		disabled?: boolean;
 		iconColor?: string;
 		enforceZone?: boolean;
-		icon?: Snippet;
 		onselect?: (detail: SelectDetail) => void;
 		onerror?: (detail: { code: GeoErrorCode; message: string }) => void;
 	} = $props();
@@ -377,26 +371,20 @@
 
 <div class="relative z-40 w-full">
 	{#snippet iconSnippet()}
-		{#if icon}
-			{@render icon()}
-		{:else}
-			<svg
-				viewBox="0 0 24 24"
-				class="h-4 w-4 {iconColor}"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-			>
-				<path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" />
-				<circle cx="12" cy="10" r="2.5" />
-			</svg>
-		{/if}
+		<svg
+			viewBox="0 0 24 24"
+			class="h-4 w-4 {iconColor}"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2"
+		>
+			<path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" />
+			<circle cx="12" cy="10" r="2.5" />
+		</svg>
 	{/snippet}
 
 	<Input
-		{label}
 		{placeholder}
-		{disabled}
 		bind:value
 		bind:inputRef
 		autocomplete="off"
