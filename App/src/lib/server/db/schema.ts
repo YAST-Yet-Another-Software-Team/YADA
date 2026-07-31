@@ -79,7 +79,7 @@ export const verifications = pgTable('verifications', {
 });
 
 // ---------------------------------------------------------------------------
-// Business profile — used by the dispatch UI to anchor the test business.
+// Business profile — used by the business workspace to anchor the test business.
 // ---------------------------------------------------------------------------
 export const businessProfiles = pgTable('business_profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
