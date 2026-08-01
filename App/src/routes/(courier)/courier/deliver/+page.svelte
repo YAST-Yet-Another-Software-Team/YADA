@@ -6,6 +6,11 @@
   import Button from '$lib/components/ui/Button.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+  import {
+    DELIVERY_PROXIMITY_KM,
+    isWithinRange,
+    metresBetween
+  } from '$lib/shared/geo/proximity';
   import type { LatLng } from '$lib/utils/types';
   import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
@@ -51,10 +56,20 @@
       : { lat: 6.6745, lng: -1.5716 }
   );
 
-  async function updateRoute(from: LatLng, force = false) {
+  /**
+   * How far the courier still has to go, and whether that is close enough to
+   * hand the parcel over. The same rule runs server-side on the completing
+   * request — this only decides whether the button is worth offering.
+   */
+  const metresToDropoff = $derived(riderPoint ? metresBetween(riderPoint, dropoffPoint) : null);
+  const atDropoff = $derived(
+    Boolean(riderPoint && isWithinRange(riderPoint, dropoffPoint, DELIVERY_PROXIMITY_KM))
+  );
+
+  async function updateRoute(from: LatLng) {
     if (!maps.enabled) return;
     try {
-      const route = await computeDrivingRoute(maps.apiKey, from, dropoffPoint, { force });
+      const route = await computeDrivingRoute(maps.apiKey, from, dropoffPoint, { force: true });
       routePath = route.path;
       etaText = route.durationText;
     } catch {
@@ -63,7 +78,7 @@
   }
 
   async function markDelivered() {
-    if (completing) return;
+    if (completing || !atDropoff) return;
     completing = true;
     actionError = '';
     try {
@@ -73,22 +88,27 @@
         body: JSON.stringify({ tripId: data.trip.id, action: 'complete' })
       });
 
+      const payload = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error('Unable to complete trip');
+        // The server checks the courier's stored position, which can be a fix or
+        // two behind the one on screen, so its refusal is the one worth showing.
+        actionError = payload?.message ?? 'Unable to complete trip';
+        return;
       }
 
       goto(`/courier/complete?tripId=${encodeURIComponent(data.trip.id)}`);
-    } catch (error) {
-      actionError = error instanceof Error ? error.message : 'Unable to complete trip';
+    } catch {
+      actionError = 'Unable to complete trip. Check your connection and try again.';
     } finally {
       completing = false;
     }
   }
 
   onMount(() => {
-    riderPoint = { lat: pickupPoint.lat, lng: pickupPoint.lng };
-    void updateRoute(riderPoint);
-
+    // No seeded position: the delivery can only be completed from where the
+    // courier actually is, so an assumed one — the pickup, say — would be a lie
+    // the proximity check then has to catch.
     stopReporter = startCourierLocationReporter({
       tripId: data.trip.id,
       enabled: true,
@@ -96,12 +116,14 @@
         riderPoint = { lat: point.lat, lng: point.lng };
         locationUnavailable = point.stale;
 
-        if (routePath.length > 1) {
-          const drift = distanceToPolylineKm(riderPoint, routePath);
-          if (drift > OFF_ROUTE_THRESHOLD_KM) {
-            void updateRoute(riderPoint, true);
-            return;
-          }
+        // Only redraw when there's no route yet or the courier has left the one
+        // on screen. Recomputing per fix bills a Routes call every few seconds
+        // to draw the same line.
+        if (
+          routePath.length > 1 &&
+          distanceToPolylineKm(riderPoint, routePath) <= OFF_ROUTE_THRESHOLD_KM
+        ) {
+          return;
         }
 
         void updateRoute(riderPoint);
@@ -192,9 +214,22 @@
         </svg>
       </IconButton>
       <div class="flex-1"></div>
-      <Button variant="primary" size="sm" disabled={completing} onclick={markDelivered}>
-        {completing ? 'Completing…' : 'Mark delivered'}
-      </Button>
+      {#if atDropoff}
+        <Button variant="primary" size="sm" disabled={completing} onclick={markDelivered}>
+          {completing ? 'Confirming…' : 'Confirm delivery'}
+        </Button>
+      {:else}
+        <!-- Not a disabled button: there is nothing to press yet, and a greyed
+             one invites tapping at it the whole way there. -->
+        <p class="text-right text-sm text-ink-secondary">
+          {#if metresToDropoff == null}
+            Waiting for your location…
+          {:else}
+            {metresToDropoff} m away — you can confirm this within
+            {Math.round(DELIVERY_PROXIMITY_KM * 1000)} m
+          {/if}
+        </p>
+      {/if}
     </div>
   </div>
 </div>

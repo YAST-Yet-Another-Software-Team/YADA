@@ -2,6 +2,8 @@
   import { goto } from '$app/navigation';
   import Card from '$lib/components/ui/Card.svelte';
   import StatusPill from '$lib/components/ui/StatusPill.svelte';
+  import { toTripStage } from '$lib/shared/trip-status';
+  import type { TripStatus } from '$lib/utils/types';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import { getCourierOnline } from '../courier-online.svelte';
 
@@ -23,7 +25,7 @@
         dropoffAddress: string;
         completedAt: string | null;
         requestedAt: string;
-        status: 'searching' | 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled';
+        status: TripStatus;
       }>;
     };
   } = $props();
@@ -119,7 +121,7 @@
                   {trip.completedAt ? new Date(trip.completedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : new Date(trip.requestedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                 </p>
               </div>
-              <StatusPill status={trip.status} />
+              <StatusPill status={toTripStage(trip.status)} />
             </div>
           </Card>
         {/each}

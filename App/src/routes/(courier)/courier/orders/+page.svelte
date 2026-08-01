@@ -4,7 +4,8 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import { courierTripHref } from '$lib/shared/trip-status';
-	import type { TripStage } from '$lib/utils/types';
+	import { toTripStage } from '$lib/shared/trip-status';
+	import type { TripStatus } from '$lib/utils/types';
 	import { getCourierOnline } from '../courier-online.svelte';
 
 	let {
@@ -13,7 +14,7 @@
 		data: {
 			activeTrip: {
 				id: string;
-				status: TripStage;
+				status: TripStatus;
 				businessName: string;
 				pickupAddress: string;
 				dropoffAddress: string;
@@ -73,7 +74,7 @@
 							</p>
 						{/if}
 					</div>
-					<StatusPill status={data.activeTrip.status} />
+					<StatusPill status={toTripStage(data.activeTrip.status)} />
 				</div>
 				<Button
 					variant="primary"

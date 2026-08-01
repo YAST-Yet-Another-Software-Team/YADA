@@ -88,15 +88,26 @@ export type DrivingRouteResult = {
 // Trip lifecycle
 // ---------------------------------------------------------------------------
 
-/** The `trip_status` enum as stored in the database. */
+/**
+ * The `trip_status` enum as stored in the database.
+ *
+ * Two phases with a handover between them: pickup runs `accepted` →
+ * `courier_arriving` and ends when the business confirms (`picked_up`);
+ * delivery runs `in_progress` → `completed` and starts when the courier says
+ * so. `arrived` is legacy — see the schema.
+ */
 export type TripStatus =
   | 'requested'
   | 'accepted'
   | 'courier_arriving'
   | 'arrived'
+  | 'picked_up'
   | 'in_progress'
   | 'completed'
   | 'cancelled';
+
+/** Which half of the journey a trip is in, for screens that speak in phases. */
+export type TripPhase = 'pickup' | 'delivery';
 
 /** The six states the UI renders — see `StatusPill`. */
 export type TripStage = 'searching' | 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled';
@@ -130,12 +141,33 @@ export type CourierRequest = {
 };
 
 /**
+ * The courier behind an accepted trip, as the business is shown them.
+ *
+ * One shape for every screen that names the rider — tracking, the dashboard
+ * panel — so the two can't describe the same person differently. Sourced from
+ * the user record and the courier profile, never from placeholder copy.
+ */
+export type CourierSummary = {
+  id: string;
+  name: string;
+  initials: string;
+  phone: string | null;
+  vehicleType: string | null;
+  rating: number | null;
+};
+
+/**
  * An accepted trip: the offer plus everything that only exists once a courier
  * is on it. Here rather than in `data/courier.ts` because `CourierRequest` is
  * its base and `$lib/server/courier-trip` consumes it.
+ *
+ * `status` is the stored status rather than a display stage: the courier's own
+ * screens have to tell `picked_up` (waiting to set off) from `courier_arriving`
+ * (waiting to be handed the parcel), and a stage collapses the two. Call
+ * `toTripStage` where a pill or a label is what's wanted.
  */
 export type CourierTrip = CourierRequest & {
-  status: TripStage;
+  status: TripStatus;
   acceptedAt: string | null;
   completedAt: string | null;
   estimatedDistanceKm: number | null;

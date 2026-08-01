@@ -5,8 +5,9 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { apiError } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
 import { courierProfiles, deliveryRequests } from '$lib/server/db/schema';
-import { recordTripEvent } from '$lib/server/data/trip-events';
+import { recordStatusChange, recordTripEvent } from '$lib/server/data/trip-events';
 import { geoErrorMessage } from '$lib/shared/geo/errors';
+import { isWithinRange, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
 import { getIo } from '$lib/server/realtime/instance';
 import { ACTIVE_TRIP_STATUSES } from '$lib/shared/trip-status';
 import { isUuid } from '$lib/shared/uuid';
@@ -50,7 +51,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	let tripId = isUuid(body.tripId) ? body.tripId : null;
 	if (tripId) {
 		const [trip] = await db
-			.select({ id: deliveryRequests.id })
+			.select({
+				id: deliveryRequests.id,
+				status: deliveryRequests.status,
+				pickupLatitude: deliveryRequests.pickupLatitude,
+				pickupLongitude: deliveryRequests.pickupLongitude
+			})
 			.from(deliveryRequests)
 			.where(
 				and(
@@ -70,6 +76,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				heading: body.heading ?? null,
 				recordedAt: recordedAt.toISOString()
 			});
+
+			// Reaching the pickup is observed, not declared: the courier's own
+			// position is what tells the business their rider is at the counter and
+			// the handover can be confirmed. Doing it here costs nothing — the trip
+			// row is already loaded — and means neither app has to remember to say so.
+			if (
+				trip.status === 'accepted' &&
+				trip.pickupLatitude &&
+				trip.pickupLongitude &&
+				isWithinRange(
+					{ lat, lng },
+					{ lat: Number(trip.pickupLatitude), lng: Number(trip.pickupLongitude) },
+					PICKUP_PROXIMITY_KM
+				)
+			) {
+				await db
+					.update(deliveryRequests)
+					.set({ status: 'courier_arriving' })
+					.where(eq(deliveryRequests.id, trip.id));
+
+				await recordStatusChange(trip.id, user.id, {
+					from: trip.status,
+					to: 'courier_arriving',
+					action: 'reached_pickup'
+				});
+			}
 		}
 	}
 

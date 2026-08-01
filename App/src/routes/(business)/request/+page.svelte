@@ -1,307 +1,164 @@
-<script module lang="ts">
-	import { reverseGeocode as lookupAddress } from '$lib/client/maps/geocoding';
-	import { GeoError, geoErrorMessage } from '$lib/shared/geo/errors';
-	import { createClientGeocodeCache, reverseCacheKey } from '$lib/shared/geo/geocode-cache';
-	import { containsPoint as insideZone } from '$lib/shared/geo/service-area';
-	import type { GeoErrorCode as GeoCode, LatLng as Point } from '$lib/utils/types';
-
-	type GeocodeResult = {
-		address: string;
-		lat: number;
-		lng: number;
-		placeId?: string;
-		inZone: boolean;
-	};
-
-	type GeocodeResponse =
-		| { ok: true; result: GeocodeResult }
-		| { ok: false; code: GeoCode; message: string; result?: GeocodeResult };
-
-	/**
-	 * Module scope, not instance scope: the cache has to outlive a visit to this
-	 * page, or navigating away and back re-bills every lookup against the Maps
-	 * quota. This is the only screen that reverse-geocodes.
-	 */
-	const geocodeCache = createClientGeocodeCache();
-
-	/**
-	 * The key is a parameter because module scope cannot read component context —
-	 * the same reason `computeDrivingRoute` takes one.
-	 */
-	async function reverseGeocode(apiKey: string, point: Point): Promise<GeocodeResponse> {
-		const key = reverseCacheKey(point.lat, point.lng);
-		const cached = geocodeCache.get(key);
-
-		if (cached) {
-			return { ok: true, result: { ...cached, inZone: insideZone(point) } };
-		}
-
-		try {
-			const entry = await lookupAddress(apiKey, point);
-			geocodeCache.set(key, entry);
-
-			return { ok: true, result: { ...entry, inZone: insideZone(point) } };
-		} catch (error) {
-			const geoError = error instanceof GeoError ? error : null;
-
-			return {
-				ok: false,
-				code: geoError?.code ?? 'unavailable',
-				message: geoError?.message ?? geoErrorMessage('unavailable')
-			};
-		}
-	}
-</script>
-
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { onDestroy, onMount } from 'svelte';
-	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
-	import AddressAutocomplete from '$lib/components/ui/AddressAutocomplete.svelte';
+	import { goto, invalidateAll } from '$app/navigation';
 	import Alert from '$lib/components/ui/Alert.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Select from '$lib/components/ui/Select.svelte';
-	import { getCurrentDeviceLocation, startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
+	import LocationPickerMap from '$lib/components/ui/LocationPickerMap.svelte';
 	import { computeDrivingRoute } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
-	import { containsPoint, KUMASI_CENTER } from '$lib/shared/geo/service-area';
+	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 	import type { LatLng } from '$lib/utils/types';
-	import type { GeoErrorCode } from '$lib/utils/types';
 
-	type LocationMode = 'pickup' | 'dropoff';
-
-	let pickup = $state('');
-	let dropoff = $state('');
-	let pickupPlaceId = $state<string | undefined>(undefined);
-	let dropoffPlaceId = $state<string | undefined>(undefined);
-	let distance = $state('fastest');
-	/** Which address field map clicks / focus update (no visible toggle). */
-	let activeLocation = $state<LocationMode>('dropoff');
-	let pickupPoint = $state<LatLng | null>(null);
-	let dropoffPoint = $state<LatLng | null>(null);
-	let mapCenter = $state<LatLng | null>(null);
-	let mapZoom = $state<number | null>(null);
-	let submitting = $state(false);
-	let zoneError = $state('');
-	let estimatedDistanceKm = $state<number | null>(null);
-	let estimatedDurationMinutes = $state<number | null>(null);
-	let stopDeviceWatcher: (() => void) | null = null;
-	let pickupAutoFollow = true;
+	let {
+		data
+	}: {
+		data: {
+			business: { businessName: string; address: string; lat: number; lng: number } | null;
+		};
+	} = $props();
 
 	const maps = getMapsConfig();
 
-	const distanceOptions = [
-		{ value: 'fastest', label: 'Fastest nearby' },
-		{ value: 'nearby', label: 'Nearby' },
-		{ value: 'further', label: 'Further away' },
-		{ value: 'any', label: 'Any available' }
-	];
+	const business = $derived(data.business);
+	const pickupPoint = $derived(business ? { lat: business.lat, lng: business.lng } : null);
 
-	const canSubmit = $derived(
-		Boolean(pickupPoint && dropoffPoint && dropoff.trim() && pickup.trim()) &&
-			containsPoint(pickupPoint!) &&
-			containsPoint(dropoffPoint!) &&
-			!submitting
+	let dropoffPoint = $state<LatLng | null>(null);
+	let dropoffAddress = $state('');
+	let dropoffError = $state('');
+	let resolvingDropoff = $state(false);
+	let submitting = $state(false);
+	let submitError = $state('');
+	let estimate = $state<{ distanceKm: number; durationMinutes: number; durationText: string } | null>(
+		null
 	);
 
-	async function refreshEstimatesQuietly() {
-		if (!pickupPoint || !dropoffPoint || !maps.enabled) {
-			estimatedDistanceKm = null;
-			estimatedDurationMinutes = null;
+	// Only reachable by accounts created before sign-up asked for an address.
+	let setupPoint = $state<LatLng | null>(null);
+	let setupAddress = $state('');
+	let setupError = $state('');
+	let savingAddress = $state(false);
+
+	const canSubmit = $derived(
+		Boolean(pickupPoint && dropoffPoint && dropoffAddress.trim()) && !submitting
+	);
+
+	/**
+	 * Distance and ETA for the trip about to be requested.
+	 *
+	 * Deliberately not drawn on the map: until a rider is on it, a line between
+	 * two pins is a guess at a journey nobody is making yet. The numbers are
+	 * stored with the trip, so the dashboard can show an ETA before the first fix.
+	 */
+	async function refreshEstimate(origin: LatLng, destination: LatLng) {
+		if (!maps.enabled) {
+			estimate = null;
 			return;
 		}
+
 		try {
-			const route = await computeDrivingRoute(maps.apiKey, pickupPoint, dropoffPoint);
-			estimatedDistanceKm = route.distanceKm;
-			estimatedDurationMinutes = route.durationMinutes;
+			const route = await computeDrivingRoute(maps.apiKey, origin, destination);
+			estimate = {
+				distanceKm: route.distanceKm,
+				durationMinutes: route.durationMinutes,
+				durationText: route.durationText
+			};
 		} catch {
-			estimatedDistanceKm = null;
-			estimatedDurationMinutes = null;
+			estimate = null;
 		}
 	}
 
-	async function applyPoint(mode: LocationMode, point: LatLng, address?: string, placeId?: string) {
-		if (!containsPoint(point)) {
-			zoneError = geoErrorMessage('out_of_zone');
-			return;
-		}
-		zoneError = '';
-		mapCenter = point;
-		mapZoom = 16;
+	$effect(() => {
+		const origin = pickupPoint;
+		const destination = dropoffPoint;
 
-		if (mode === 'pickup') {
-			pickupAutoFollow = false;
-			pickupPoint = point;
-			pickupPlaceId = placeId;
-			if (address) pickup = address;
-			else {
-				const reverse = await reverseGeocode(maps.apiKey, point);
-				pickup = reverse.ok ? reverse.result.address : pickup;
-			}
-		} else {
-			dropoffPoint = point;
-			dropoffPlaceId = placeId;
-			if (address) dropoff = address;
-			else {
-				const reverse = await reverseGeocode(maps.apiKey, point);
-				dropoff = reverse.ok ? reverse.result.address : dropoff;
-			}
-		}
-
-		void refreshEstimatesQuietly();
-	}
-
-	async function setPickupFromLocation() {
-		const location = await getCurrentDeviceLocation();
-		if (!location) {
-			mapCenter = KUMASI_CENTER;
+		if (!origin || !destination) {
+			estimate = null;
 			return;
 		}
 
-		mapCenter = location;
-		mapZoom = 16;
-		pickupPoint = location;
-		const reverse = await reverseGeocode(maps.apiKey, location);
-		pickup = reverse.ok ? reverse.result.address : pickup;
-		pickupPlaceId = undefined;
+		void refreshEstimate(origin, destination);
+	});
 
-		if (!containsPoint(location)) {
-			zoneError = geoErrorMessage('out_of_zone');
-			return;
-		}
+	async function requestDelivery() {
+		if (!canSubmit || !dropoffPoint) return;
 
-		zoneError = '';
-	}
-
-	function handleMapPick(point: LatLng) {
-		void applyPoint(activeLocation, point);
-	}
-
-	function handlePickupSelect(
-		detail: { address: string; lat: number; lng: number; placeId?: string; inZone: boolean }
-	) {
-		activeLocation = 'pickup';
-		if (!detail.inZone) {
-			zoneError = geoErrorMessage('out_of_zone');
-			pickupPoint = null;
-			return;
-		}
-		void applyPoint(
-			'pickup',
-			{ lat: detail.lat, lng: detail.lng },
-			detail.address,
-			detail.placeId
-		);
-	}
-
-	function handleDropoffSelect(
-		detail: { address: string; lat: number; lng: number; placeId?: string; inZone: boolean }
-	) {
-		activeLocation = 'dropoff';
-		if (!detail.inZone) {
-			zoneError = geoErrorMessage('out_of_zone');
-			dropoffPoint = null;
-			return;
-		}
-		void applyPoint(
-			'dropoff',
-			{ lat: detail.lat, lng: detail.lng },
-			detail.address,
-			detail.placeId
-		);
-	}
-
-	function handleGeoError(detail: { code: GeoErrorCode; message: string }) {
-		zoneError = detail.message;
-	}
-
-	async function findRider() {
-		if (!canSubmit || !pickupPoint || !dropoffPoint) return;
 		submitting = true;
+		submitError = '';
 
 		try {
-			await refreshEstimatesQuietly();
-
 			const response = await fetch('/api/trips', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					pickupAddress: pickup,
-					dropoffAddress: dropoff,
-					pickupLat: pickupPoint.lat,
-					pickupLng: pickupPoint.lng,
+					dropoffAddress,
 					dropoffLat: dropoffPoint.lat,
 					dropoffLng: dropoffPoint.lng,
-					pickupPlaceId,
-					dropoffPlaceId,
-					estimatedDistanceKm,
-					estimatedDurationMinutes
+					estimatedDistanceKm: estimate?.distanceKm,
+					estimatedDurationMinutes: estimate?.durationMinutes
 				})
 			});
 
-			const data = await response.json();
-			const tripPayload = {
-				id: data.trip?.id ?? `local-${Date.now()}`,
-				pickupAddress: pickup,
-				dropoffAddress: dropoff,
-				pickupLat: pickupPoint.lat,
-				pickupLng: pickupPoint.lng,
-				dropoffLat: dropoffPoint.lat,
-				dropoffLng: dropoffPoint.lng,
-				estimatedDistanceKm,
-				estimatedDurationMinutes
-			};
-			sessionStorage.setItem('yada:active-trip', JSON.stringify(tripPayload));
+			const payload = await response.json().catch(() => null);
 
-			if (!response.ok && response.status !== 401) {
-				zoneError = data.message ?? 'Could not save trip — continuing with local preview.';
+			// No local-preview fallback: a request that didn't reach the database is
+			// one no courier can ever see, and sending the business to a tracking
+			// screen for it only hides that.
+			if (!response.ok || !payload?.trip?.id) {
+				submitError = payload?.message ?? 'Could not send your request. Try again.';
+				return;
 			}
 
-			goto(`/matching?trip=${encodeURIComponent(tripPayload.id)}`);
+			goto(`/tracking?trip=${encodeURIComponent(payload.trip.id)}`);
+		} catch {
+			submitError = 'Could not send your request. Check your connection and try again.';
 		} finally {
 			submitting = false;
 		}
 	}
 
-	onMount(() => {
-		stopDeviceWatcher = startDeviceLocationWatcher({
-			onUpdate: (location) => {
-				mapCenter = location;
-				if (pickupAutoFollow) {
-					pickupPoint = location;
-					void (async () => {
-						const reverse = await reverseGeocode(maps.apiKey, location);
-						pickup = reverse.ok ? reverse.result.address : pickup;
-					})();
-				}
-			},
-			onError: () => {
-				if (!mapCenter) mapCenter = KUMASI_CENTER;
+	async function saveBusinessAddress() {
+		if (!setupPoint || !setupAddress.trim() || savingAddress) return;
+
+		savingAddress = true;
+		setupError = '';
+
+		try {
+			const response = await fetch('/api/business/profile', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					address: setupAddress,
+					lat: setupPoint.lat,
+					lng: setupPoint.lng
+				})
+			});
+
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				setupError = payload?.message ?? 'Could not save your address. Try again.';
+				return;
 			}
-		});
-		void setPickupFromLocation();
-	});
 
-	onDestroy(() => {
-		stopDeviceWatcher?.();
-	});
+			await invalidateAll();
+		} catch {
+			setupError = 'Could not save your address. Check your connection and try again.';
+		} finally {
+			savingAddress = false;
+		}
+	}
 
-	const mapMarkers = $derived([
-		...(pickupPoint
-			? [{ id: 'pickup', lat: pickupPoint.lat, lng: pickupPoint.lng, label: 'Pickup', role: 'pickup' as const }]
-			: []),
-		...(dropoffPoint
+	const pickupMarker = $derived(
+		business && pickupPoint
 			? [
 					{
-						id: 'dropoff',
-						lat: dropoffPoint.lat,
-						lng: dropoffPoint.lng,
-						label: 'Dropoff',
-						role: 'dropoff' as const
+						id: 'pickup',
+						lat: pickupPoint.lat,
+						lng: pickupPoint.lng,
+						label: business.businessName,
+						role: 'business' as const
 					}
 				]
-			: [])
-	]);
+			: []
+	);
 </script>
 
 <svelte:head>
@@ -323,72 +180,120 @@
 	<div class="flex min-h-0 flex-1 flex-col lg:flex-row">
 		<!-- Map on top in portrait; right pane in landscape -->
 		<div class="relative order-1 min-h-[52svh] flex-1 lg:order-2 lg:min-h-0">
-			<MapBackdrop
-				interactive
-				center={mapCenter}
-				zoom={mapZoom}
-				markers={mapMarkers}
-				onpick={handleMapPick}
-			/>
+			{#if business}
+				<LocationPickerMap
+					bind:point={dropoffPoint}
+					bind:address={dropoffAddress}
+					bind:error={dropoffError}
+					bind:resolving={resolvingDropoff}
+					markerLabel="Delivery address"
+					markerRole="dropoff"
+					extraMarkers={pickupMarker}
+					initialCenter={pickupPoint}
+					searchPlaceholder="Where is this going?"
+				/>
+			{:else}
+				<LocationPickerMap
+					bind:point={setupPoint}
+					bind:address={setupAddress}
+					bind:error={setupError}
+					markerLabel="Your business"
+					markerRole="business"
+					initialCenter={KUMASI_CENTER}
+					searchPlaceholder="Search your shop's address"
+					showLocateButton
+					locateLabel="I'm here now"
+				/>
+			{/if}
 		</div>
 
 		<!-- Request controls below in portrait; left pane in landscape -->
 		<aside
 			class="relative z-20 order-2 flex w-full shrink-0 flex-col gap-5 overflow-visible border-t border-border bg-surface p-4 lg:order-1 lg:w-[320px] lg:overflow-y-auto lg:border-r lg:border-t-0 lg:p-6"
 		>
-			<div class="hidden lg:block">
-				<h1 class="text-xl font-semibold text-ink">New delivery request</h1>
-				<p class="mt-1 text-sm text-ink-secondary">
-					Search addresses or tap the map to place pins.
+			{#if business}
+				<div class="hidden lg:block">
+					<h1 class="text-xl font-semibold text-ink">New delivery request</h1>
+					<p class="mt-1 text-sm text-ink-secondary">
+						Search the customer's address, then nudge the pin if it needs it.
+					</p>
+				</div>
+
+				{#if submitError}
+					<Alert>{submitError}</Alert>
+				{/if}
+
+				<section class="space-y-1">
+					<p class="text-eyebrow font-bold text-primary">Pickup</p>
+					<p class="text-sm font-semibold text-ink">{business.businessName}</p>
+					<p class="text-sm text-ink-secondary">{business.address}</p>
+				</section>
+
+				<section class="space-y-1">
+					<p class="text-eyebrow font-bold text-secondary-700">Deliver to</p>
+					{#if resolvingDropoff}
+						<p class="text-sm text-ink-tertiary">Reading that spot…</p>
+					{:else if dropoffAddress}
+						<p class="text-sm text-ink">{dropoffAddress}</p>
+					{:else}
+						<p class="text-sm text-ink-tertiary">
+							Search the address above, or tap the map.
+						</p>
+					{/if}
+					{#if dropoffError}
+						<p class="text-xs font-medium text-danger">{dropoffError}</p>
+					{/if}
+				</section>
+
+				{#if estimate}
+					<section class="space-y-1 border-t border-border pt-4">
+						<p class="text-eyebrow font-bold text-primary">Estimate</p>
+						<p class="font-mono-data text-sm text-ink">
+							{estimate.distanceKm.toFixed(1)} km · {estimate.durationText}
+						</p>
+					</section>
+				{/if}
+
+				<div class="mt-auto pt-2">
+					<Button
+						variant="primary"
+						size="lg"
+						fullWidth
+						disabled={!canSubmit}
+						onclick={requestDelivery}
+					>
+						{submitting ? 'Sending…' : 'Request a rider'}
+					</Button>
+				</div>
+			{:else}
+				<div>
+					<h1 class="text-xl font-semibold text-ink">Where do you dispatch from?</h1>
+					<p class="mt-1 text-sm text-ink-secondary">
+						We don't have an address on file for this account. Search or pin it once, and
+						every request after this leaves from there.
+					</p>
+				</div>
+
+				{#if setupError}
+					<Alert>{setupError}</Alert>
+				{/if}
+
+				<p class="text-sm {setupAddress ? 'text-ink' : 'text-ink-tertiary'}">
+					{setupAddress || 'No location pinned yet'}
 				</p>
-			</div>
 
-			{#if zoneError}
-				<Alert>{zoneError}</Alert>
+				<div class="mt-auto pt-2">
+					<Button
+						variant="primary"
+						size="lg"
+						fullWidth
+						disabled={!setupPoint || savingAddress}
+						onclick={saveBusinessAddress}
+					>
+						{savingAddress ? 'Saving…' : 'Save business address'}
+					</Button>
+				</div>
 			{/if}
-
-			<section class="space-y-2">
-				<p class="text-eyebrow font-bold text-primary">Pickup</p>
-				<div onfocusin={() => (activeLocation = 'pickup')}>
-					<AddressAutocomplete
-						placeholder="Business / pickup address"
-						bind:value={pickup}
-						iconColor="text-primary"
-						onselect={handlePickupSelect}
-						onerror={handleGeoError}
-					/>
-				</div>
-			</section>
-
-			<section class="space-y-2">
-				<p class="text-eyebrow font-bold text-primary">Dropoff</p>
-				<div onfocusin={() => (activeLocation = 'dropoff')}>
-					<AddressAutocomplete
-						placeholder="Customer delivery address"
-						bind:value={dropoff}
-						iconColor="text-secondary"
-						onselect={handleDropoffSelect}
-						onerror={handleGeoError}
-					/>
-				</div>
-			</section>
-
-			<section class="space-y-2">
-				<p class="text-eyebrow font-bold text-primary">Dispatch</p>
-				<Select label="Rider distance" options={distanceOptions} bind:value={distance} />
-			</section>
-
-			<div class="mt-auto pt-2">
-				<Button
-					variant="primary"
-					size="lg"
-					fullWidth
-					disabled={!canSubmit}
-					onclick={findRider}
-				>
-					{submitting ? 'Saving…' : 'Find a rider'}
-				</Button>
-			</div>
 		</aside>
 	</div>
 </div>

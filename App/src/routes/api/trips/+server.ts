@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { eq } from 'drizzle-orm';
 
 import { apiError } from '$lib/server/api-guard';
+import { getBusinessAddress, getCourierSummary } from '$lib/server/data/business';
 import { db } from '$lib/server/db';
 import { deliveryRequests, tripEvents } from '$lib/server/db/schema';
 import { assertInZone, containsPoint } from '$lib/shared/geo/service-area';
@@ -10,15 +11,16 @@ import { GeoError, geoErrorMessage } from '$lib/shared/geo/errors';
 import { isUuid } from '$lib/shared/uuid';
 import { env } from '$env/dynamic/private';
 
+/**
+ * Only the destination comes off the wire. Pickup is the business's stored
+ * address, read here rather than accepted from the client: the business doesn't
+ * move, so letting a request nominate its own origin would only ever be a way to
+ * disagree with the profile.
+ */
 type CreateTripBody = {
-	pickupAddress?: string;
 	dropoffAddress?: string;
-	pickupLat?: number;
-	pickupLng?: number;
 	dropoffLat?: number;
 	dropoffLng?: number;
-	pickupPlaceId?: string;
-	dropoffPlaceId?: string;
 	notes?: string;
 	estimatedDistanceKm?: number;
 	estimatedDurationMinutes?: number;
@@ -35,26 +37,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (user.role !== 'business') return apiError(403, 'denied', 'Business account required.');
 
 	try {
+		const business = await getBusinessAddress(user.id);
+		if (!business) {
+			return apiError(
+				409,
+				'no_business_address',
+				'Set your business address before requesting a delivery.'
+			);
+		}
+
 		const body = (await request.json()) as CreateTripBody;
-		const pickupAddress = body.pickupAddress?.trim();
 		const dropoffAddress = body.dropoffAddress?.trim();
-		const pickupLat = Number(body.pickupLat);
-		const pickupLng = Number(body.pickupLng);
 		const dropoffLat = Number(body.dropoffLat);
 		const dropoffLng = Number(body.dropoffLng);
 
-		if (
-			!pickupAddress ||
-			!dropoffAddress ||
-			!Number.isFinite(pickupLat) ||
-			!Number.isFinite(pickupLng) ||
-			!Number.isFinite(dropoffLat) ||
-			!Number.isFinite(dropoffLng)
-		) {
+		if (!dropoffAddress || !Number.isFinite(dropoffLat) || !Number.isFinite(dropoffLng)) {
 			return apiError(400, 'invalid_request', geoErrorMessage('invalid_request'));
 		}
 
-		assertInZone({ lat: pickupLat, lng: pickupLng });
+		assertInZone({ lat: business.lat, lng: business.lng });
 		assertInZone({ lat: dropoffLat, lng: dropoffLng });
 
 		const [trip] = await db
@@ -62,14 +63,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.values({
 				businessId: user.id,
 				status: 'requested',
-				pickupAddress,
+				pickupAddress: business.address,
 				dropoffAddress,
-				pickupLatitude: toCoordinateColumn(pickupLat),
-				pickupLongitude: toCoordinateColumn(pickupLng),
+				pickupLatitude: toCoordinateColumn(business.lat),
+				pickupLongitude: toCoordinateColumn(business.lng),
 				dropoffLatitude: toCoordinateColumn(dropoffLat),
 				dropoffLongitude: toCoordinateColumn(dropoffLng),
-				pickupPlaceId: body.pickupPlaceId ?? null,
-				dropoffPlaceId: body.dropoffPlaceId ?? null,
 				notes: body.notes ?? null,
 				estimatedDistanceKm:
 					body.estimatedDistanceKm != null ? String(body.estimatedDistanceKm) : null,
@@ -85,7 +84,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			actorId: user.id,
 			eventType: 'trip_created',
 			payload: JSON.stringify({
-				pickup: { lat: pickupLat, lng: pickupLng },
+				pickup: { lat: business.lat, lng: business.lng },
 				dropoff: { lat: dropoffLat, lng: dropoffLng },
 				mapsKeyConfigured: Boolean(env.GOOGLE_MAPS_API_KEY)
 			})
@@ -98,8 +97,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				status: trip.status,
 				pickupAddress: trip.pickupAddress,
 				dropoffAddress: trip.dropoffAddress,
-				pickupLat,
-				pickupLng,
+				pickupLat: business.lat,
+				pickupLng: business.lng,
 				dropoffLat,
 				dropoffLng,
 				estimatedDistanceKm: body.estimatedDistanceKm ?? null,
@@ -138,6 +137,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		return apiError(404, 'no_results', 'Trip not found.');
 	}
 
+	// Whoever is carrying the parcel, named from the account rather than left to
+	// the tracking screen to invent. Absent until someone accepts.
+	const courier = trip.assignedCourierId
+		? await getCourierSummary(trip.assignedCourierId)
+		: null;
+
 	const pickupLat = trip.pickupLatitude != null ? Number(trip.pickupLatitude) : null;
 	const pickupLng = trip.pickupLongitude != null ? Number(trip.pickupLongitude) : null;
 	const dropoffLat = trip.dropoffLatitude != null ? Number(trip.dropoffLatitude) : null;
@@ -150,6 +155,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			status: trip.status,
 			businessId: trip.businessId,
 			assignedCourierId: trip.assignedCourierId,
+			courier,
 			pickupAddress: trip.pickupAddress,
 			dropoffAddress: trip.dropoffAddress,
 			pickupLat,

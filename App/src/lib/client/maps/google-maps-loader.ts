@@ -1,9 +1,11 @@
 /**
  * Required Google Cloud APIs for YADA (enabled by setting GOOGLE_MAPS_API_KEY):
  * - Maps JavaScript API
- * - Places API (New)
  * - Geocoding API
  * - Routes API
+ *
+ * Places is not among them: locations are picked on the map and named by
+ * reverse geocoding, so nothing here searches for a place by name.
  *
  * The key is supplied by the caller rather than read here, because it arrives
  * at runtime through the root layout — see `./maps-config.svelte`.
@@ -31,11 +33,6 @@ export function loadGoogleMaps(apiKey: string) {
 export function loadGoogleMapsGeocoding(apiKey: string) {
   configure(apiKey);
   return importLibrary('geocoding');
-}
-
-export function loadGoogleMapsPlaces(apiKey: string) {
-  configure(apiKey);
-  return importLibrary('places');
 }
 
 export function loadGoogleMapsRoutes(apiKey: string) {

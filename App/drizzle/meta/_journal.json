@@ -36,6 +36,13 @@
       "when": 1784750157306,
       "tag": "0004_drop_admin_role",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784750157307,
+      "tag": "0005_trip_status_picked_up",
+      "breakpoints": true
     }
   ]
 }

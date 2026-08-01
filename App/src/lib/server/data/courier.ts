@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 
-import { ACTIVE_TRIP_STATUSES, CLOSED_TRIP_STATUSES, toTripStage } from '$lib/shared/trip-status';
+import { ACTIVE_TRIP_STATUSES, CLOSED_TRIP_STATUSES } from '$lib/shared/trip-status';
 import { initials } from '$lib/shared/text';
 import type { CourierRequest, CourierTrip } from '$lib/utils/types';
 
@@ -83,7 +83,9 @@ function toCourierRequest(row: TripRow): CourierRequest {
 function toCourierTrip(row: TripRow): CourierTrip {
   return {
     ...toCourierRequest(row),
-    status: toTripStage(row.status),
+    // The stored status, not a display stage: the pickup screen has to tell
+    // "waiting to be handed the parcel" from "cleared to set off".
+    status: row.status,
     acceptedAt: row.acceptedAt?.toISOString() ?? null,
     completedAt: row.completedAt?.toISOString() ?? null,
     estimatedDistanceKm: asNumber(row.estimatedDistanceKm),
@@ -99,7 +101,7 @@ function startOfToday() {
 
 /** Delivery counts and distance covered, derived from the delivered trips in a set. */
 function summarize(trips: CourierTrip[], activeTrips: number): CourierHomeSummary {
-  const delivered = trips.filter((trip) => trip.status === 'delivered');
+  const delivered = trips.filter((trip) => trip.status === 'completed');
   const today = startOfToday();
 
   return {

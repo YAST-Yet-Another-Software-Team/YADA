@@ -2,11 +2,16 @@ import { boolean, numeric, pgEnum, pgTable, text, timestamp, uuid } from 'drizzl
 
 export const userRoleEnum = pgEnum('user_role', ['business', 'courier']);
 
+// A trip runs in two phases with an explicit handover between them: pickup
+// (`accepted` → `courier_arriving` → the business confirming, which writes
+// `picked_up`) and delivery (`in_progress` → `completed`). `arrived` predates
+// the split and is kept only so historical rows still read.
 export const tripStatusEnum = pgEnum('trip_status', [
   'requested',
   'accepted',
   'courier_arriving',
   'arrived',
+  'picked_up',
   'in_progress',
   'completed',
   'cancelled'

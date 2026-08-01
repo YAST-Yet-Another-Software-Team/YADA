@@ -1,19 +1,21 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
+	import Alert from '$lib/components/ui/Alert.svelte';
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import IconButton from '$lib/components/ui/IconButton.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+	import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
 	import type { LatLng } from '$lib/utils/types';
 	import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
 	import { joinTripRoom, leaveTripRoom, LOCATION_STALE_MS, onRiderLocation } from '../realtime';
-	import { toDispatchStage } from '$lib/shared/trip-status';
-	import type { RiderLocationEvent, TripStatus } from '$lib/utils/types';
+	import { isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
+	import type { CourierSummary, RiderLocationEvent, TripStatus } from '$lib/utils/types';
 
 	type ActiveTrip = {
 		id: string;
@@ -26,177 +28,260 @@
 		dropoffLng: number;
 		estimatedDurationMinutes?: number | null;
 		assignedCourierId?: string | null;
-		routePath?: LatLng[];
+		courier?: CourierSummary | null;
+	};
+
+	const POLL_MS = 4000;
+
+	const STATUS_LABELS: Record<TripStatus, string> = {
+		requested: 'Waiting for a rider',
+		accepted: 'Rider on the way to you',
+		courier_arriving: 'Rider at your counter',
+		arrived: 'Rider at your counter',
+		picked_up: 'Collected — waiting for the rider to set off',
+		in_progress: 'On the way to the customer',
+		completed: 'Delivered',
+		cancelled: 'Cancelled'
 	};
 
 	let trip = $state<ActiveTrip | null>(null);
+	let loadError = $state('');
+	let actionError = $state('');
 	let riderPoint = $state<LatLng | null>(null);
 	let riderStale = $state(false);
 	let etaText = $state('—');
 	let routePath = $state<LatLng[]>([]);
-	let locationUnavailable = $state(false);
+	let cancelling = $state(false);
+	let confirming = $state(false);
 	let unsub: (() => void) | null = null;
 	let refreshTimer: ReturnType<typeof setInterval> | undefined;
-	let tripStatusLabel = $state('Waiting');
+	let joinedTripId: string | null = null;
 	const maps = getMapsConfig();
 
-	function isTemporaryTripId(tripId: string) {
-		return tripId.startsWith('local-');
+	/**
+	 * Nobody has taken the job yet. This is the one state a request can be
+	 * cancelled from, and — because there is no rider and so no journey — the one
+	 * state that draws no route: a line to the destination here would be a
+	 * promise about a trip that hasn't started.
+	 */
+	const searching = $derived(!trip || trip.status === 'requested' || !trip.assignedCourierId);
+	const closed = $derived(trip?.status === 'completed' || trip?.status === 'cancelled');
+	/** Mirrors the rule `POST /api/trips/cancel` enforces. */
+	const canCancel = $derived(trip?.status === 'requested');
+
+	/**
+	 * The pickup phase is still open: a rider is assigned and the parcel hasn't
+	 * been handed over. This is the window in which the confirm button exists.
+	 */
+	const awaitingPickup = $derived(Boolean(trip && !searching && isPickupPhase(trip.status)));
+
+	/**
+	 * How far the rider is from the counter, from the position this page is
+	 * already receiving. The server re-checks against its own stored fix before
+	 * accepting the confirmation, so this only decides what to offer.
+	 */
+	const riderMetresAway = $derived(
+		riderPoint && trip ? metresBetween(riderPoint, { lat: trip.pickupLat, lng: trip.pickupLng }) : null
+	);
+
+	const riderAtCounter = $derived(
+		Boolean(
+			riderPoint &&
+				trip &&
+				!riderStale &&
+				isWithinRange(riderPoint, { lat: trip.pickupLat, lng: trip.pickupLng }, PICKUP_PROXIMITY_KM)
+		)
+	);
+
+	/**
+	 * Which leg the rider is on: the shop until the parcel is in their hands, the
+	 * customer afterwards. The drawn route follows this, so the map shows the leg
+	 * being ridden rather than the trip as a whole.
+	 *
+	 * A key rather than a point, because polling replaces `trip` every few
+	 * seconds and a derived coordinate object would look new each time.
+	 */
+	const legKey = $derived(!trip || searching ? '' : awaitingPickup ? 'pickup' : 'dropoff');
+
+	function legTarget(): LatLng | null {
+		if (!trip || !legKey) return null;
+
+		return legKey === 'dropoff'
+			? { lat: trip.dropoffLat, lng: trip.dropoffLng }
+			: { lat: trip.pickupLat, lng: trip.pickupLng };
 	}
 
-	function markDelivered() {
-		goto('/history');
-	}
-
-	function cancel() {
-		goto('/dashboard');
-	}
-
-	function goBack() {
-		goto('/dashboard');
-	}
-
-	async function recomputeRoute(origin: LatLng, destination: LatLng, force = false) {
+	async function drawRoute(origin: LatLng, destination: LatLng) {
 		if (!maps.enabled) return;
+
 		try {
-			const route = await computeDrivingRoute(maps.apiKey, origin, destination, { force });
+			const route = await computeDrivingRoute(maps.apiKey, origin, destination, { force: true });
 			routePath = route.path;
 			etaText = route.durationText;
-			if (trip) {
-				trip = { ...trip, routePath: route.path, estimatedDurationMinutes: route.durationMinutes };
-				sessionStorage.setItem('yada:active-trip', JSON.stringify(trip));
-			}
 		} catch {
 			etaText = 'Unavailable';
 		}
 	}
 
-	async function loadTripState(tripId: string) {
-		if (isTemporaryTripId(tripId)) {
-			return Boolean(trip);
-		}
-
+	async function loadTrip(tripId: string) {
 		try {
-			const res = await fetch(`/api/trips?id=${encodeURIComponent(tripId)}`);
-			const data = await res.json();
-			if (!data.ok || !data.trip) return false;
+			const response = await fetch(`/api/trips?id=${encodeURIComponent(tripId)}`);
+			const payload = await response.json().catch(() => null);
 
-			trip = {
-				id: data.trip.id,
-				status: data.trip.status,
-				pickupAddress: data.trip.pickupAddress,
-				dropoffAddress: data.trip.dropoffAddress,
-				pickupLat: data.trip.pickupLat,
-				pickupLng: data.trip.pickupLng,
-				dropoffLat: data.trip.dropoffLat,
-				dropoffLng: data.trip.dropoffLng,
-				estimatedDurationMinutes: data.trip.estimatedDurationMinutes,
-				assignedCourierId: data.trip.assignedCourierId ?? null,
-				routePath: trip?.routePath
-			};
-
-			if (trip.estimatedDurationMinutes) {
-				etaText = `${Math.round(trip.estimatedDurationMinutes)} min`;
+			if (!response.ok || !payload?.trip) {
+				loadError = payload?.message ?? 'We could not find that request.';
+				return false;
 			}
 
-			routePath = trip.routePath ?? [
-				{ lat: trip.pickupLat, lng: trip.pickupLng },
-				{ lat: trip.dropoffLat, lng: trip.dropoffLng }
-			];
+			trip = {
+				id: payload.trip.id,
+				status: payload.trip.status,
+				pickupAddress: payload.trip.pickupAddress,
+				dropoffAddress: payload.trip.dropoffAddress,
+				pickupLat: payload.trip.pickupLat,
+				pickupLng: payload.trip.pickupLng,
+				dropoffLat: payload.trip.dropoffLat,
+				dropoffLng: payload.trip.dropoffLng,
+				estimatedDurationMinutes: payload.trip.estimatedDurationMinutes,
+				assignedCourierId: payload.trip.assignedCourierId ?? null,
+				courier: payload.trip.courier ?? null
+			};
+			loadError = '';
 
-			if (trip.status !== 'requested' && trip.assignedCourierId) {
-				if (!unsub) {
-					joinTripRoom(trip.id);
-					unsub = onRiderLocation(handleRiderLocation);
-				}
+			if (etaText === '—' && trip.estimatedDurationMinutes) {
+				etaText = `${Math.round(trip.estimatedDurationMinutes)} min`;
 			}
 
 			return true;
 		} catch {
+			loadError = 'We lost contact with the server. Retrying…';
 			return false;
 		}
 	}
 
 	function handleRiderLocation(payload: RiderLocationEvent) {
 		if (trip && payload.tripId && payload.tripId !== trip.id) return;
+
 		riderPoint = { lat: payload.lat, lng: payload.lng };
 		riderStale = Date.now() - new Date(payload.recordedAt).getTime() > LOCATION_STALE_MS;
-		locationUnavailable = riderStale;
 
-		if (trip && routePath.length > 1) {
-			const drift = distanceToPolylineKm(riderPoint, routePath);
-			if (drift > OFF_ROUTE_THRESHOLD_KM) {
-				void recomputeRoute(riderPoint, { lat: trip.dropoffLat, lng: trip.dropoffLng }, true);
-				return;
-			}
+		const target = legTarget();
+		if (!target) return;
+
+		// A fix that lands on the line we already drew changes nothing about the
+		// route — only the dot moves. Recomputing on every fix would bill a Routes
+		// call every couple of seconds to redraw the same path.
+		if (routePath.length > 1 && distanceToPolylineKm(riderPoint, routePath) <= OFF_ROUTE_THRESHOLD_KM) {
+			return;
 		}
 
-		if (trip) {
-			void recomputeRoute(riderPoint, { lat: trip.dropoffLat, lng: trip.dropoffLng });
+		void drawRoute(riderPoint, target);
+	}
+
+	/** Subscribe once a courier is on the trip; there is nothing to listen to before. */
+	$effect(() => {
+		if (!trip || searching || joinedTripId === trip.id) return;
+
+		joinedTripId = trip.id;
+		joinTripRoom(trip.id);
+		unsub = onRiderLocation(handleRiderLocation);
+	});
+
+	/** Searching and closed trips carry no live leg, so they carry no line. */
+	$effect(() => {
+		if (searching || closed) {
+			routePath = [];
+		}
+	});
+
+	// Redraw when the leg changes — the parcel has been collected and the rider is
+	// now heading somewhere else. Keyed on the leg rather than the position, so an
+	// ordinary fix along the same leg doesn't trigger a fresh Routes call.
+	$effect(() => {
+		legKey;
+
+		untrack(() => {
+			const target = legTarget();
+			if (target && riderPoint) void drawRoute(riderPoint, target);
+		});
+	});
+
+	async function confirmPickup() {
+		if (!trip || confirming) return;
+
+		confirming = true;
+		actionError = '';
+
+		try {
+			const response = await fetch('/api/trips/confirm-pickup', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tripId: trip.id })
+			});
+
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				actionError = payload?.message ?? 'Could not confirm the pickup.';
+			}
+
+			// Either way the trip has moved on or the reason is worth seeing, and
+			// both are in the row.
+			await loadTrip(trip.id);
+		} catch {
+			actionError = 'Could not confirm the pickup. Check your connection.';
+		} finally {
+			confirming = false;
+		}
+	}
+
+	async function cancelRequest() {
+		if (!trip || cancelling) return;
+
+		cancelling = true;
+		actionError = '';
+
+		try {
+			const response = await fetch('/api/trips/cancel', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tripId: trip.id })
+			});
+
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				// Most likely a rider accepted between the render and the click, so
+				// re-read the trip: the button should disappear rather than lie.
+				actionError = payload?.message ?? 'Could not cancel this request.';
+				await loadTrip(trip.id);
+				return;
+			}
+
+			goto('/dashboard');
+		} catch {
+			actionError = 'Could not cancel this request. Check your connection.';
+		} finally {
+			cancelling = false;
 		}
 	}
 
 	onMount(async () => {
 		const tripId = page.url.searchParams.get('trip');
-		const raw = sessionStorage.getItem('yada:active-trip');
-		if (raw) {
-			try {
-				trip = JSON.parse(raw) as ActiveTrip;
-			} catch {
-				trip = null;
-			}
-		}
 
-		if (tripId) {
-			const loaded = await loadTripState(tripId);
-			if (loaded && trip) {
-				sessionStorage.setItem('yada:active-trip', JSON.stringify(trip));
-			}
-		}
-
-		if (!trip) {
+		if (!tripId) {
 			goto('/request');
 			return;
 		}
 
-		if (trip.estimatedDurationMinutes) {
-			etaText = `${Math.round(trip.estimatedDurationMinutes)} min`;
-		}
-		routePath = trip.routePath ?? [
-			{ lat: trip.pickupLat, lng: trip.pickupLng },
-			{ lat: trip.dropoffLat, lng: trip.dropoffLng }
-		];
-
-		if (trip.status === 'requested' || !trip.assignedCourierId) {
-			tripStatusLabel = 'Waiting for a rider';
-		} else {
-			tripStatusLabel =
-				trip.status === 'accepted'
-					? 'Rider accepted'
-					: trip.status === 'courier_arriving'
-						? 'Rider arriving'
-						: trip.status === 'arrived'
-							? 'Rider arrived'
-							: trip.status === 'in_progress'
-								? 'In progress'
-								: trip.status === 'completed'
-									? 'Completed'
-									: 'Cancelled';
-		}
+		await loadTrip(tripId);
 
 		refreshTimer = setInterval(() => {
-			if (tripId && !isTemporaryTripId(tripId)) void loadTripState(tripId);
-		}, 4000);
-
-		if (trip.status !== 'requested' && trip.assignedCourierId) {
-			joinTripRoom(trip.id);
-			unsub = onRiderLocation(handleRiderLocation);
-		}
+			if (!closed) void loadTrip(tripId);
+		}, POLL_MS);
 	});
 
 	onDestroy(() => {
 		unsub?.();
-		if (trip) leaveTripRoom(trip.id);
+		if (joinedTripId) leaveTripRoom(joinedTripId);
 		if (refreshTimer) clearInterval(refreshTimer);
 	});
 
@@ -207,7 +292,7 @@
 						id: 'pickup',
 						lat: trip.pickupLat,
 						lng: trip.pickupLng,
-						label: 'Pickup',
+						label: trip.pickupAddress,
 						role: 'pickup' as const
 					},
 					{
@@ -217,7 +302,7 @@
 						label: trip.dropoffAddress,
 						role: 'dropoff' as const
 					},
-					...(riderPoint
+					...(riderPoint && !searching
 						? [
 								{
 									id: 'rider',
@@ -232,6 +317,8 @@
 				]
 			: []
 	);
+
+	const statusLabel = $derived(trip ? STATUS_LABELS[trip.status] : 'Loading…');
 </script>
 
 <svelte:head>
@@ -243,7 +330,7 @@
 >
 	<div class="relative min-h-[40svh] flex-1 lg:min-h-0">
 		<div class="absolute left-4 top-4 z-10 lg:hidden">
-			<IconButton ariaLabel="Back" onclick={goBack}>
+			<IconButton ariaLabel="Back" onclick={() => goto('/dashboard')}>
 				<svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2"
 					><path d="m15 18-6-6 6-6" /></svg
 				>
@@ -251,13 +338,20 @@
 		</div>
 
 		<MapBackdrop
-			routeLabel
 			center={riderPoint ?? (trip ? { lat: trip.dropoffLat, lng: trip.dropoffLng } : KUMASI_CENTER)}
 			{markers}
 			polylinePath={routePath}
-			followId="rider"
-			{locationUnavailable}
-		/>
+			followId={searching ? null : 'rider'}
+			locationUnavailable={!searching && riderStale}
+		>
+			{#if searching && !closed}
+				<div
+					class="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-md bg-surface/95 px-3 py-2 text-sm text-ink-secondary shadow-sm"
+				>
+					Looking for a rider near {trip?.pickupAddress ?? 'you'}…
+				</div>
+			{/if}
+		</MapBackdrop>
 	</div>
 
 	<aside
@@ -265,49 +359,110 @@
 	>
 		<StatusPill status={toDispatchStage(trip?.status ?? 'requested')} />
 
+		{#if loadError}
+			<Alert>{loadError}</Alert>
+		{/if}
+		{#if actionError}
+			<Alert>{actionError}</Alert>
+		{/if}
+
 		<div class="flex items-center gap-3">
-			<Avatar initials="KA" status="online" size={48} />
-			<div class="flex-1">
-				<p class="text-sm font-semibold text-ink">Assigned rider</p>
-				<p class="text-sm text-ink-secondary">{tripStatusLabel}</p>
+			<Avatar
+				initials={trip?.courier?.initials ?? '··'}
+				status={searching ? 'offline' : 'online'}
+				size={48}
+			/>
+			<div class="min-w-0 flex-1">
+				<p class="truncate text-sm font-semibold text-ink">
+					{trip?.courier?.name ?? 'No rider yet'}
+				</p>
+				<p class="text-sm text-ink-secondary">{statusLabel}</p>
+				{#if trip?.courier}
+					<p class="text-xs text-ink-tertiary">
+						{trip.courier.vehicleType ?? 'Rider'}{trip.courier.rating
+							? ` · ${trip.courier.rating.toFixed(1)}★`
+							: ''}
+					</p>
+				{/if}
 			</div>
-			<p class="font-mono-data text-xl font-semibold leading-tight text-primary lg:hidden">
-				{etaText}
-			</p>
+			{#if !searching}
+				<p class="font-mono-data text-xl font-semibold leading-tight text-primary lg:hidden">
+					{etaText}
+				</p>
+			{/if}
 		</div>
 
-		<p class="font-mono-data hidden text-2xl font-bold text-primary lg:block">{etaText}</p>
+		{#if !searching}
+			<p class="font-mono-data hidden text-2xl font-bold text-primary lg:block">{etaText}</p>
+		{/if}
 
 		<div class="hidden border-t border-border pt-3 lg:block">
 			<p class="text-sm text-ink-secondary">
 				{trip?.pickupAddress ?? 'Pickup'} → {trip?.dropoffAddress ?? 'Dropoff'}
 			</p>
-			{#if trip?.status === 'requested' || !trip?.assignedCourierId}
-				<p class="mt-2 text-sm text-ink-secondary">Waiting for a rider to accept this request.</p>
+			{#if searching && !closed}
+				<p class="mt-2 text-sm text-ink-secondary">
+					We'll draw the route as soon as a rider takes this request.
+				</p>
 			{/if}
 		</div>
 
-		<div class="flex items-center gap-3">
-			<IconButton ariaLabel="Call courier" variant="outline">
-				<svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2"
-					><path
-						d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.5-1.1a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2Z"
-					/></svg
+		{#if !searching && !closed && trip?.courier?.phone}
+			<!-- Real links, not decoration: the number belongs to the rider actually
+			     carrying this parcel. -->
+			<div class="flex items-center gap-3">
+				<a
+					href="tel:{trip.courier.phone}"
+					class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
+					aria-label="Call {trip.courier.name}"
 				>
-			</IconButton>
-			<IconButton ariaLabel="Message courier" variant="outline">
-				<svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2"
-					><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg
+					<svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2"
+						><path
+							d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.5-1.1a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2Z"
+						/></svg
+					>
+				</a>
+				<a
+					href="sms:{trip.courier.phone}"
+					class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
+					aria-label="Message {trip.courier.name}"
 				>
-			</IconButton>
-			<div class="flex-1"></div>
-		</div>
+					<svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2"
+						><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg
+					>
+				</a>
+				<p class="font-mono-data text-sm text-ink-secondary">{trip.courier.phone}</p>
+			</div>
+		{/if}
 
 		<div class="mt-auto flex flex-col gap-2 lg:pt-4">
-			<div class="flex gap-3 lg:flex-col">
-				<Button variant="ghost" size="sm" onclick={cancel}>Cancel request</Button>
-				<Button variant="primary" size="sm" onclick={markDelivered}>Mark delivered</Button>
-			</div>
+			{#if awaitingPickup}
+				<!-- The pickup phase ends here, on the counter it happens at. -->
+				{#if riderAtCounter}
+					<Button variant="primary" size="sm" disabled={confirming} onclick={confirmPickup}>
+						{confirming ? 'Confirming…' : 'Confirm pickup'}
+					</Button>
+					<p class="text-xs text-ink-tertiary">
+						Hand the parcel over, then confirm. The rider can start the delivery once you do.
+					</p>
+				{:else}
+					<p class="text-sm text-ink-secondary">
+						{#if riderMetresAway == null}
+							Waiting for the rider's location…
+						{:else if riderStale}
+							The rider's location is out of date — waiting for a fresh one.
+						{:else}
+							Rider is {riderMetresAway} m away. You can confirm the pickup once they're here.
+						{/if}
+					</p>
+				{/if}
+			{:else if canCancel}
+				<Button variant="ghost" size="sm" disabled={cancelling} onclick={cancelRequest}>
+					{cancelling ? 'Cancelling…' : 'Cancel request'}
+				</Button>
+			{:else if closed}
+				<Button variant="primary" size="sm" onclick={() => goto('/history')}>View in history</Button>
+			{/if}
 		</div>
 	</aside>
 </div>

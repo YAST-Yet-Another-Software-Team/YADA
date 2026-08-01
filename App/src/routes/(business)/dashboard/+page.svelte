@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import DashboardBoard from '$lib/components/business/DashboardBoard.svelte';
 	import DashboardTable from '$lib/components/business/DashboardTable.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
+	import Alert from '$lib/components/ui/Alert.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
@@ -30,6 +31,15 @@
 	} = $props();
 
 	let selected = $state<DashboardTripRecord | null>(null);
+	let cancelling = $state(false);
+	let panelError = $state('');
+
+	/**
+	 * Withdrawing is only offered while nobody has taken the job — the same rule
+	 * `POST /api/trips/cancel` enforces, and the same one the tracking screen
+	 * applies. Once a rider has accepted, this panel is a view, not a control.
+	 */
+	const canCancelSelected = $derived(selected?.status === 'searching');
 
 	// Adopted from storage after mount — $effect never runs on the server,
 	// where localStorage doesn't exist.
@@ -52,10 +62,45 @@
 
 	function selectTrip(trip: DashboardTripRecord) {
 		selected = trip;
+		panelError = '';
 	}
 
 	function closePanel() {
 		selected = null;
+		panelError = '';
+	}
+
+	function trackSelected() {
+		if (!selected) return;
+		goto(`/tracking?trip=${encodeURIComponent(selected.rawId)}`);
+	}
+
+	async function cancelSelected() {
+		if (!selected || !canCancelSelected || cancelling) return;
+
+		cancelling = true;
+		panelError = '';
+
+		try {
+			const response = await fetch('/api/trips/cancel', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tripId: selected.rawId })
+			});
+
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				panelError = payload?.message ?? 'Could not cancel this request.';
+				return;
+			}
+
+			closePanel();
+			await invalidateAll();
+		} catch {
+			panelError = 'Could not cancel this request. Check your connection.';
+		} finally {
+			cancelling = false;
+		}
 	}
 </script>
 
@@ -252,6 +297,9 @@
 			</div>
 
 			<div class="space-y-2 border-t border-border px-5 py-4 text-sm">
+				{#if panelError}
+					<Alert>{panelError}</Alert>
+				{/if}
 				<p class="text-ink-secondary">
 					<span class="font-semibold text-ink">Rider:</span>
 					{selected.rider ?? 'Unassigned'}
@@ -266,6 +314,16 @@
 					<span class="font-semibold text-ink">Pickup:</span>
 					{selected.pickup ?? data.dashboard.businessProfile?.address ?? '—'}
 				</p>
+
+				<div class="flex items-center gap-2 pt-2">
+					<Button variant="outline" size="sm" onclick={trackSelected}>Open tracking</Button>
+					<div class="flex-1"></div>
+					{#if canCancelSelected}
+						<Button variant="ghost" size="sm" disabled={cancelling} onclick={cancelSelected}>
+							{cancelling ? 'Cancelling…' : 'Cancel request'}
+						</Button>
+					{/if}
+				</div>
 			</div>
 		</aside>
 	</div>
