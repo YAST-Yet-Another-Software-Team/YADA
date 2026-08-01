@@ -460,9 +460,11 @@
 	<title>Tracking | YADA</title>
 </svelte:head>
 
-<div
-	class="relative flex min-h-[calc(100svh-3.25rem)] flex-col lg:min-h-[calc(100svh-58px-3rem)] lg:flex-row lg:overflow-hidden lg:rounded-lg lg:border lg:border-border lg:bg-surface"
->
+<!-- Full-bleed, like `/request`: the layout hands this page the height left under
+     the header, so there is no card frame to draw and no viewport arithmetic to
+     do here — `flex-1` takes what's left and `min-h-0` lets the map shrink into
+     it instead of overflowing. -->
+<div class="relative flex min-h-0 flex-1 flex-col bg-surface lg:flex-row lg:overflow-hidden">
 	<div class="relative min-h-[40svh] flex-1 lg:min-h-0">
 		<div class="absolute left-4 top-4 z-10 lg:hidden">
 			<IconButton ariaLabel="Back" onclick={() => goto('/dashboard')}>
@@ -500,8 +502,11 @@
 		</MapBackdrop>
 	</div>
 
+	<!-- Mobile keeps the sheet look, because there the panel sits *over* the map
+	     and needs an edge to read as lifted off it. On desktop it's a column
+	     beside the map, so it scrolls itself rather than growing the page. -->
 	<aside
-		class="z-10 flex flex-col gap-4 rounded-t-xl border-t border-border bg-surface p-6 shadow-lg lg:w-[320px] lg:shrink-0 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none"
+		class="z-10 flex flex-col gap-4 rounded-t-xl border-t border-border bg-surface p-6 shadow-lg lg:w-[320px] lg:shrink-0 lg:overflow-y-auto lg:rounded-none lg:border-t-0 lg:shadow-none"
 	>
 		<StatusPill status={toDispatchStage(trip?.status ?? 'requested')} />
 
