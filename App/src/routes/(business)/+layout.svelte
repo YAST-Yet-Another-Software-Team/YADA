@@ -3,7 +3,7 @@
   import { page } from "$app/state";
   import ProfileMenu from "$lib/components/business/ProfileMenu.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
-  import { getSession } from "$lib/auth/session.svelte";
+  import { getSession } from "$auth/session.svelte";
   import { initials } from "$lib/shared/text";
 
   let { children }: { children: Snippet } = $props();

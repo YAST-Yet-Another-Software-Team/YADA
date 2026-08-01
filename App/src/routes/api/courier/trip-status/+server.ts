@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { and, eq } from 'drizzle-orm';
 
-import { apiError, requireApiUser } from '$lib/server/api-guard';
+import { apiError } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
 import { deliveryRequests } from '$lib/server/db/schema';
 import { recordStatusChange } from '$lib/server/data/trip-events';
@@ -26,9 +26,9 @@ function isTripAction(value: unknown): value is TripAction {
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  const guard = requireApiUser(locals, 'courier');
-  if (guard.error) return guard.error;
-  const { user } = guard;
+  const user = locals.user;
+  if (!user) return apiError(401, 'denied', 'Sign in required.');
+  if (user.role !== 'courier') return apiError(403, 'denied', 'Courier account required.');
 
   const body = await request.json();
   const tripId = body?.tripId;

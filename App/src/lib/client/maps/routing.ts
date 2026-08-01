@@ -11,11 +11,6 @@ type RouteCacheEntry = {
 let lastRoute: RouteCacheEntry | null = null;
 const inFlightRoutes = new Map<string, Promise<DrivingRouteResult>>();
 
-function routeKey(origin: LatLng, destination: LatLng) {
-  const r = (n: number) => Math.round(n * 1e5) / 1e5;
-  return `${r(origin.lat)},${r(origin.lng)}->${r(destination.lat)},${r(destination.lng)}`;
-}
-
 function formatDistance(meters: number) {
   if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`;
   return `${Math.round(meters)} m`;
@@ -64,8 +59,8 @@ function decodePolyline(encoded: string): LatLng[] {
 }
 
 /**
- * Compute a driving route via the Maps JS Routes library (client)
- * or fall back to the Routes REST API when given a server key + fetch.
+ * Compute a driving route via the Maps JS Routes library, falling back to the
+ * Routes REST API when that library is unavailable in the loaded SDK.
  */
 export async function computeDrivingRoute(
   apiKey: string,
@@ -73,19 +68,20 @@ export async function computeDrivingRoute(
   destination: LatLng,
   options?: { force?: boolean }
 ): Promise<DrivingRouteResult> {
-  const key = routeKey(origin, destination);
+  // One key for all three cache layers — a second rounding helper here was how
+  // the memo and the persisted cache could disagree about the same coordinates.
   const cacheKey = routeCacheKey(origin, destination);
-  const requestKey = `${options?.force ? 'force:' : ''}${key}`;
+  const requestKey = `${options?.force ? 'force:' : ''}${cacheKey}`;
 
   if (!options?.force) {
     const cached = clientRouteCache.get(cacheKey);
     if (cached) {
-      lastRoute = { key, result: cached };
+      lastRoute = { key: cacheKey, result: cached };
       return cached;
     }
   }
 
-  if (!options?.force && lastRoute?.key === key) {
+  if (!options?.force && lastRoute?.key === cacheKey) {
     return lastRoute.result;
   }
 
@@ -117,7 +113,7 @@ export async function computeDrivingRoute(
       ).Route;
 
       if (!RouteApi?.computeRoutes) {
-        return computeDrivingRouteRest(apiKey, origin, destination, key, cacheKey);
+        return computeDrivingRouteRest(apiKey, origin, destination, cacheKey);
       }
 
       const response = await RouteApi.computeRoutes({
@@ -133,7 +129,7 @@ export async function computeDrivingRoute(
       }
 
       const leg = route.legs?.[0];
-      let distanceMeters = leg?.distanceMeters ?? leg?.distance?.value ?? 0;
+      const distanceMeters = leg?.distanceMeters ?? leg?.distance?.value ?? 0;
       let durationSeconds = 0;
 
       const rawDuration = leg?.duration;
@@ -164,12 +160,12 @@ export async function computeDrivingRoute(
         durationMinutes: Math.max(1, Math.round((durationSeconds || 60) / 60))
       };
 
-      lastRoute = { key, result };
+      lastRoute = { key: cacheKey, result };
       clientRouteCache.set(cacheKey, result);
       return result;
     } catch (error) {
       if (error instanceof GeoError) throw error;
-      return computeDrivingRouteRest(apiKey, origin, destination, key, cacheKey);
+      return computeDrivingRouteRest(apiKey, origin, destination, cacheKey);
     } finally {
       inFlightRoutes.delete(requestKey);
     }
@@ -183,7 +179,6 @@ async function computeDrivingRouteRest(
   apiKey: string,
   origin: LatLng,
   destination: LatLng,
-  key: string,
   cacheKey: string
 ): Promise<DrivingRouteResult> {
   const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
@@ -243,7 +238,7 @@ async function computeDrivingRouteRest(
     durationMinutes: Math.max(1, Math.round((durationSeconds || 60) / 60))
   };
 
-  lastRoute = { key, result };
+  lastRoute = { key: cacheKey, result };
   clientRouteCache.set(cacheKey, result);
   return result;
 }

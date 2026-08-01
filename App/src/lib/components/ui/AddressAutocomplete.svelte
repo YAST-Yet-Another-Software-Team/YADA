@@ -2,11 +2,12 @@
 	import { onDestroy } from 'svelte';
 	import Input from './Input.svelte';
 	import { loadGoogleMapsPlaces } from '$lib/client/maps/google-maps-loader';
-	import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
+	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
 	import { containsPoint, getZoneBounds, KUMASI_CENTER } from '$lib/shared/geo/service-area';
 	import { geoErrorMessage } from '$lib/shared/geo/errors';
 	import type { GeoErrorCode } from '$lib/utils/types';
 	import { createClientGeocodeCache, placeCacheKey } from '$lib/shared/geo/geocode-cache';
+	import { LOCAL_SUGGESTIONS } from '$lib/mock/addresses';
 
 	type SelectDetail = {
 		address: string;
@@ -69,7 +70,7 @@
 	};
 
 	let inputRef = $state<HTMLInputElement | null>(null);
-	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
+	const maps = getMapsConfig();
 	let suggestions = $state<Suggestion[]>([]);
 	let isOpen = $state(false);
 	let selectedIndex = $state(-1);
@@ -80,51 +81,10 @@
 	let sessionToken: unknown = null;
 	let placesReady = false;
 	const cache = createClientGeocodeCache();
-	const LOCAL_SUGGESTIONS = [
-		{
-			id: 'ayeduase-gate',
-			mainText: 'Ayeduase Gate',
-			secondaryText: 'near KNUST, Kumasi',
-			fullAddress: 'Ayeduase Gate, near KNUST, Kumasi',
-			lat: 6.6785,
-			lng: -1.5645
-		},
-		{
-			id: 'knust-commercial',
-			mainText: 'KNUST Commercial Area',
-			secondaryText: 'Kumasi',
-			fullAddress: 'KNUST Commercial Area, Kumasi',
-			lat: 6.6745,
-			lng: -1.5716
-		},
-		{
-			id: 'unity-hall',
-			mainText: 'Unity Hall',
-			secondaryText: 'KNUST, Kumasi',
-			fullAddress: 'Unity Hall, KNUST',
-			lat: 6.6798,
-			lng: -1.5732
-		},
-		{
-			id: 'ayeduase-new-site',
-			mainText: 'Ayeduase New Site',
-			secondaryText: 'Kumasi',
-			fullAddress: 'Ayeduase New Site, Kumasi',
-			lat: 6.682,
-			lng: -1.56
-		}
-	] satisfies Array<{
-		id: string;
-		mainText: string;
-		secondaryText: string;
-		fullAddress: string;
-		lat: number;
-		lng: number;
-	}>;
 
 	async function ensurePlaces() {
-		if (placesReady || !googleMapsApiKey) return placesReady;
-		await loadGoogleMapsPlaces(googleMapsApiKey);
+		if (placesReady || !maps.enabled) return placesReady;
+		await loadGoogleMapsPlaces(maps.apiKey);
 		const Places = google.maps.places as unknown as {
 			AutocompleteSessionToken?: new () => unknown;
 		};
@@ -143,7 +103,7 @@
 			return;
 		}
 
-		if (!MAPS_ENABLED || !googleMapsApiKey) {
+		if (!maps.enabled) {
 			const normalized = q.toLowerCase();
 			suggestions = LOCAL_SUGGESTIONS.filter(
 				(item) =>
@@ -270,6 +230,7 @@
 			if (enforceZone && !inZone) {
 				errorMessage = geoErrorMessage('out_of_zone');
 				onerror?.({ code: 'out_of_zone', message: errorMessage });
+				resolving = false;
 				return;
 			}
 
@@ -446,12 +407,5 @@
 
 	{#if errorMessage}
 		<p class="mt-1.5 text-xs font-medium text-danger">{errorMessage}</p>
-	{/if}
-
-	{#if MAPS_ENABLED && !googleMapsApiKey}
-		<p class="mt-1.5 text-xs text-ink-tertiary">
-			Set VITE_GOOGLE_MAPS_API_KEY to enable address search near KNUST / Ayeduase
-			({KUMASI_CENTER.lat.toFixed(2)}, {KUMASI_CENTER.lng.toFixed(2)}).
-		</p>
 	{/if}
 </div>

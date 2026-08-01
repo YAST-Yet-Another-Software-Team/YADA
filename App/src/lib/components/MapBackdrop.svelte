@@ -14,8 +14,8 @@
 
 <script lang="ts">
   import { onDestroy, onMount, type Snippet } from 'svelte';
-  import { loadGoogleMaps } from '$lib/client/maps/google-maps-loader';
-  import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
+  import { loadGoogleMaps, loadGoogleMapsMarker } from '$lib/client/maps/google-maps-loader';
+  import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
   import type { LatLng } from '$lib/utils/types';
   import { MAP_COLORS, MAP_ROLE_COLORS } from '$lib/styles/map-colors';
@@ -49,10 +49,11 @@
   let map = $state<google.maps.Map | null>(null);
   let clickListener: google.maps.MapsEventListener | null = null;
   let googleMaps = $state<typeof google.maps | null>(null);
-  let renderedMarkers: google.maps.Marker[] = [];
+  let markerApi = $state<google.maps.MarkerLibrary | null>(null);
+  let renderedMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
   let routePolyline: google.maps.Polyline | null = null;
   let lastCenteredKey = '';
-  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
+  const maps = getMapsConfig();
 
   function markerColor(marker: MapMarker) {
     if (marker.role) return MAP_ROLE_COLORS[marker.role];
@@ -72,29 +73,35 @@
   }
 
   onMount(async () => {
-    if (!MAPS_ENABLED) {
+    if (!maps.enabled) {
       mapState = 'fallback';
       return;
     }
 
-    if (!googleMapsApiKey || !mapElement) {
+    if (!mapElement) {
       return;
     }
 
     mapState = 'loading';
 
     try {
-      const mapsLibrary = await loadGoogleMaps(googleMapsApiKey);
+      const [mapsLibrary, markerLibrary] = await Promise.all([
+        loadGoogleMaps(maps.apiKey),
+        loadGoogleMapsMarker(maps.apiKey)
+      ]);
 
       if (!mapElement) {
         return;
       }
 
       googleMaps = window.google.maps;
+      markerApi = markerLibrary;
 
       map = new mapsLibrary.Map(mapElement, {
         center: center ?? KUMASI_CENTER,
         zoom: zoom ?? KUMASI_DEFAULT_ZOOM,
+        // AdvancedMarkerElement renders nothing without a Map ID.
+        mapId: maps.mapId,
         disableDefaultUI: true,
         clickableIcons: false,
         gestureHandling: 'greedy',
@@ -126,13 +133,28 @@
     }
   });
 
+  /** A dot for roles that aren't a dropped pin — riders and businesses. */
+  function circleContent(marker: MapMarker, color: string) {
+    const diameter = (marker.role === 'rider' ? 12 : 10) * 2;
+    const element = document.createElement('div');
+
+    element.style.width = `${diameter}px`;
+    element.style.height = `${diameter}px`;
+    element.style.borderRadius = '50%';
+    element.style.background = color;
+    element.style.border = `2px solid ${MAP_COLORS.surface}`;
+    element.style.boxSizing = 'content-box';
+
+    return element;
+  }
+
   function syncMarkers() {
-    renderedMarkers.forEach((marker) => marker.setMap(null));
+    renderedMarkers.forEach((marker) => (marker.map = null));
     renderedMarkers = [];
 
-    const currentGoogleMaps = googleMaps;
+    const currentMarkerApi = markerApi;
 
-    if (!map || !currentGoogleMaps) {
+    if (!map || !currentMarkerApi) {
       return;
     }
 
@@ -140,30 +162,26 @@
       const color = markerColor(marker);
       const isPin = marker.role === 'search' || marker.role === 'dropoff' || marker.role === 'pickup';
 
-      return new currentGoogleMaps.Marker({
+      // PinElement extends HTMLElement, so it is its own content.
+      const content: HTMLElement = isPin
+        ? new currentMarkerApi.PinElement({
+            background: color,
+            borderColor: MAP_COLORS.surface,
+            glyphColor: MAP_COLORS.surface,
+            scale: 1.2
+          })
+        : circleContent(marker, color);
+
+      // AdvancedMarkerElement has no opacity option — it takes a DOM element,
+      // so staleness is expressed on the element itself.
+      content.style.opacity = marker.stale ? '0.45' : '1';
+
+      return new currentMarkerApi.AdvancedMarkerElement({
         map,
         position: { lat: marker.lat, lng: marker.lng },
         title: marker.label,
-        opacity: marker.stale ? 0.45 : 1,
         zIndex: marker.role === 'search' || marker.role === 'dropoff' ? 999 : 10,
-        icon: isPin
-          ? {
-              path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
-              fillColor: color,
-              fillOpacity: marker.stale ? 0.5 : 1,
-              strokeColor: MAP_COLORS.surface,
-              strokeWeight: 1.5,
-              scale: 1.6,
-              anchor: new currentGoogleMaps.Point(12, 22)
-            }
-          : {
-              path: currentGoogleMaps.SymbolPath.CIRCLE,
-              fillColor: color,
-              fillOpacity: marker.stale ? 0.5 : 1,
-              strokeColor: MAP_COLORS.surface,
-              strokeWeight: 2,
-              scale: marker.role === 'rider' ? 12 : 10
-            }
+        content
       });
     });
 
@@ -226,7 +244,7 @@
 
   onDestroy(() => {
     clickListener?.remove();
-    renderedMarkers.forEach((marker) => marker.setMap(null));
+    renderedMarkers.forEach((marker) => (marker.map = null));
     routePolyline?.setMap(null);
   });
 </script>
@@ -245,14 +263,14 @@
       style="background-image: linear-gradient(var(--neutral-200) 1px, transparent 1px), linear-gradient(90deg, var(--neutral-200) 1px, transparent 1px); background-size: 28px 28px;"
     >
       <div class="font-mono-data absolute left-4 top-4 text-xs tracking-wide text-neutral-400">
-        {#if !MAPS_ENABLED}
-          MAPS TEMPORARILY DISABLED
+        {#if !maps.enabled}
+          MAP PLACEHOLDER — set GOOGLE_MAPS_API_KEY
         {:else if mapState === 'loading'}
           LOADING KUMASI MAP…
         {:else if mapState === 'error'}
           GOOGLE MAPS FAILED — FALLING BACK TO MOCK MAP
         {:else}
-          MAP PLACEHOLDER — set VITE_GOOGLE_MAPS_API_KEY
+          MAPS TEMPORARILY DISABLED
         {/if}
       </div>
       {#if routeLabel}

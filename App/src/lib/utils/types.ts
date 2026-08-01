@@ -22,7 +22,7 @@
  * The two kinds of account YADA has: a business that requests deliveries, and a
  * courier that makes them. Anything else on a sign-up request is not a role.
  *
- * Was declared twice — `$lib/server/auth` and `$lib/auth/session.svelte` — with
+ * Was declared twice — `$auth/auth.server` and `$auth/session.svelte` — with
  * a comment on the second saying it mirrored the first.
  */
 export type AuthRole = 'business' | 'courier';

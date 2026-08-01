@@ -10,6 +10,7 @@
 	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
 	import type { LatLng } from '$lib/utils/types';
 	import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
+	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
 	import { joinTripRoom, leaveTripRoom, LOCATION_STALE_MS, onRiderLocation } from '../realtime';
 	import { toDispatchStage } from '$lib/shared/trip-status';
 	import type { RiderLocationEvent, TripStatus } from '$lib/utils/types';
@@ -37,7 +38,7 @@
 	let unsub: (() => void) | null = null;
 	let refreshTimer: ReturnType<typeof setInterval> | undefined;
 	let tripStatusLabel = $state('Waiting');
-	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
+	const maps = getMapsConfig();
 
 	function isTemporaryTripId(tripId: string) {
 		return tripId.startsWith('local-');
@@ -56,9 +57,9 @@
 	}
 
 	async function recomputeRoute(origin: LatLng, destination: LatLng, force = false) {
-		if (!googleMapsApiKey) return;
+		if (!maps.enabled) return;
 		try {
-			const route = await computeDrivingRoute(googleMapsApiKey, origin, destination, { force });
+			const route = await computeDrivingRoute(maps.apiKey, origin, destination, { force });
 			routePath = route.path;
 			etaText = route.durationText;
 			if (trip) {

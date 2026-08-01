@@ -10,7 +10,7 @@ import { AuthError, authErrorMessage, networkError } from './errors';
 
 const AUTH_ROLES: readonly AuthRole[] = ['business', 'courier'];
 
-/** Mirrors toAuthRole() in $lib/server/auth. The *type* is now shared, but the
+/** Mirrors toAuthRole() in ./auth.server. The *type* is now shared, but the
  *  runtime narrowing still can't be — that lives in a server-only module. */
 function toRole(value: unknown): AuthRole {
   return AUTH_ROLES.includes(value as AuthRole) ? (value as AuthRole) : 'business';
@@ -153,44 +153,6 @@ export class Session {
     });
   }
 
-  async signIn(email: string, password: string, rememberMe = false) {
-    return this.#track(async () => {
-      const response = await post('/api/auth/sign-in/email', { email, password, rememberMe });
-
-      if (!response.ok) {
-        throw await errorFrom(response, 'Unable to sign in.');
-      }
-
-      this.#user = extractUser(await readJson<UserPayload>(response));
-      return this.#user;
-    });
-  }
-
-  async signUp(
-    email: string,
-    password: string,
-    name: string,
-    phone?: string,
-    role: AuthRole = 'business'
-  ) {
-    return this.#track(async () => {
-      const response = await post('/api/auth/sign-up/email', {
-        email,
-        password,
-        name,
-        phoneNumber: phone,
-        role
-      });
-
-      if (!response.ok) {
-        throw await errorFrom(response, 'Unable to create your account.');
-      }
-
-      this.#user = extractUser(await readJson<UserPayload>(response));
-      return this.#user;
-    });
-  }
-
   /**
    * Clear the session locally and leave, whatever the server says.
    *
@@ -252,34 +214,6 @@ export class Session {
     });
   }
 
-  async requestPasswordReset(email: string) {
-    return this.#track(async () => {
-      const redirectTo =
-        typeof window !== 'undefined'
-          ? `${window.location.origin}/reset-password`
-          : '/reset-password';
-
-      const response = await post('/api/auth/forget-password', { email, redirectTo });
-
-      if (!response.ok) {
-        throw await errorFrom(response, 'Unable to send password reset email.');
-      }
-
-      return response.json();
-    });
-  }
-
-  async resetPassword(token: string, newPassword: string) {
-    return this.#track(async () => {
-      const response = await post('/api/auth/reset-password', { token, newPassword });
-
-      if (!response.ok) {
-        throw await errorFrom(response, 'Unable to reset password.');
-      }
-
-      return response.json();
-    });
-  }
 }
 
 // ---------------------------------------------------------------------------

@@ -15,16 +15,9 @@ export function reverseCacheKey(lat: number, lng: number) {
   return `rev:${roundCoord(lat)},${roundCoord(lng)}`;
 }
 
-export function forwardCacheKey(address: string) {
-  return `fwd:${normalizeAddress(address)}`;
-}
-
 export function placeCacheKey(placeId: string) {
   return `place:${placeId}`;
 }
-
-/** Shared in-memory cache for the server-side geocoding proxy. */
-export const serverGeocodeCache = new TtlCache<CachedGeocode>();
 
 /** Client-side cache, persisted so repeat Kumasi lookups skip the round-trip. */
 export function createClientGeocodeCache() {

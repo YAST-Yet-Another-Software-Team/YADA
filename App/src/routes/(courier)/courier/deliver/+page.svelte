@@ -8,6 +8,7 @@
   import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
   import type { LatLng } from '$lib/utils/types';
   import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
+  import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import { startCourierLocationReporter } from '../location-reporter';
 
   let {
@@ -28,7 +29,7 @@
     };
   } = $props();
 
-  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
+  const maps = getMapsConfig();
 
   let riderPoint = $state<LatLng | null>(null);
   let routePath = $state<LatLng[]>([]);
@@ -51,9 +52,9 @@
   );
 
   async function updateRoute(from: LatLng, force = false) {
-    if (!googleMapsApiKey) return;
+    if (!maps.enabled) return;
     try {
-      const route = await computeDrivingRoute(googleMapsApiKey, from, dropoffPoint, { force });
+      const route = await computeDrivingRoute(maps.apiKey, from, dropoffPoint, { force });
       routePath = route.path;
       etaText = route.durationText;
     } catch {
