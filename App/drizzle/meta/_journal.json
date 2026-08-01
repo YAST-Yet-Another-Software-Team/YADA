@@ -57,6 +57,13 @@
       "when": 1784750157309,
       "tag": "0007_trip_ratings",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784750157310,
+      "tag": "0008_dispatch_rings",
+      "breakpoints": true
     }
   ]
 }

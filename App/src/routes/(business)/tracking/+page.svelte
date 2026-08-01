@@ -15,6 +15,7 @@
 	import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
 	import { joinTripRoom, leaveTripRoom, LOCATION_STALE_MS, onRiderLocation } from '../realtime';
+	import { DISPATCH_TIMEOUT_SECONDS, ringForElapsed, ringLabel } from '$lib/shared/dispatch';
 	import { isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
 	import type { CourierSummary, RiderLocationEvent, TripStatus } from '$lib/utils/types';
 
@@ -66,8 +67,26 @@
 	let ratingComment = $state('');
 	let ratingBusy = $state(false);
 	let ratingError = $state('');
+
+	/**
+	 * The dispatch clock, as the business watches it. The server sends elapsed
+	 * seconds (not a timestamp, so clock skew doesn't lie); a one-second local
+	 * ticker carries it between polls so the ring copy moves smoothly.
+	 */
+	let dispatchElapsedBase = $state<number | null>(null);
+	let dispatchFetchedAt = 0;
+	let nowTick = $state(Date.now());
+	let retrying = $state(false);
+
+	const dispatchElapsed = $derived(
+		dispatchElapsedBase == null
+			? null
+			: dispatchElapsedBase + (nowTick - dispatchFetchedAt) / 1000
+	);
+	const dispatchRing = $derived(dispatchElapsed != null ? ringForElapsed(dispatchElapsed) : null);
 	let unsub: (() => void) | null = null;
 	let refreshTimer: ReturnType<typeof setInterval> | undefined;
+	let tickTimer: ReturnType<typeof setInterval> | undefined;
 	let joinedTripId: string | null = null;
 	const maps = getMapsConfig();
 
@@ -81,6 +100,11 @@
 	const closed = $derived(trip?.status === 'completed' || trip?.status === 'cancelled');
 	/** Mirrors the rule `POST /api/trips/cancel` enforces. */
 	const canCancel = $derived(trip?.status === 'requested');
+
+	/** The 60-second search ran out with nobody accepting; only a re-ring restarts it. */
+	const dispatchExpired = $derived(
+		searching && !closed && dispatchElapsed != null && dispatchElapsed > DISPATCH_TIMEOUT_SECONDS
+	);
 
 	/**
 	 * The pickup phase is still open: a rider is assigned and the parcel hasn't
@@ -162,6 +186,8 @@
 				courier: payload.trip.courier ?? null
 			};
 			myRating = payload.trip.myRating ?? null;
+			dispatchElapsedBase = payload.trip.dispatchElapsedSeconds ?? null;
+			dispatchFetchedAt = Date.now();
 			loadError = '';
 
 			// Adopt the stored fix only until the socket starts talking. It is the
@@ -307,6 +333,33 @@
 		}
 	}
 
+	/** Restart the 60-second search. Declines persist server-side. */
+	async function retryDispatch() {
+		if (!trip || retrying) return;
+
+		retrying = true;
+		actionError = '';
+
+		try {
+			const response = await fetch('/api/trips/retry', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tripId: trip.id })
+			});
+
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				actionError = payload?.message ?? 'Could not restart the search.';
+			}
+
+			await loadTrip(trip.id);
+		} catch {
+			actionError = 'Could not restart the search. Check your connection.';
+		} finally {
+			retrying = false;
+		}
+	}
+
 	async function cancelRequest() {
 		if (!trip || cancelling) return;
 
@@ -350,12 +403,19 @@
 		refreshTimer = setInterval(() => {
 			if (!closed) void loadTrip(tripId);
 		}, POLL_MS);
+
+		// One-second heartbeat for the dispatch copy, so the ring narration moves
+		// between the 4-second polls instead of jumping with them.
+		tickTimer = setInterval(() => {
+			nowTick = Date.now();
+		}, 1000);
 	});
 
 	onDestroy(() => {
 		unsub?.();
 		if (joinedTripId) leaveTripRoom(joinedTripId);
 		if (refreshTimer) clearInterval(refreshTimer);
+		if (tickTimer) clearInterval(tickTimer);
 	});
 
 	const markers = $derived(
@@ -426,9 +486,15 @@
 		>
 			{#if searching && !closed}
 				<div
-					class="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-md bg-surface/95 px-3 py-2 text-sm text-ink-secondary shadow-sm"
+					class="absolute left-1/2 top-4 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-surface/95 px-3 py-2 text-sm text-ink-secondary shadow-sm"
 				>
-					Looking for a rider near {trip?.pickupAddress ?? 'you'}…
+					{#if dispatchExpired}
+						No rider accepted — ring again from the panel.
+					{:else if dispatchRing}
+						Ringing riders {ringLabel(dispatchRing.radiusKm)}…
+					{:else}
+						Looking for a rider near {trip?.pickupAddress ?? 'you'}…
+					{/if}
 				</div>
 			{/if}
 		</MapBackdrop>
@@ -546,6 +612,23 @@
 					</p>
 				{/if}
 			{:else if canCancel}
+				{#if dispatchExpired}
+					<!-- The 60-second search failed; per the spec the request is remade
+					     manually. Declines persist — riders who said no stay unrung. -->
+					<p class="text-sm text-ink-secondary">
+						No rider accepted in time. Ring again, or cancel the request.
+					</p>
+					<Button variant="primary" size="sm" disabled={retrying} onclick={retryDispatch}>
+						{retrying ? 'Ringing…' : 'Ring riders again'}
+					</Button>
+				{:else if dispatchRing}
+					<p class="text-sm text-ink-secondary">
+						Ringing riders {ringLabel(dispatchRing.radiusKm)} of your pickup
+						<span class="font-mono-data">
+							· {Math.max(0, Math.ceil(DISPATCH_TIMEOUT_SECONDS - (dispatchElapsed ?? 0)))}s
+						</span>
+					</p>
+				{/if}
 				<Button variant="ghost" size="sm" disabled={cancelling} onclick={cancelRequest}>
 					{cancelling ? 'Cancelling…' : 'Cancel request'}
 				</Button>

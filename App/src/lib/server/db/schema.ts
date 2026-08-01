@@ -151,6 +151,12 @@ export const deliveryRequests = pgTable('delivery_requests', {
   notes: text('notes'),
   estimatedDistanceKm: numeric('estimated_distance_km', { precision: 8, scale: 2 }),
   estimatedDurationMinutes: numeric('estimated_duration_minutes', { precision: 8, scale: 2 }),
+  // The dispatch clock (see `$lib/shared/dispatch`). Set at creation, reset by
+  // a manual re-ring; the current ring is always computed from it, never
+  // stored. Distinct from `requested_at`, which stays as history.
+  dispatchStartedAt: timestamp('dispatch_started_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   requestedAt: timestamp('requested_at', { withTimezone: true }).defaultNow().notNull(),
   acceptedAt: timestamp('accepted_at', { withTimezone: true }),
   completedAt: timestamp('completed_at', { withTimezone: true })
@@ -184,6 +190,27 @@ export const tripRatings = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
   },
   (table) => [unique('trip_ratings_once_per_rater').on(table.tripId, table.raterId)]
+);
+
+/**
+ * "No" is an answer with a memory: a courier who declines a request is not
+ * ringed for it again, including after the business manually re-rings it. Rows
+ * are per request, not per courier pair — declining one delivery says nothing
+ * about the next one.
+ */
+export const tripDeclines = pgTable(
+  'trip_declines',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tripId: uuid('trip_id')
+      .notNull()
+      .references(() => deliveryRequests.id, { onDelete: 'cascade' }),
+    courierId: text('courier_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => [unique('trip_declines_once').on(table.tripId, table.courierId)]
 );
 
 export const tripEvents = pgTable('trip_events', {

@@ -4,7 +4,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 
 import { apiError } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
-import { deliveryRequests } from '$lib/server/db/schema';
+import { deliveryRequests, tripDeclines } from '$lib/server/db/schema';
 import { recordStatusChange } from '$lib/server/data/trip-events';
 import { isUuid } from '$lib/shared/uuid';
 
@@ -19,8 +19,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return apiError(400, 'invalid_request', 'Trip id required.');
 	}
 
-	// Claiming is scoped to trips that are still unclaimed, so two couriers
-	// racing on the same offer can't both come back with a success.
+	// "No" is final for this request: a courier who declined isn't ringed on a
+	// re-ring, and can't quietly take the job back through a stale screen either.
+	const [declined] = await db
+		.select({ id: tripDeclines.id })
+		.from(tripDeclines)
+		.where(and(eq(tripDeclines.tripId, tripId), eq(tripDeclines.courierId, user.id)))
+		.limit(1);
+
+	if (declined) {
+		return apiError(409, 'conflict', 'You declined this delivery.');
+	}
+
+	// Deliberately no ring/timeout check here: the board only *shows* what's
+	// ringing, but a just-in-time accept at second 61 still beats telling the
+	// business nobody came. Claiming is scoped to trips that are still
+	// unclaimed, so two couriers racing on the same offer can't both succeed.
 	const [trip] = await db
 		.select({ id: deliveryRequests.id })
 		.from(deliveryRequests)

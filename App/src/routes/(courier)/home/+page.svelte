@@ -6,6 +6,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import { startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
+	import { startCourierLocationReporter } from '../location-reporter';
 	import { getCourierOnline } from '../courier-online.svelte';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 	import { courierTripHref } from '$lib/shared/trip-status';
@@ -70,6 +71,25 @@
 		refreshTimer = setInterval(() => {
 			void invalidateAll();
 		}, 5000);
+	});
+
+	// While online, publish position to the server even with no trip on the
+	// hook. Dispatch rings by distance, and an idle courier who never reports
+	// where they are is unlocatable — before this, only the pickup and deliver
+	// screens fed the server, so *idle* riders could never be ringed at all.
+	$effect(() => {
+		if (!online.online) return;
+
+		const stopReporter = startCourierLocationReporter({
+			tripId: null,
+			enabled: true,
+			onUpdate: (point) => {
+				deviceCenter = { lat: point.lat, lng: point.lng };
+			},
+			onError: () => {}
+		});
+
+		return () => stopReporter();
 	});
 
 	onDestroy(() => {

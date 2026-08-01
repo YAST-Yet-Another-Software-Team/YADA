@@ -173,6 +173,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			assignedCourierId: trip.assignedCourierId,
 			courier,
 			myRating,
+			// Elapsed rather than the timestamp, so the tracking screen's ring
+			// display doesn't inherit the browser's clock skew.
+			dispatchElapsedSeconds:
+				trip.status === 'requested'
+					? Math.floor((Date.now() - trip.dispatchStartedAt.getTime()) / 1000)
+					: null,
 			courierLocation: courierFix
 				? {
 						lat: courierFix.point.lat,

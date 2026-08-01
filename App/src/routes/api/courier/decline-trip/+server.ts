@@ -4,10 +4,19 @@ import { and, eq, isNull } from 'drizzle-orm';
 
 import { apiError } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
-import { deliveryRequests } from '$lib/server/db/schema';
-import { recordStatusChange } from '$lib/server/data/trip-events';
+import { deliveryRequests, tripDeclines } from '$lib/server/db/schema';
+import { recordTripEvent } from '$lib/server/data/trip-events';
 import { isUuid } from '$lib/shared/uuid';
 
+/**
+ * A courier turns an offer down.
+ *
+ * This declines it *for that courier*: the request keeps ringing everyone
+ * else, and the decline is remembered so a manual re-ring doesn't alert them
+ * again. It used to set the whole trip to `cancelled` — one rider's "no"
+ * killed the request for the business and every other courier, which is the
+ * opposite of a cascade.
+ */
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const user = locals.user;
 	if (!user) return apiError(401, 'denied', 'Sign in required.');
@@ -35,16 +44,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return apiError(404, 'no_results', 'Trip not found.');
 	}
 
+	// Declining twice is the same answer, not an error.
 	await db
-		.update(deliveryRequests)
-		.set({ status: 'cancelled' })
-		.where(eq(deliveryRequests.id, tripId));
+		.insert(tripDeclines)
+		.values({ tripId, courierId: user.id })
+		.onConflictDoNothing();
 
-	await recordStatusChange(tripId, user.id, {
-		from: 'requested',
-		to: 'cancelled',
-		action: 'decline'
-	});
+	await recordTripEvent(tripId, user.id, 'offer_declined', {});
 
-	return json({ ok: true, tripId, status: 'cancelled' });
+	return json({ ok: true, tripId });
 };

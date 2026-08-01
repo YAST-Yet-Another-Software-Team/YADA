@@ -49,6 +49,16 @@ export class CourierOnline {
   set(online: boolean) {
     this.#online = online;
     writeOnline(online);
+
+    // The server has to know too: dispatch rings by availability, and going
+    // offline must stop the ringing at once — a location fix stays fresh for
+    // minutes after a courier clocks off. Fire-and-forget: if this fails the
+    // UI state still stands, and the fix going stale is the backstop.
+    void fetch('/api/courier/availability', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ online })
+    }).catch(() => {});
   }
 
   goOnline() {
