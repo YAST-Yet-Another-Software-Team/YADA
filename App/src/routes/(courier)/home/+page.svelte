@@ -69,19 +69,34 @@
 			}
 		});
 		refreshTimer = setInterval(() => {
+			// Nothing can arrive on an offline courier's board — dispatch skips
+			// them — so the poll is pure cost until they clock on. Kept at 5 s for
+			// everyone else: rings are 15 s wide, and a slower board would spend
+			// most of a courier's exclusive window not showing them the offer.
+			if (!online.online && !data.activeTrip) return;
 			void invalidateAll();
 		}, 5000);
 	});
+
+	// Derived rather than read inside the effect below: `data` is replaced
+	// wholesale by every board refresh, so reading it there would tear down and
+	// restart the GPS watch on each poll. The id itself rarely changes.
+	const activeTripId = $derived(data.activeTrip?.id ?? null);
 
 	// While online, publish position to the server even with no trip on the
 	// hook. Dispatch rings by distance, and an idle courier who never reports
 	// where they are is unlocatable — before this, only the pickup and deliver
 	// screens fed the server, so *idle* riders could never be ringed at all.
+	//
+	// The trip id is passed when there is one, even though this screen isn't the
+	// one driving the delivery: it is what puts the reporter on its fast cadence,
+	// so a courier who backs out to the board mid-trip doesn't go quiet on the
+	// business watching them.
 	$effect(() => {
 		if (!online.online) return;
 
 		const stopReporter = startCourierLocationReporter({
-			tripId: null,
+			tripId: activeTripId,
 			enabled: true,
 			onUpdate: (point) => {
 				deviceCenter = { lat: point.lat, lng: point.lng };

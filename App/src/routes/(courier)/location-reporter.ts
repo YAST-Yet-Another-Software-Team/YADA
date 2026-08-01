@@ -6,7 +6,19 @@
  * over Socket.IO — is `(business)/realtime`.
  */
 
-const THROTTLE_MS = 2500;
+/**
+ * How often a fix is actually POSTed, by what the courier is doing.
+ *
+ * On a live trip the business is watching the rider dot move and both handover
+ * confirmations gate on a fix newer than two minutes, so that cadence has to
+ * stay fast. An idle courier is only reporting so dispatch can find them, and
+ * dispatch reads whatever the latest fix is — a rider ten seconds out of date is
+ * still in the right ring. Idle is the common case (most online couriers,
+ * most of the time), and at 2.5 s it was the single largest source of API
+ * requests in the app: ~1,440/hour each, against a 100k/day budget.
+ */
+const ACTIVE_THROTTLE_MS = 2500;
+const IDLE_THROTTLE_MS = 10_000;
 
 /**
  * How old the last fix may be before it's reported as stale. The business map
@@ -24,6 +36,11 @@ export function startCourierLocationReporter(options: {
   onUpdate?: (point: { lat: number; lng: number; recordedAt: string; stale: boolean }) => void;
   onError?: (code: 'denied' | 'unavailable') => void;
 }) {
+  // A trip id is what separates the two cadences: it is only ever set by the
+  // pickup and deliver screens, and by the home screen when that courier has a
+  // delivery running. No trip, nobody watching — report slowly.
+  const throttleMs = options.tripId ? ACTIVE_THROTTLE_MS : IDLE_THROTTLE_MS;
+
   let watchId: number | null = null;
   let lastSent = 0;
   let lastPoint: { lat: number; lng: number; recordedAt: string } | null = null;
@@ -52,7 +69,7 @@ export function startCourierLocationReporter(options: {
       lastPoint = point;
       options.onUpdate?.({ ...point, stale: false });
 
-      if (now - lastSent < THROTTLE_MS) return;
+      if (now - lastSent < throttleMs) return;
       lastSent = now;
 
       const payload = {
