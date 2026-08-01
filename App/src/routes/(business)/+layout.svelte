@@ -79,13 +79,13 @@
           aria-expanded={profileOpen}
           onclick={toggleProfile}
         >
-          <Avatar initials={avatarInitials} size={28} />
+          <Avatar initials={avatarInitials} size={32} />
         </button>
         <ProfileMenu open={profileOpen} onclose={() => (profileOpen = false)} />
       </div>
     </div>
     <nav
-      class="flex items-stretch gap-1 overflow-x-auto px-2"
+      class="flex items-stretch gap-1 justify-center overflow-x-auto px-2"
       aria-label="Business"
     >
       {#each links as link}

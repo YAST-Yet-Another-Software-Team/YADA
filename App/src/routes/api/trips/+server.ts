@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 
 import { apiError } from '$lib/server/api-guard';
 import { getBusinessAddress, getCourierSummary } from '$lib/server/data/business';
+import { getCourierFix } from '$lib/server/data/courier-location';
 import { db } from '$lib/server/db';
 import { deliveryRequests, tripEvents } from '$lib/server/db/schema';
 import { assertInZone, containsPoint } from '$lib/shared/geo/service-area';
@@ -139,9 +140,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 	// Whoever is carrying the parcel, named from the account rather than left to
 	// the tracking screen to invent. Absent until someone accepts.
+	//
+	// Their last stored position rides along so the tracking map can focus on the
+	// rider the moment a match happens. Live updates arrive over the socket, but
+	// the first one is however long the courier's next fix is away — without this
+	// a freshly matched business watches an empty map until then.
 	const courier = trip.assignedCourierId
 		? await getCourierSummary(trip.assignedCourierId)
 		: null;
+	const courierFix = trip.assignedCourierId ? await getCourierFix(trip.assignedCourierId) : null;
 
 	const pickupLat = trip.pickupLatitude != null ? Number(trip.pickupLatitude) : null;
 	const pickupLng = trip.pickupLongitude != null ? Number(trip.pickupLongitude) : null;
@@ -156,6 +163,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			businessId: trip.businessId,
 			assignedCourierId: trip.assignedCourierId,
 			courier,
+			courierLocation: courierFix
+				? {
+						lat: courierFix.point.lat,
+						lng: courierFix.point.lng,
+						recordedAt: courierFix.recordedAt.toISOString()
+					}
+				: null,
 			pickupAddress: trip.pickupAddress,
 			dropoffAddress: trip.dropoffAddress,
 			pickupLat,

@@ -89,7 +89,10 @@
 			? { lat: heroTrip.dropoffLat, lng: heroTrip.dropoffLng }
 			: null
 	);
-	const routePath = $derived(pickupPoint && dropoffPoint ? [pickupPoint, dropoffPoint] : []);
+	// No line here. What used to be drawn was a straight segment from pickup to
+	// dropoff — not a route, and not a road: it crossed whatever lay between the
+	// two pins. The real navigation lives on the pickup and deliver screens, so
+	// this map shows where the job is with markers and leaves it at that.
 	/** The trip's own words for where it is, spoken from the courier's side. */
 	const ACTIVE_TRIP_LABELS: Partial<Record<TripStatus, string>> = {
 		accepted: 'Heading to pickup',
@@ -178,8 +181,9 @@
 
 <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
 	<div class="absolute inset-0">
+		<!-- `routeLabel` is gone with the line: it drew a dashed segment across the
+		     placeholder map, which implied a route this screen never had. -->
 		<MapBackdrop
-			routeLabel={!!online.online && !!heroTrip}
 			center={online.online ? pickupPoint : deviceCenter ?? KUMASI_CENTER}
 			markers={online.online && heroTrip
 				? [
@@ -203,7 +207,6 @@
 							: [])
 					]
 				: []}
-			polylinePath={online.online ? routePath : []}
 		/>
 
 		<div class="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-4">

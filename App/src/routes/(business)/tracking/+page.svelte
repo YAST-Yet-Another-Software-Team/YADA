@@ -94,21 +94,23 @@
 	);
 
 	/**
-	 * Which leg the rider is on: the shop until the parcel is in their hands, the
-	 * customer afterwards. The drawn route follows this, so the map shows the leg
-	 * being ridden rather than the trip as a whole.
+	 * The one leg this screen draws: the rider's run to the shop, from wherever
+	 * they were when they took the job.
+	 *
+	 * Nothing is drawn after the parcel is collected. Watching a line crawl to
+	 * the customer tells the sender nothing they can act on — the delivery is out
+	 * of their hands by then — whereas the approach to their own counter is the
+	 * thing they're waiting on and have to confirm. Markers carry the rest.
 	 *
 	 * A key rather than a point, because polling replaces `trip` every few
 	 * seconds and a derived coordinate object would look new each time.
 	 */
-	const legKey = $derived(!trip || searching ? '' : awaitingPickup ? 'pickup' : 'dropoff');
+	const legKey = $derived(awaitingPickup ? 'pickup' : '');
 
 	function legTarget(): LatLng | null {
 		if (!trip || !legKey) return null;
 
-		return legKey === 'dropoff'
-			? { lat: trip.dropoffLat, lng: trip.dropoffLng }
-			: { lat: trip.pickupLat, lng: trip.pickupLng };
+		return { lat: trip.pickupLat, lng: trip.pickupLng };
 	}
 
 	async function drawRoute(origin: LatLng, destination: LatLng) {
@@ -147,6 +149,15 @@
 				courier: payload.trip.courier ?? null
 			};
 			loadError = '';
+
+			// Adopt the stored fix only until the socket starts talking. It is the
+			// rider's last known position, which is exactly what the map needs at the
+			// moment of a match and exactly what a live fix should replace.
+			const fix = payload.trip.courierLocation;
+			if (fix && !riderPoint) {
+				riderPoint = { lat: fix.lat, lng: fix.lng };
+				riderStale = Date.now() - new Date(fix.recordedAt).getTime() > LOCATION_STALE_MS;
+			}
 
 			if (etaText === '—' && trip.estimatedDurationMinutes) {
 				etaText = `${Math.round(trip.estimatedDurationMinutes)} min`;
@@ -187,24 +198,37 @@
 		unsub = onRiderLocation(handleRiderLocation);
 	});
 
-	/** Searching and closed trips carry no live leg, so they carry no line. */
+	/** No leg being drawn — searching, collected, or over — means no line. */
 	$effect(() => {
-		if (searching || closed) {
+		if (!legKey) {
 			routePath = [];
 		}
 	});
 
-	// Redraw when the leg changes — the parcel has been collected and the rider is
-	// now heading somewhere else. Keyed on the leg rather than the position, so an
-	// ordinary fix along the same leg doesn't trigger a fresh Routes call.
+	// Draw when the leg starts, and stop claiming a live ETA when it ends. Keyed
+	// on the leg rather than the position, so an ordinary fix along the same leg
+	// doesn't trigger a fresh Routes call.
 	$effect(() => {
 		legKey;
 
 		untrack(() => {
+			if (!legKey) {
+				// Nothing is being routed any more, so the last number computed for the
+				// run to the shop must not sit there looking like a time to the
+				// customer. What's left is the estimate made when the trip was booked.
+				etaText = trip?.estimatedDurationMinutes
+					? `${Math.round(trip.estimatedDurationMinutes)} min`
+					: '—';
+				return;
+			}
+
 			const target = legTarget();
 			if (target && riderPoint) void drawRoute(riderPoint, target);
 		});
 	});
+
+	/** Whether `etaText` is being recomputed from the rider's position right now. */
+	const etaIsLive = $derived(Boolean(legKey));
 
 	async function confirmPickup() {
 		if (!trip || confirming) return;
@@ -289,11 +313,13 @@
 		trip
 			? [
 					{
+						// The pickup *is* the business, and this is the slot a custom
+						// business marker drops into when there is one.
 						id: 'pickup',
 						lat: trip.pickupLat,
 						lng: trip.pickupLng,
 						label: trip.pickupAddress,
-						role: 'pickup' as const
+						role: 'business' as const
 					},
 					{
 						id: 'dropoff',
@@ -308,7 +334,7 @@
 									id: 'rider',
 									lat: riderPoint.lat,
 									lng: riderPoint.lng,
-									label: 'Rider',
+									label: trip.courier?.name ?? 'Rider',
 									role: 'rider' as const,
 									stale: riderStale
 								}
@@ -337,6 +363,11 @@
 			</IconButton>
 		</div>
 
+		<!-- Focus follows the job. While the request is open the destination is the
+		     only thing to look at; the moment a rider takes it the map centres on
+		     them — `followId` pans and closes in on each new fix — because from
+		     then until the handover, where that rider is *is* the status. The line
+		     under them is their run to the counter, and stops when they get there. -->
 		<MapBackdrop
 			center={riderPoint ?? (trip ? { lat: trip.dropoffLat, lng: trip.dropoffLng } : KUMASI_CENTER)}
 			{markers}
@@ -392,8 +423,13 @@
 			{/if}
 		</div>
 
-		{#if !searching}
-			<p class="font-mono-data hidden text-2xl font-bold text-primary lg:block">{etaText}</p>
+		{#if !searching && !closed}
+			<div class="hidden lg:block">
+				<p class="font-mono-data text-2xl font-bold text-primary">{etaText}</p>
+				<p class="text-xs text-ink-tertiary">
+					{etaIsLive ? 'live — rider to your counter' : 'estimated when you booked'}
+				</p>
+			</div>
 		{/if}
 
 		<div class="hidden border-t border-border pt-3 lg:block">
