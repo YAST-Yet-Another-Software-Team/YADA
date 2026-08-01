@@ -78,7 +78,7 @@ export function toTripStage(status: string): TripStage {
  * Home and Orders can't disagree about where "Open active trip" goes.
  */
 export function courierTripHref(trip: { id: string; status: TripStatus }) {
-  const route = trip.status === 'in_progress' ? '/courier/deliver' : '/courier/pickup';
+  const route = trip.status === 'in_progress' ? '/deliver' : '/pickup';
   return `${route}?tripId=${encodeURIComponent(trip.id)}`;
 }
 

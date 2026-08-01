@@ -51,7 +51,7 @@
 			await session.updateProfile({ name: name.trim(), phone: phone.trim() });
 			saved = true;
 			setTimeout(() => {
-				goto('/courier/profile');
+				goto('/profile');
 			}, 600);
 		} catch (err) {
 			console.error('Profile update failed.', err);
@@ -89,7 +89,7 @@
 	<title>Edit Profile | YADA Courier</title>
 </svelte:head>
 
-<SettingsSubpage title="Edit Profile" backHref="/courier/profile">
+<SettingsSubpage title="Edit Profile" backHref="/profile">
 	{#if !ready}
 		<p class="text-sm text-ink-secondary">Loading profile…</p>
 	{:else}

@@ -45,7 +45,7 @@
 				General
 			</h2>
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
-				<a href="/courier/settings/notifications" class="settings-row">
+				<a href="/settings/notifications" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
 							><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10 21a2 2 0 0 0 4 0" /><circle
@@ -62,7 +62,7 @@
 						>
 					</span>
 				</a>
-				<a href="/courier/settings/theme" class="settings-row">
+				<a href="/settings/theme" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
 							><circle cx="12" cy="12" r="9" /><path d="M12 3v18" /><path
@@ -80,7 +80,7 @@
 						>
 					</span>
 				</a>
-				<a href="/courier/settings/languages" class="settings-row settings-row-last">
+				<a href="/settings/languages" class="settings-row settings-row-last">
 					<span class="settings-icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
 							><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" /><path
@@ -104,7 +104,7 @@
 				Privacy
 			</h2>
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
-				<a href="/courier/settings/privacy" class="settings-row">
+				<a href="/settings/privacy" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
 							><path d="M12 3 4 7v5c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V7l-8-4Z" /><path d="m9 12 2 2 4-4" /></svg
@@ -117,7 +117,7 @@
 						>
 					</span>
 				</a>
-				<a href="/courier/settings/terms" class="settings-row settings-row-last">
+				<a href="/settings/terms" class="settings-row settings-row-last">
 					<span class="settings-icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
 							><path d="M8 3h7l5 5v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" /><path
@@ -140,7 +140,7 @@
 				About
 			</h2>
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
-				<a href="/courier/settings/feedback" class="settings-row">
+				<a href="/settings/feedback" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
 							><path d="M21 11a8 8 0 0 1-8 8H7l-4 3V9a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z" /></svg
@@ -153,7 +153,7 @@
 						>
 					</span>
 				</a>
-				<a href="/courier/settings/about" class="settings-row settings-row-last">
+				<a href="/settings/about" class="settings-row settings-row-last">
 					<span class="settings-icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
 							><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg

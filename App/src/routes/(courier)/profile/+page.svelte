@@ -35,7 +35,7 @@
 			</div>
 		</div>
 		<a
-			href="/courier/profile/edit"
+			href="/profile/edit"
 			class="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink hover:bg-neutral-50"
 		>
 			Edit
@@ -56,7 +56,7 @@
 	<section class="rounded-lg border border-border bg-surface p-4">
 		<div class="mb-3 flex items-center justify-between gap-2">
 			<h2 class="text-sm font-semibold text-ink">Account</h2>
-			<a href="/courier/profile/edit" class="text-sm font-semibold text-primary hover:underline">
+			<a href="/profile/edit" class="text-sm font-semibold text-primary hover:underline">
 				Edit profile
 			</a>
 		</div>

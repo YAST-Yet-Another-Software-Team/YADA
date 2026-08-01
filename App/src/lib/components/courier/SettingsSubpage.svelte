@@ -3,7 +3,7 @@
 
 	let {
 		title,
-		backHref = '/courier/settings',
+		backHref = '/settings',
 		children
 	}: {
 		title: string;

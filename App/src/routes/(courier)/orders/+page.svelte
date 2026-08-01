@@ -122,7 +122,7 @@
 		<div class="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
 			<p class="font-semibold text-ink">No active orders</p>
 			<p class="text-sm text-ink-secondary">Go online from Home to start receiving requests.</p>
-			<Button variant="primary" onclick={() => goto('/courier/home')}>Go to Home</Button>
+			<Button variant="primary" onclick={() => goto('/home')}>Go to Home</Button>
 		</div>
 	{/if}
 </div>

@@ -14,7 +14,7 @@
 	const session = getSession();
 
 	const signedIn = $derived(session.user !== null);
-	const workspaceHref = $derived(session.user?.role === 'courier' ? '/courier/home' : '/dashboard');
+	const workspaceHref = $derived(session.user?.role === 'courier' ? '/home' : '/dashboard');
 	const workspaceLabel = $derived(
 		session.user?.role === 'courier' ? 'Go to your trips' : 'Go to your dashboard'
 	);

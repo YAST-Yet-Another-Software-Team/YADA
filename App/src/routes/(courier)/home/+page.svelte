@@ -125,7 +125,7 @@
 
 			const payload = await response.json();
 			if (payload.ok) {
-				goto(`/courier/pickup?tripId=${encodeURIComponent(payload.tripId)}`);
+				goto(`/pickup?tripId=${encodeURIComponent(payload.tripId)}`);
 			}
 		} catch (error) {
 			actionError = error instanceof Error ? error.message : 'Unable to accept request';
@@ -150,7 +150,7 @@
 				throw new Error('Unable to decline request');
 			}
 
-			goto('/courier/home');
+			goto('/home');
 		} catch (error) {
 			actionError = error instanceof Error ? error.message : 'Unable to decline request';
 		} finally {

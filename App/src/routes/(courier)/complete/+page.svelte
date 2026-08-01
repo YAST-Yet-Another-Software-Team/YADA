@@ -20,7 +20,7 @@
   } = $props();
 
   function backOnline() {
-    goto('/courier/home');
+    goto('/home');
   }
 </script>
 

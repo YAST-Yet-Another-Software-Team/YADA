@@ -12,24 +12,33 @@ export type CourierTab = {
   label: string;
   /** Paths owned by this tab; a nested path (`…/edit`) counts as a match. */
   match: string[];
-  icon: 'home' | 'orders' | 'trips' | 'settings';
+  icon: 'home' | 'orders' | 'trips' | 'profile' | 'settings';
 };
 
+/**
+ * Profile sits among the tabs rather than in the header.
+ *
+ * The courier app is held one-handed while riding, so anything reachable has to
+ * be reachable at the bottom of the screen: an avatar in the top-right of a
+ * phone is the hardest place on it to hit. The header keeps the wordmark and
+ * nothing else.
+ */
 export const COURIER_TABS: CourierTab[] = [
-  { href: '/courier/home', label: 'Home', match: ['/courier/home'], icon: 'home' },
+  { href: '/home', label: 'Home', match: ['/home'], icon: 'home' },
   {
-    href: '/courier/orders',
+    href: '/orders',
     label: 'Orders',
-    match: ['/courier/orders', '/courier/pickup', '/courier/deliver'],
+    match: ['/orders', '/pickup', '/deliver'],
     icon: 'orders'
   },
   {
-    href: '/courier/trips',
+    href: '/trips',
     label: 'Trips',
-    match: ['/courier/trips', '/courier/complete'],
+    match: ['/trips', '/complete'],
     icon: 'trips'
   },
-  { href: '/courier/settings', label: 'Settings', match: ['/courier/settings'], icon: 'settings' }
+  { href: '/profile', label: 'Profile', match: ['/profile'], icon: 'profile' },
+  { href: '/settings', label: 'Settings', match: ['/settings'], icon: 'settings' }
 ];
 
 function matches(path: string, prefixes: string[]) {
@@ -50,10 +59,10 @@ export function activeTabIndex(path: string) {
 
 /** A trip in progress takes over the screen — no tab bar to navigate away with. */
 export function isFocusedTrip(path: string) {
-  return matches(path, ['/courier/pickup', '/courier/deliver']);
+  return matches(path, ['/pickup', '/deliver']);
 }
 
 /** Home owns its own scrolling: the map fills the viewport behind the sheet. */
 export function isHome(path: string) {
-  return path === '/courier/home';
+  return path === '/home';
 }

@@ -8,7 +8,7 @@ import type { RiderLocationEvent } from '$lib/utils/types';
  * Only `(business)` reads live rider positions — tracking watches one trip — so
  * this sits in the route group rather than `$lib`. Couriers publish their
  * position through `POST /api/location`, which is a different mechanism
- * entirely (see `(courier)/courier/location-reporter`).
+ * entirely (see `(courier)/location-reporter`).
  */
 
 let socket: Socket | null = null;

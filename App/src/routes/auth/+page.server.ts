@@ -22,7 +22,7 @@ const MIN_PASSWORD_LENGTH = 8;
  * three separate paths.
  */
 function homeFor(role: string | null | undefined) {
-	return role === 'courier' ? '/courier/home' : '/dashboard';
+	return role === 'courier' ? '/home' : '/dashboard';
 }
 
 type Fields = {

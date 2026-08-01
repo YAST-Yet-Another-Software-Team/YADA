@@ -14,10 +14,10 @@ import type { CourierTrip } from '$lib/utils/types';
  */
 export function courierScreenFor(trip: CourierTrip) {
   if (trip.status === 'completed') {
-    return `/courier/complete?tripId=${encodeURIComponent(trip.id)}`;
+    return `/complete?tripId=${encodeURIComponent(trip.id)}`;
   }
 
-  if (trip.status === 'cancelled') return '/courier/home';
+  if (trip.status === 'cancelled') return '/home';
 
   return courierTripHref(trip);
 }
@@ -34,7 +34,7 @@ export async function requireCourierTrip(lookup: Promise<CourierTrip | null>) {
   const trip = await lookup;
 
   if (!trip) {
-    redirect(303, '/courier/home');
+    redirect(303, '/home');
   }
 
   return trip;

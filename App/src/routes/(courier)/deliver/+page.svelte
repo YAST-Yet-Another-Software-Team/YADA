@@ -97,7 +97,7 @@
         return;
       }
 
-      goto(`/courier/complete?tripId=${encodeURIComponent(data.trip.id)}`);
+      goto(`/complete?tripId=${encodeURIComponent(data.trip.id)}`);
     } catch {
       actionError = 'Unable to complete trip. Check your connection and try again.';
     } finally {

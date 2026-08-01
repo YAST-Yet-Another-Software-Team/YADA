@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { activeTabIndex, COURIER_TABS, isTabActive } from './tabs';
+	import { getCourierOnline } from './courier-online.svelte';
 
 	const tabs = COURIER_TABS;
+	// The online dot used to ride on the header avatar. It follows the profile
+	// down here, because it's the one piece of status a courier checks at a
+	// glance and it shouldn't be lost in the move.
+	const online = getCourierOnline();
 
 	const path = $derived(page.url.pathname);
 	const activeIndex = $derived(activeTabIndex(path));
@@ -73,6 +78,25 @@
 								stroke-linejoin="round"
 								><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg
 							>
+						{:else if tab.icon === 'profile'}
+							<span class="relative inline-flex">
+								<svg
+									viewBox="0 0 24 24"
+									class="h-5 w-5"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg
+								>
+								{#if online.online}
+									<span
+										class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-surface bg-success"
+										aria-hidden="true"
+									></span>
+								{/if}
+							</span>
 						{:else}
 							<svg
 								viewBox="0 0 24 24"

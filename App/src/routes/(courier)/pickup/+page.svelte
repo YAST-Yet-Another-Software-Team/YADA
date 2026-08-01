@@ -98,7 +98,7 @@
         return;
       }
 
-      goto(`/courier/deliver?tripId=${encodeURIComponent(data.trip.id)}`);
+      goto(`/deliver?tripId=${encodeURIComponent(data.trip.id)}`);
     } catch {
       actionError = 'Unable to start the delivery. Check your connection and try again.';
     } finally {
@@ -235,7 +235,7 @@
     {/if}
 
     <div class="flex items-center gap-3">
-      <Button variant="ghost" size="sm" onclick={() => goto('/courier/home')}>Back home</Button>
+      <Button variant="ghost" size="sm" onclick={() => goto('/home')}>Back home</Button>
       <div class="flex-1"></div>
       {#if collected}
         <Button variant="primary" size="sm" disabled={starting} onclick={startDelivery}>

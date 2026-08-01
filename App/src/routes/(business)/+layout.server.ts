@@ -13,7 +13,7 @@ export async function load({ locals }) {
 	}
 
 	if (user.role !== 'business') {
-		redirect(303, '/courier/home');
+		redirect(303, '/home');
 	}
 
 	return { user };
