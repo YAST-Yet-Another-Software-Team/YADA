@@ -26,7 +26,7 @@
       href: "/request",
       label: "Request",
       short: "Request",
-      match: ["/request", "/matching", "/tracking"],
+      match: ["/request", "/tracking"],
     },
     {
       href: "/history",
@@ -134,12 +134,6 @@
             ></span>
           </a>
         {/each}
-        <span
-          class="relative flex h-full cursor-not-allowed items-center px-3 text-base text-ink-disabled"
-          title="Coming soon"
-        >
-          Team
-        </span>
       </nav>
 
       <div class="relative flex items-center gap-3" data-profile-menu>

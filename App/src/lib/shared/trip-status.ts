@@ -4,13 +4,14 @@
  * code can import it without pulling the database in.
  */
 
-import type { TripStage, TripStatus } from '$lib/utils/types';
+import type { TripPhase, TripStage, TripStatus } from '$lib/utils/types';
 
 /** A courier is on the hook for the trip: assigned but not yet finished. */
 export const ACTIVE_TRIP_STATUSES = [
   'accepted',
   'courier_arriving',
   'arrived',
+  'picked_up',
   'in_progress'
 ] as const satisfies readonly TripStatus[];
 
@@ -18,8 +19,36 @@ export const ACTIVE_TRIP_STATUSES = [
 export const CLOSED_TRIP_STATUSES = ['completed', 'cancelled'] as const satisfies readonly TripStatus[];
 
 /**
- * Collapse a stored status to the stage the courier app shows, which keeps
- * "arrived" distinct because that's the courier's cue to hand the parcel over.
+ * The pickup phase: a courier is assigned and the parcel is still on the
+ * counter. It ends when the business confirms the handover, which is the only
+ * transition out of this list.
+ */
+export const PICKUP_PHASE_STATUSES = [
+  'accepted',
+  'courier_arriving',
+  'arrived'
+] as const satisfies readonly TripStatus[];
+
+/** Whether the parcel is still on the business's counter. */
+export function isPickupPhase(status: string): boolean {
+  return (PICKUP_PHASE_STATUSES as readonly string[]).includes(status);
+}
+
+/**
+ * Which half of the journey a trip is in. `picked_up` counts as delivery: the
+ * parcel is with the courier, even though they haven't set off yet.
+ */
+export function toTripPhase(status: string): TripPhase {
+  return isPickupPhase(status) ? 'pickup' : 'delivery';
+}
+
+/**
+ * Collapse a stored status to the stage the courier app shows.
+ *
+ * `courier_arriving` and `picked_up` both land on `arrived`: to a pill they are
+ * the same moment — the courier is at the shop. Screens that must act on the
+ * difference (the pickup screen decides between "waiting to be handed the
+ * parcel" and "start delivery") read the stored status instead.
  */
 export function toTripStage(status: string): TripStage {
   switch (status) {
@@ -28,10 +57,11 @@ export function toTripStage(status: string): TripStage {
     case 'accepted':
       return 'assigned';
     case 'courier_arriving':
+    case 'arrived':
+    case 'picked_up':
+      return 'arrived';
     case 'in_progress':
       return 'en_route';
-    case 'arrived':
-      return 'arrived';
     case 'completed':
       return 'delivered';
     case 'cancelled':
@@ -42,21 +72,24 @@ export function toTripStage(status: string): TripStage {
 }
 
 /**
- * The courier screen that owns a trip at its current stage: once the parcel is
- * in transit the job is delivery, before that it's still pickup. Shared so Home
- * and Orders can't disagree about where "Open active trip" goes.
+ * The courier screen that owns a trip at its current status: the delivery leg
+ * has its own screen, everything before it belongs to pickup — including
+ * `picked_up`, where the courier still has to press "Start delivery". Shared so
+ * Home and Orders can't disagree about where "Open active trip" goes.
  */
-export function courierTripHref(trip: { id: string; status: TripStage }) {
-  const route = trip.status === 'en_route' ? '/courier/deliver' : '/courier/pickup';
+export function courierTripHref(trip: { id: string; status: TripStatus }) {
+  const route = trip.status === 'in_progress' ? '/courier/deliver' : '/courier/pickup';
   return `${route}?tripId=${encodeURIComponent(trip.id)}`;
 }
 
 /**
- * The same collapse for business-facing screens (dashboard, history, tracking),
- * which don't distinguish "arrived" from "en route" — to the sender the parcel
- * is in transit either way.
+ * The same collapse for business-facing screens (dashboard, history, tracking).
+ *
+ * `picked_up` reads as en route here: the sender's parcel has left their hands,
+ * which is what their board is tracking. `courier_arriving` deliberately does
+ * not collapse — "the rider is at your counter" is the business's cue to
+ * confirm the handover, so it has to stay visible as its own state.
  */
 export function toDispatchStage(status: string): TripStage {
-  const stage = toTripStage(status);
-  return stage === 'arrived' ? 'en_route' : stage;
+  return status === 'picked_up' ? 'en_route' : toTripStage(status);
 }

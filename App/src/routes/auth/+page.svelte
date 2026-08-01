@@ -4,6 +4,9 @@
 	import Alert from '$lib/components/ui/Alert.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
+	import LocationPickerMap from '$lib/components/ui/LocationPickerMap.svelte';
+	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
+	import type { LatLng } from '$lib/utils/types';
 	import { slide } from 'svelte/transition';
 
 	type Role = 'business' | 'courier';
@@ -44,6 +47,17 @@
 	$effect(() => {
 		if (form?.role === 'courier' || form?.role === 'business') role = form.role;
 	});
+
+	// A business is stationary, so its address is captured once, here, and every
+	// later request departs from it. The pin is the input and the address is what
+	// Google calls that pin — the reverse of the autocomplete this replaced, which
+	// could only ever guess a coordinate from a name.
+	//
+	// Not seeded from `form`: a rejected sign-up re-renders this component rather
+	// than remounting it, so the pin the visitor already dropped is still here.
+	let businessPoint = $state<LatLng | null>(null);
+	let businessAddress = $state('');
+	let addressError = $state('');
 
 	let submitting = $state(false);
 
@@ -263,6 +277,39 @@
 										required
 										value={form?.name ?? ''}
 									/>
+
+									<div class="flex flex-col gap-1.5">
+										<span class="text-sm font-semibold text-ink">Where you dispatch from</span>
+										<p class="text-xs leading-relaxed text-ink-secondary">
+											Search your address, or tap the map to move the pin. We ask once —
+											every delivery you request leaves from here.
+										</p>
+										<div class="relative h-60 overflow-hidden rounded-md border border-border">
+											<LocationPickerMap
+												bind:point={businessPoint}
+												bind:address={businessAddress}
+												bind:error={addressError}
+												markerRole="business"
+												markerLabel="Your business"
+												initialCenter={KUMASI_CENTER}
+												searchPlaceholder="Search your shop's address"
+												showLocateButton
+												locateLabel="I'm here now"
+											/>
+										</div>
+										<p class="text-sm {businessPoint ? 'text-ink' : 'text-ink-tertiary'}">
+											{businessAddress || 'No location pinned yet'}
+										</p>
+										{#if addressError}
+											<p class="text-xs font-medium text-danger">{addressError}</p>
+										{/if}
+									</div>
+
+									<!-- The map writes the coordinate; these carry it to the action,
+									     which re-checks the zone rather than trusting them. -->
+									<input type="hidden" name="address" value={businessAddress} />
+									<input type="hidden" name="lat" value={businessPoint?.lat ?? ''} />
+									<input type="hidden" name="lng" value={businessPoint?.lng ?? ''} />
 								{:else}
 									<Input
 										label="Full name"

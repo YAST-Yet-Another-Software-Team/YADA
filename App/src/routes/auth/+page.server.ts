@@ -1,6 +1,10 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 
+import { saveBusinessAddress } from '$lib/server/data/business';
+import { containsPoint } from '$lib/shared/geo/service-area';
+import { geoErrorMessage } from '$lib/shared/geo/errors';
+
 import { authErrorMessage } from './errors';
 import { auth, toAuthRole } from './auth.server';
 
@@ -97,6 +101,9 @@ export const actions = {
 		// `toAuthRole` clamps anything unexpected to `business`; the create hook in
 		// ./auth.server clamps it again, so a forged value can't mint an admin.
 		const role = toAuthRole(data.get('role'));
+		const address = String(data.get('address') ?? '').trim();
+		const lat = Number(data.get('lat'));
+		const lng = Number(data.get('lng'));
 		const fields: Fields = { email, name, phone, role };
 
 		if (!email.includes('@')) {
@@ -114,6 +121,22 @@ export const actions = {
 			return fail(400, { ...fields, message: 'Enter a phone number we can reach you on.' });
 		}
 
+		// A business without a dispatch address can't request anything, so the
+		// address is part of creating the account rather than a later prompt. The
+		// pin is re-checked here because the form only carries what the map wrote.
+		if (role === 'business') {
+			if (!address || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+				return fail(400, {
+					...fields,
+					message: 'Pin your business location on the map so riders know where to collect.'
+				});
+			}
+
+			if (!containsPoint({ lat, lng })) {
+				return fail(400, { ...fields, message: geoErrorMessage('out_of_zone') });
+			}
+		}
+
 		if (password.length < MIN_PASSWORD_LENGTH) {
 			return fail(400, {
 				...fields,
@@ -121,8 +144,10 @@ export const actions = {
 			});
 		}
 
+		let createdUserId: string;
+
 		try {
-			await auth.api.signUpEmail({
+			const created = await auth.api.signUpEmail({
 				body: {
 					email,
 					password,
@@ -137,11 +162,20 @@ export const actions = {
 				} as unknown as NonNullable<Parameters<typeof auth.api.signUpEmail>[0]>['body'],
 				headers: request.headers
 			});
+
+			createdUserId = created.user.id;
 		} catch (error) {
 			const message = messageFor(error, 'Unable to create your account.');
 			if (message === null) throw error;
 
 			return fail(400, { ...fields, message });
+		}
+
+		// Outside the block above so a failure here isn't reported as a rejected
+		// credential: the account exists by this point, and a profile that didn't
+		// write is a server fault, not something the visitor can fix by retyping.
+		if (role === 'business') {
+			await saveBusinessAddress(createdUserId, { businessName: name, address, lat, lng });
 		}
 
 		redirect(303, homeFor(role));

@@ -9,6 +9,7 @@
 	import { getCourierOnline } from '../courier-online.svelte';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 	import { courierTripHref } from '$lib/shared/trip-status';
+	import type { TripStatus } from '$lib/utils/types';
 
 	let {
 		data
@@ -17,7 +18,7 @@
 			profile: { name: string; initials: string };
 			activeTrip: {
 				id: string;
-				status: 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled' | 'searching';
+				status: TripStatus;
 				businessName: string;
 				pickupAddress: string;
 				dropoffAddress: string;
@@ -89,15 +90,20 @@
 			: null
 	);
 	const routePath = $derived(pickupPoint && dropoffPoint ? [pickupPoint, dropoffPoint] : []);
+	/** The trip's own words for where it is, spoken from the courier's side. */
+	const ACTIVE_TRIP_LABELS: Partial<Record<TripStatus, string>> = {
+		accepted: 'Heading to pickup',
+		courier_arriving: 'At pickup',
+		arrived: 'At pickup',
+		picked_up: 'Ready to deliver',
+		in_progress: 'On the way'
+	};
+
 	const statusLabel = $derived(
 		!online.online
 			? 'Offline'
 			: data.activeTrip
-				? data.activeTrip.status === 'en_route'
-					? 'On the way'
-					: data.activeTrip.status === 'arrived'
-						? 'Arrived'
-						: 'Active trip'
+				? (ACTIVE_TRIP_LABELS[data.activeTrip.status] ?? 'Active trip')
 				: 'Online'
 	);
 

@@ -17,17 +17,20 @@ export function getZonePolygonPath(): LatLng[] {
   return ZONE_RING.map(([lng, lat]) => ({ lat, lng }));
 }
 
+/** The zone's bounding box, used to bias address searches towards Kumasi. */
 export function getZoneBounds(): { south: number; west: number; north: number; east: number } {
   let south = Infinity;
   let north = -Infinity;
   let west = Infinity;
   let east = -Infinity;
+
   for (const [lng, lat] of ZONE_RING) {
     south = Math.min(south, lat);
     north = Math.max(north, lat);
     west = Math.min(west, lng);
     east = Math.max(east, lng);
   }
+
   return { south, west, north, east };
 }
 

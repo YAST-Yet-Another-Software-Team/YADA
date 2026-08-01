@@ -15,8 +15,9 @@ export function reverseCacheKey(lat: number, lng: number) {
   return `rev:${roundCoord(lat)},${roundCoord(lng)}`;
 }
 
-export function placeCacheKey(placeId: string) {
-  return `place:${placeId}`;
+/** Typed queries are cached by their normalised text, so casing and stray spaces share an entry. */
+export function forwardCacheKey(query: string) {
+  return `fwd:${normalizeAddress(query)}`;
 }
 
 /** Client-side cache, persisted so repeat Kumasi lookups skip the round-trip. */

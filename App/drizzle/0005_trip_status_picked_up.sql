@@ -1,0 +1,11 @@
+-- A trip now runs in two explicitly separated phases. Pickup ends when the
+-- business confirms the handover; delivery begins when the courier starts it.
+-- Those are two distinct states, and `in_progress` cannot stand for both — a
+-- parcel that has been collected but not yet set off with is neither still
+-- awaiting pickup nor on its way.
+--
+-- Added before `in_progress` so the enum's declaration order still reads as the
+-- order a trip moves through. `ALTER TYPE ... ADD VALUE` is safe inside a
+-- transaction on PostgreSQL 12+ as long as the new value isn't used in the same
+-- one, which nothing here does.
+ALTER TYPE "public"."trip_status" ADD VALUE 'picked_up' BEFORE 'in_progress';
