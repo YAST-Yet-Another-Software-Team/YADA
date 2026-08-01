@@ -112,7 +112,7 @@
   <!-- Desktop chrome -->
   <header class="sticky top-0 z-20 hidden bg-surface lg:block">
     <div
-      class="mx-auto flex h-[58px] max-w-7xl items-stretch justify-between gap-4 border-b border-border px-6"
+      class="mx-auto flex h-[58px] items-stretch justify-between gap-4 border-b border-border px-6"
     >
       <div class="flex items-center">
         <a

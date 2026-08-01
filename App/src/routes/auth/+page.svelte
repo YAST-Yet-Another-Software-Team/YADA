@@ -2,42 +2,23 @@
   import { enhance } from "$app/forms";
   import { onMount } from "svelte";
   import { page } from "$app/state";
+  import { slide } from "svelte/transition";
+  import type { SubmitFunction } from "@sveltejs/kit";
   import Alert from "$lib/components/ui/Alert.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import GoogleButton from "$lib/components/auth/GoogleButton.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import {
     ProfilePhotoError,
     readProfilePhoto,
   } from "$lib/client/images/profile-photo";
-  import {
-    COURIER_SIGNUP_STEPS,
-    COURIER_STEP_COUNT,
-    MIN_PASSWORD_LENGTH,
-    firstProblem,
-    signUpSchema,
-  } from "./schemas";
-  import { slide } from "svelte/transition";
+  import type { PageProps } from "./$types";
 
   type Role = "business" | "courier";
   type Mode = "sign-in" | "sign-up" | "reset";
 
-  /** Whatever the last `fail()` from an action returned, or `{ sent: true }`. */
-  let {
-    data,
-    form,
-  }: {
-    data: { googleEnabled: boolean };
-    form: {
-      message?: string;
-      email?: string;
-      name?: string;
-      phone?: string;
-      role?: string;
-      step?: number;
-      sent?: boolean;
-    } | null;
-  } = $props();
+  // `form` is whatever the last action returned: a `fail()` payload with the
+  // values to restore and the step to reopen, or `{ sent: true }` from reset.
+  let { data, form }: PageProps = $props();
 
   // Which panel is on screen lives in the URL, not in component state, so the
   // mode toggle is an ordinary link. That keeps it working with JavaScript off
@@ -51,8 +32,8 @@
         : "sign-in",
   );
 
-  // Role is a radio inside the form: `bind:group` drives the phone field's
-  // visibility here, and the same input submits the value to the action.
+  // Role is a radio inside the form: `bind:group` picks which fields render,
+  // and the same input carries the value to the action.
   let role = $state<Role>(
     page.url.searchParams.get("role") === "courier" ? "courier" : "business",
   );
@@ -61,34 +42,71 @@
     if (form?.role === "courier" || form?.role === "business") role = form.role;
   });
 
-  let submitting = $state(false);
-
-  // ---------------------------------------------------------------------------
-  // Sign-up steps
-  //
-  // Only a courier gets them, and only because of the photo: a business signs up
-  // with four fields, and splitting those across screens would add clicks and
-  // buy nothing. The grouping lives in `./schemas` beside the validation, so the
-  // step a field is on and the step a rejected field reopens are the same fact.
-  //
-  // The dispatch address isn't here either: a business sets it on /request,
-  // where the map it gets pinned on is already the page.
-  // ---------------------------------------------------------------------------
-
-  let step = $state(0);
-  let stepError = $state("");
-
   // Seeded from `form` at creation, not bound to it: that fills the fields back
-  // in after a no-JavaScript round trip, while leaving what someone is currently
-  // typing alone — `use:enhance` re-renders this component rather than
-  // remounting it. The password is deliberately never restored.
+  // in after a no-JavaScript round trip, while leaving what someone is
+  // currently typing alone — `use:enhance` re-renders this component rather
+  // than remounting it. The password is deliberately never restored.
+  // svelte-ignore state_referenced_locally
+  let name = $state(form?.name ?? "");
   // svelte-ignore state_referenced_locally
   let email = $state(form?.email ?? "");
   // svelte-ignore state_referenced_locally
   let phone = $state(form?.phone ?? "");
   let password = $state("");
-  // svelte-ignore state_referenced_locally
-  let name = $state(form?.name ?? "");
+
+  let submitting = $state(false);
+  let googlePending = $state(false);
+
+  // ---------------------------------------------------------------------------
+  // Sign-up steps
+  //
+  // Only a courier gets them, and only because of the photo: a business signs
+  // up with four fields, and splitting those across screens would add clicks
+  // and buy nothing. There is no schema here to decide what a step accepts —
+  // the inputs carry their constraints as HTML attributes and the browser is
+  // asked directly; the real rules run once, in the action, and a rejected
+  // field comes back with the step it lives on (`form.step`).
+  //
+  // Steps are also only *steps* once JavaScript is running. Server-rendered,
+  // both fieldsets are present and visible, so the form still submits in one
+  // go with scripting off.
+  // ---------------------------------------------------------------------------
+
+  let step = $state(0);
+  let stepError = $state("");
+  let detailsFields = $state<HTMLFieldSetElement>();
+
+  let stepped = $state(false);
+  onMount(() => {
+    stepped = true;
+  });
+
+  /** A business fills one screen; only the courier's photo earns a second. */
+  const multiStep = $derived(stepped && role === "courier");
+  const onLastStep = $derived(step >= 1);
+
+  // Switching to Business collapses the form, so any step past the first
+  // would leave nothing on screen.
+  $effect(() => {
+    if (role === "business") step = 0;
+  });
+
+  /** A rejected submit reopens the step that owns the field it complained about. */
+  $effect(() => {
+    if (form?.step != null) step = form.step;
+  });
+
+  function nextStep() {
+    // The browser already knows what an empty required field or a too-short
+    // password is — the constraints are on the inputs. `reportValidity` shows
+    // its bubble on the first offender and holds the step.
+    for (const input of detailsFields?.querySelectorAll("input") ?? []) {
+      if (!input.reportValidity()) return;
+    }
+
+    stepError = "";
+    step = 1;
+  }
 
   /**
    * The courier's photo, already downscaled to a data URL — see
@@ -99,67 +117,6 @@
   let photo = $state("");
   let photoError = $state("");
   let photoBusy = $state(false);
-
-  /**
-   * Steps are only *steps* once JavaScript is running. Server-rendered, every
-   * fieldset is present and visible, so the form still submits in one go with
-   * scripting off — the same reason the mode toggle is a link rather than state.
-   */
-  let stepped = $state(false);
-  onMount(() => {
-    stepped = true;
-  });
-
-  /** A business fills one screen; only the courier's photo earns a second. */
-  const multiStep = $derived(stepped && role === "courier");
-  const lastStep = $derived(COURIER_STEP_COUNT - 1);
-  const onLastStep = $derived(step >= lastStep);
-
-  // Switching to Business collapses the form, so any step past the first would
-  // leave nothing on screen.
-  $effect(() => {
-    if (role === "business") step = 0;
-  });
-
-  /** A rejected submit reopens the step that owns the field it complained about. */
-  $effect(() => {
-    if (form?.step != null) step = form.step;
-  });
-
-  /**
-   * Everything the form currently holds, in the shape the schema parses. The
-   * same object the action builds from the request body, which is the point:
-   * one definition of what is acceptable, checked here for speed and there for
-   * real.
-   */
-  function currentValues() {
-    return {
-      role,
-      name,
-      email,
-      phone,
-      password,
-      image: photo || undefined,
-    };
-  }
-
-  /**
-   * Validate, but only report what belongs to `fields` — so someone on the first
-   * step isn't told about the photo they haven't reached yet. Passing no field
-   * list checks the whole form, which is what submitting does.
-   */
-  function problemIn(fields?: readonly string[]): string {
-    const parsed = signUpSchema.safeParse(currentValues());
-    if (parsed.success) return "";
-
-    const issues = fields
-      ? parsed.error.issues.filter((issue) =>
-          fields.includes(String(issue.path[0] ?? "")),
-        )
-      : parsed.error.issues;
-
-    return issues[0]?.message ?? "";
-  }
 
   async function handlePhoto(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -185,49 +142,44 @@
     }
   }
 
-  function goToStep(next: number) {
-    stepError = "";
-    step = Math.min(Math.max(next, 0), lastStep);
-  }
-
-  function nextStep() {
-    const problem = problemIn(COURIER_SIGNUP_STEPS[step]?.fields);
-    if (problem) {
-      stepError = problem;
-      return;
-    }
-
-    goToStep(step + 1);
-  }
-
   /**
-   * Guard the submit itself: the steps are hidden rather than unmounted, so
-   * every field is in the form at all times and a half-filled first step would
-   * otherwise reach the server only to be rejected there.
+   * Sign-in and sign-up share this. The one check the browser can't do on its
+   * own is the photo — a hidden input escapes constraint validation — so it is
+   * caught here with `cancel()` instead of a wasted round trip. Everything else
+   * is the action's problem, and its answer arrives as the `form` prop.
    */
-  function handleSubmit(event: SubmitEvent) {
-    if (mode !== "sign-up") return;
-
-    const parsed = signUpSchema.safeParse(currentValues());
-    if (parsed.success) {
-      stepError = "";
+  const submitCredentials: SubmitFunction = ({ formData, cancel }) => {
+    if (mode === "sign-up" && role === "courier" && !formData.get("image")) {
+      stepError = "Add a profile photo so businesses can recognise you.";
+      if (stepped) step = 1;
+      cancel();
       return;
     }
 
-    event.preventDefault();
-
-    const problem = firstProblem(parsed.error);
-    stepError = problem.message;
-    if (multiStep) step = problem.step;
-  }
-
-  /** Flip the pending flag around the request; `update()` applies the result. */
-  const track = () => {
+    stepError = "";
     submitting = true;
 
-    return async ({ update }: { update: () => Promise<void> }) => {
+    return async ({ update }) => {
       await update();
       submitting = false;
+    };
+  };
+
+  const submitReset: SubmitFunction = () => {
+    submitting = true;
+
+    return async ({ update }) => {
+      await update();
+      submitting = false;
+    };
+  };
+
+  const submitGoogle: SubmitFunction = () => {
+    googlePending = true;
+
+    return async ({ update }) => {
+      await update();
+      googlePending = false;
     };
   };
 
@@ -399,7 +351,7 @@
             <form
               method="POST"
               action="?/reset"
-              use:enhance={track}
+              use:enhance={submitReset}
               class="mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4"
               transition:slide={{ duration: 220 }}
             >
@@ -439,8 +391,7 @@
             <form
               method="POST"
               action={mode === "sign-up" ? "?/signup" : "?/signin"}
-              use:enhance={track}
-              onsubmit={handleSubmit}
+              use:enhance={submitCredentials}
               class="mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4"
               transition:slide={{ duration: 220 }}
             >
@@ -474,7 +425,7 @@
 
                 {#if multiStep}
                   <div class="flex gap-1.5" aria-hidden="true">
-                    {#each COURIER_SIGNUP_STEPS as _, index}
+                    {#each [0, 1] as index}
                       <span
                         class="h-1 flex-1 rounded-full transition-colors {index <=
                         step
@@ -492,32 +443,29 @@
                 <!-- Step one for a courier; the whole form for a business.
                      `hidden` rather than `{#if}`, so every field stays in the
                      form: a scriptless submit carries all of them at once. -->
-                <div
-                  class="flex flex-col gap-3 lg:gap-4"
-                  hidden={multiStep && step !== 0}
-                  aria-hidden={multiStep && step !== 0}
-                >
-                    {#if role === "business"}
-                      <Input
-                        label="Business name"
-                        type="text"
-                        name="name"
-                        placeholder="Favorie Kitchen"
-                        autocomplete="organization"
-                        required
-                        bind:value={name}
-                      />
-                    {:else}
-                      <Input
-                        label="Full name"
-                        type="text"
-                        name="name"
-                        placeholder="Kwame Asante"
-                        autocomplete="name"
-                        required
-                        bind:value={name}
-                      />
-                    {/if}
+                {#if role === "business" || (role === "courier" && step === 0)}
+                  <fieldset
+                    bind:this={detailsFields}
+                    class="flex min-w-0 flex-col gap-3 lg:gap-4"
+                    hidden={multiStep && step !== 0}
+                    aria-hidden={multiStep && step !== 0}
+                  >
+                    <Input
+                      label={role === "business"
+                        ? "Business Name"
+                        : "Full Name"}
+                      type="text"
+                      name="name"
+                      placeholder={role === "business"
+                        ? "Favorie Kitchen"
+                        : "Kwame Asante"}
+                      autocomplete={role === "business"
+                        ? "organization"
+                        : "name"}
+                      required
+                      minlength={2}
+                      bind:value={name}
+                    />
                     <Input
                       label={role === "business" ? "Work email" : "Email"}
                       type="email"
@@ -534,103 +482,103 @@
                       placeholder="024 123 4567"
                       autocomplete="tel"
                       inputmode="tel"
-                      maxlength={17}
                       required
+                      minlength={10}
+                      maxlength={10}
                       bind:value={phone}
                     />
                     <Input
                       label="Password"
                       type="password"
                       name="password"
-                      placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+                      placeholder={`At least ${data.minPasswordLength} characters`}
                       autocomplete="new-password"
-                      minlength={MIN_PASSWORD_LENGTH}
+                      minlength={data.minPasswordLength}
                       required
                       bind:value={password}
                     />
-                  </div>
-
-                {#if role === "courier"}
+                  </fieldset>
+                {:else if role === "courier" && step === 1}
                   <!-- Step two, and the only reason a courier has one. -->
-                  <div
-                    class="flex flex-col gap-3 lg:gap-4"
+                  <fieldset
+                    class="flex min-w-0 flex-col gap-3 lg:gap-4"
                     hidden={multiStep && step !== 1}
                     aria-hidden={multiStep && step !== 1}
                   >
-                      <div class="flex flex-col gap-2">
-                        <span class="text-sm font-semibold text-ink"
-                          >Profile photo</span
+                    <div class="flex flex-col gap-2">
+                      <span class="text-sm font-semibold text-ink"
+                        >Profile photo</span
+                      >
+                      <p class="text-xs leading-relaxed text-ink-secondary">
+                        Businesses see this when you accept their delivery, so
+                        they know who is at the counter.
+                      </p>
+
+                      <div class="flex items-center gap-4">
+                        <div
+                          class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-surface-sunken"
                         >
-                        <p class="text-xs leading-relaxed text-ink-secondary">
-                          Businesses see this when you accept their delivery, so
-                          they know who is at the counter.
-                        </p>
-
-                        <div class="flex items-center gap-4">
-                          <div
-                            class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-surface-sunken"
-                          >
-                            {#if photo}
-                              <img
-                                src={photo}
-                                alt="Your profile"
-                                class="h-full w-full object-cover"
-                              />
-                            {:else}
-                              <svg
-                                viewBox="0 0 24 24"
-                                class="h-8 w-8 text-ink-disabled"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.5"
-                                aria-hidden="true"
-                              >
-                                <circle cx="12" cy="8" r="4" /><path
-                                  d="M4 21a8 8 0 0 1 16 0"
-                                />
-                              </svg>
-                            {/if}
-                          </div>
-
-                          <label
-                            class="cursor-pointer rounded-md border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50"
-                          >
-                            <input
-                              type="file"
-                              accept="image/*"
-                              class="sr-only"
-                              onchange={handlePhoto}
+                          {#if photo}
+                            <img
+                              src={photo}
+                              alt="Your profile"
+                              class="h-full w-full object-cover"
                             />
-                            {photoBusy
-                              ? "Reading…"
-                              : photo
-                                ? "Change photo"
-                                : "Choose a photo"}
-                          </label>
+                          {:else}
+                            <svg
+                              viewBox="0 0 24 24"
+                              class="h-8 w-8 text-ink-disabled"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.5"
+                              aria-hidden="true"
+                            >
+                              <circle cx="12" cy="8" r="4" /><path
+                                d="M4 21a8 8 0 0 1 16 0"
+                              />
+                            </svg>
+                          {/if}
                         </div>
 
-                        {#if photoError}
-                          <p class="text-xs font-medium text-danger">
-                            {photoError}
-                          </p>
-                        {/if}
-
-                        <!-- The photo is resized in the browser and travels as a data URL;
-											     there is no upload endpoint or bucket behind this. -->
-                        <input type="hidden" name="image" value={photo} />
+                        <label
+                          class="cursor-pointer rounded-md border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50"
+                        >
+                          <input
+                            type="file"
+                            accept="image/*"
+                            class="sr-only"
+                            onchange={handlePhoto}
+                          />
+                          {photoBusy
+                            ? "Reading…"
+                            : photo
+                              ? "Change photo"
+                              : "Choose a photo"}
+                        </label>
                       </div>
-                  </div>
+
+                      {#if photoError}
+                        <p class="text-xs font-medium text-danger">
+                          {photoError}
+                        </p>
+                      {/if}
+
+                      <!-- The photo is resized in the browser and travels as a
+                           data URL; there is no upload endpoint behind this. -->
+                      <input type="hidden" name="image" value={photo} />
+                    </div>
+                  </fieldset>
                 {/if}
 
-                <!-- Navigation. A business never sees it, and neither does anyone
-                     with scripting off — both submit the single button below. -->
+                <!-- Navigation. A business never sees it, and neither does
+                     anyone with scripting off — both submit the single button. -->
                 {#if multiStep}
                   <div class="flex items-center gap-3">
                     {#if step > 0}
                       <Button
                         variant="ghost"
                         size="lg"
-                        onclick={() => goToStep(step - 1)}
+                        onclick={() => (step = 0)}
                       >
                         Back
                       </Button>
@@ -718,8 +666,10 @@
               {/if}
             </form>
 
-            <!-- Beside the credentials form, not inside it: HTML has no nested forms,
-						     and this posts to its own action. -->
+            <!-- Google, as its own little form: it posts to its own action, and
+                 HTML has no nested forms. The button renders even while the
+                 provider is unconfigured — disabled is the honest state for an
+                 option that is real and coming but can't be started yet. -->
             <div class="mt-4 flex flex-col gap-3 lg:mt-5">
               <div class="flex items-center gap-3" aria-hidden="true">
                 <span class="h-px flex-1 bg-border"></span>
@@ -727,13 +677,50 @@
                 <span class="h-px flex-1 bg-border"></span>
               </div>
 
-              <GoogleButton
-                enabled={data.googleEnabled}
-                {role}
-                label={mode === "sign-up"
-                  ? "Sign up with Google"
-                  : "Continue with Google"}
-              />
+              <form method="POST" action="?/google" use:enhance={submitGoogle}>
+                <input type="hidden" name="role" value={role} />
+                <button
+                  type="submit"
+                  disabled={!data.googleEnabled || googlePending}
+                  class="inline-flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-4 py-3 text-base font-semibold text-ink transition-colors hover:bg-neutral-50 focus-visible:outline focus-visible:outline-3 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <!-- Google's four-colour mark, inline so it needs no fetch. -->
+                  <svg
+                    class="h-5 w-5 shrink-0"
+                    viewBox="0 0 48 48"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill="#4285F4"
+                      d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17Z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46Z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7Z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07Z"
+                    />
+                  </svg>
+                  {googlePending
+                    ? "Opening Google…"
+                    : mode === "sign-up"
+                      ? "Sign up with Google"
+                      : "Continue with Google"}
+                </button>
+              </form>
+
+              {#if !data.googleEnabled}
+                <p class="text-center text-xs text-ink-tertiary">
+                  Google sign-in switches on once the OAuth credentials are
+                  configured.
+                </p>
+              {/if}
             </div>
 
             <div
@@ -744,8 +731,8 @@
                   ? "Already have an account?"
                   : "Don't have an account?"}</span
               >
-              <!-- A link, so switching modes works without JavaScript and drops the
-							     other mode's error along with the query string. -->
+              <!-- A link, so switching modes works without JavaScript and drops
+                   the other mode's error along with the query string. -->
               <a
                 href={mode === "sign-up" ? "/auth" : "/auth?mode=sign-up"}
                 class="font-semibold text-primary underline-offset-2 hover:underline"
@@ -754,6 +741,12 @@
               </a>
             </div>
           {/if}
+
+          <p
+            class="mt-4 text-center text-xs leading-relaxed text-ink-tertiary lg:mt-6"
+          >
+            No payment info needed — YADA only locates and tracks riders.
+          </p>
         </div>
       </section>
     </div>
