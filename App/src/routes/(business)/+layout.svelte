@@ -45,13 +45,22 @@
     return match.some((m) => path === m || path.startsWith(`${m}/`));
   }
 
+  /**
+   * Screens where the page *is* the content, rather than sitting on the
+   * workspace canvas: the request map wants every pixel under the header, so the
+   * padded, width-capped, bordered card that suits a dashboard only crops it.
+   */
+  const fullBleed = $derived(path === "/request");
+
   function toggleProfile(e: MouseEvent) {
     e.stopPropagation();
     profileOpen = !profileOpen;
   }
 </script>
 
-<div class="min-h-svh bg-bg">
+<!-- A flex column, so a full-bleed page can claim the height left by the header
+     without anyone having to hardcode what that header measures. -->
+<div class="flex min-h-svh flex-col bg-bg">
   <!-- Mobile chrome -->
   <header class="border-b border-border bg-surface lg:hidden">
     <div class="flex items-center justify-between gap-3 px-4 pt-3">
@@ -151,9 +160,15 @@
     </div>
   </header>
 
-  <main class="mx-auto w-full max-w-7xl lg:px-6 lg:py-6">
-    <div class="min-h-[calc(100svh-3.25rem)] lg:min-h-[calc(100svh-58px-3rem)]">
+  {#if fullBleed}
+    <main class="flex min-h-0 w-full flex-1 flex-col">
       {@render children()}
-    </div>
-  </main>
+    </main>
+  {:else}
+    <main class="mx-auto w-full max-w-7xl lg:px-6 lg:py-6">
+      <div class="min-h-[calc(100svh-3.25rem)] lg:min-h-[calc(100svh-58px-3rem)]">
+        {@render children()}
+      </div>
+    </main>
+  {/if}
 </div>

@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
+	import SelectMenu from '$lib/components/ui/SelectMenu.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import Tabs from '$lib/components/ui/Tabs.svelte';
 	import type { DashboardTripRecord } from '$lib/utils/types';
@@ -16,6 +17,14 @@
 
 	let tab = $state('history');
 	let statusFilter = $state('all');
+
+	// `all` is a real choice in the menu rather than the label doing double duty,
+	// which is what "Status" as the first option amounted to.
+	const statusOptions = [
+		{ value: 'all', label: 'All' },
+		{ value: 'delivered', label: 'Delivered' },
+		{ value: 'cancelled', label: 'Cancelled' }
+	];
 	let search = $state('');
 	let selected = $state<DashboardTripRecord | null>(null);
 
@@ -61,14 +70,14 @@
 		</div>
 
 		<div class="hidden flex-wrap items-center gap-2 lg:flex">
-			<select
-				bind:value={statusFilter}
-				class="rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink"
-			>
-				<option value="all">Status</option>
-				<option value="delivered">Delivered</option>
-				<option value="cancelled">Cancelled</option>
-			</select>
+			<div class="w-44">
+				<SelectMenu
+					bind:value={statusFilter}
+					label="Status"
+					ariaLabel="Filter orders by status"
+					options={statusOptions}
+				/>
+			</div>
 			<input
 				type="search"
 				placeholder="Search order #"

@@ -165,9 +165,9 @@
 	<title>New request | YADA</title>
 </svelte:head>
 
-<div
-	class="flex h-full min-h-[calc(100svh-3.25rem)] flex-col lg:min-h-[calc(100svh-58px-3rem)] lg:overflow-hidden lg:rounded-lg lg:border lg:border-border lg:bg-surface"
->
+<!-- No card: the layout hands this page the whole area under the header, and a
+     map with a border around it is a map with less map in it. -->
+<div class="flex min-h-0 flex-1 flex-col bg-surface lg:overflow-hidden">
 	<div class="flex items-center gap-3 border-b border-border px-4 py-3 lg:hidden">
 		<a href="/dashboard" class="text-ink" aria-label="Back">
 			<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"
