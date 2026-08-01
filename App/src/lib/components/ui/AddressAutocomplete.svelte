@@ -2,7 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import Input from './Input.svelte';
 	import { loadGoogleMapsPlaces } from '$lib/client/maps/google-maps-loader';
-	import { MAPS_ENABLED } from '$lib/client/maps/maps-enabled';
+	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
 	import { containsPoint, getZoneBounds, KUMASI_CENTER } from '$lib/shared/geo/service-area';
 	import { geoErrorMessage } from '$lib/shared/geo/errors';
 	import type { GeoErrorCode } from '$lib/utils/types';
@@ -70,7 +70,7 @@
 	};
 
 	let inputRef = $state<HTMLInputElement | null>(null);
-	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
+	const maps = getMapsConfig();
 	let suggestions = $state<Suggestion[]>([]);
 	let isOpen = $state(false);
 	let selectedIndex = $state(-1);
@@ -83,8 +83,8 @@
 	const cache = createClientGeocodeCache();
 
 	async function ensurePlaces() {
-		if (placesReady || !googleMapsApiKey) return placesReady;
-		await loadGoogleMapsPlaces(googleMapsApiKey);
+		if (placesReady || !maps.enabled) return placesReady;
+		await loadGoogleMapsPlaces(maps.apiKey);
 		const Places = google.maps.places as unknown as {
 			AutocompleteSessionToken?: new () => unknown;
 		};
@@ -103,7 +103,7 @@
 			return;
 		}
 
-		if (!MAPS_ENABLED || !googleMapsApiKey) {
+		if (!maps.enabled) {
 			const normalized = q.toLowerCase();
 			suggestions = LOCAL_SUGGESTIONS.filter(
 				(item) =>
@@ -230,6 +230,7 @@
 			if (enforceZone && !inZone) {
 				errorMessage = geoErrorMessage('out_of_zone');
 				onerror?.({ code: 'out_of_zone', message: errorMessage });
+				resolving = false;
 				return;
 			}
 
@@ -406,12 +407,5 @@
 
 	{#if errorMessage}
 		<p class="mt-1.5 text-xs font-medium text-danger">{errorMessage}</p>
-	{/if}
-
-	{#if MAPS_ENABLED && !googleMapsApiKey}
-		<p class="mt-1.5 text-xs text-ink-tertiary">
-			Set VITE_GOOGLE_MAPS_API_KEY to enable address search near KNUST / Ayeduase
-			({KUMASI_CENTER.lat.toFixed(2)}, {KUMASI_CENTER.lng.toFixed(2)}).
-		</p>
 	{/if}
 </div>

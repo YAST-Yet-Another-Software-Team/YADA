@@ -2,9 +2,10 @@
   import '$lib/styles/app.css';
   import type { Snippet } from 'svelte';
   import { createSession } from '$auth/session.svelte';
-  import type { AuthUser } from '$lib/utils/types';
+  import { createMapsConfig } from '$lib/client/maps/maps-config.svelte';
+  import type { LayoutServerData } from './$types';
 
-  let { data, children }: { data: { user: AuthUser | null }; children: Snippet } = $props();
+  let { data, children }: { data: LayoutServerData; children: Snippet } = $props();
 
   // Providing the session here — during layout init, before any child component
   // script runs — is what lets pages read it synchronously instead of fetching
@@ -12,10 +13,13 @@
   // module scope, each SSR render gets its own, so this runs on the server too.
   // svelte-ignore state_referenced_locally
   const session = createSession(data.user);
+  // svelte-ignore state_referenced_locally
+  const maps = createMapsConfig(data.googleMapsApiKey, data.googleMapsMapId);
 
-  // And keep it in step if a later navigation reruns the layout load.
+  // And keep both in step if a later navigation reruns the layout load.
   $effect(() => {
     session.hydrate(data.user);
+    maps.hydrate(data.googleMapsApiKey, data.googleMapsMapId);
   });
 </script>
 

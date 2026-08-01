@@ -1,5 +1,8 @@
 <script module lang="ts">
+	import { reverseGeocode as lookupAddress } from '$lib/client/maps/geocoding';
+	import { GeoError, geoErrorMessage } from '$lib/shared/geo/errors';
 	import { createClientGeocodeCache, reverseCacheKey } from '$lib/shared/geo/geocode-cache';
+	import { containsPoint as insideZone } from '$lib/shared/geo/service-area';
 	import type { GeoErrorCode as GeoCode, LatLng as Point } from '$lib/utils/types';
 
 	type GeocodeResult = {
@@ -21,41 +24,32 @@
 	 */
 	const geocodeCache = createClientGeocodeCache();
 
-	async function reverseGeocode(point: Point): Promise<GeocodeResponse> {
+	/**
+	 * The key is a parameter because module scope cannot read component context —
+	 * the same reason `computeDrivingRoute` takes one.
+	 */
+	async function reverseGeocode(apiKey: string, point: Point): Promise<GeocodeResponse> {
 		const key = reverseCacheKey(point.lat, point.lng);
 		const cached = geocodeCache.get(key);
 
 		if (cached) {
-			const { containsPoint: inside } = await import('$lib/shared/geo/service-area');
+			return { ok: true, result: { ...cached, inZone: insideZone(point) } };
+		}
+
+		try {
+			const entry = await lookupAddress(apiKey, point);
+			geocodeCache.set(key, entry);
+
+			return { ok: true, result: { ...entry, inZone: insideZone(point) } };
+		} catch (error) {
+			const geoError = error instanceof GeoError ? error : null;
+
 			return {
-				ok: true,
-				result: {
-					address: cached.address,
-					lat: cached.lat,
-					lng: cached.lng,
-					placeId: cached.placeId,
-					inZone: inside({ lat: point.lat, lng: point.lng })
-				}
+				ok: false,
+				code: geoError?.code ?? 'unavailable',
+				message: geoError?.message ?? geoErrorMessage('unavailable')
 			};
 		}
-
-		const response = await fetch('/api/geo/reverse', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(point)
-		});
-		const data = (await response.json()) as GeocodeResponse;
-
-		if (data.ok) {
-			geocodeCache.set(key, {
-				address: data.result.address,
-				lat: data.result.lat,
-				lng: data.result.lng,
-				placeId: data.result.placeId
-			});
-		}
-
-		return data;
 	}
 </script>
 
@@ -69,9 +63,9 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import { getCurrentDeviceLocation, startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
 	import { computeDrivingRoute } from '$lib/client/maps/routing';
+	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
 	import { containsPoint, KUMASI_CENTER } from '$lib/shared/geo/service-area';
 	import type { LatLng } from '$lib/utils/types';
-	import { geoErrorMessage } from '$lib/shared/geo/errors';
 	import type { GeoErrorCode } from '$lib/utils/types';
 
 	type LocationMode = 'pickup' | 'dropoff';
@@ -94,7 +88,7 @@
 	let stopDeviceWatcher: (() => void) | null = null;
 	let pickupAutoFollow = true;
 
-	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
+	const maps = getMapsConfig();
 
 	const distanceOptions = [
 		{ value: 'fastest', label: 'Fastest nearby' },
@@ -111,13 +105,13 @@
 	);
 
 	async function refreshEstimatesQuietly() {
-		if (!pickupPoint || !dropoffPoint || !googleMapsApiKey) {
+		if (!pickupPoint || !dropoffPoint || !maps.enabled) {
 			estimatedDistanceKm = null;
 			estimatedDurationMinutes = null;
 			return;
 		}
 		try {
-			const route = await computeDrivingRoute(googleMapsApiKey, pickupPoint, dropoffPoint);
+			const route = await computeDrivingRoute(maps.apiKey, pickupPoint, dropoffPoint);
 			estimatedDistanceKm = route.distanceKm;
 			estimatedDurationMinutes = route.durationMinutes;
 		} catch {
@@ -141,7 +135,7 @@
 			pickupPlaceId = placeId;
 			if (address) pickup = address;
 			else {
-				const reverse = await reverseGeocode(point);
+				const reverse = await reverseGeocode(maps.apiKey, point);
 				pickup = reverse.ok ? reverse.result.address : pickup;
 			}
 		} else {
@@ -149,7 +143,7 @@
 			dropoffPlaceId = placeId;
 			if (address) dropoff = address;
 			else {
-				const reverse = await reverseGeocode(point);
+				const reverse = await reverseGeocode(maps.apiKey, point);
 				dropoff = reverse.ok ? reverse.result.address : dropoff;
 			}
 		}
@@ -167,7 +161,7 @@
 		mapCenter = location;
 		mapZoom = 16;
 		pickupPoint = location;
-		const reverse = await reverseGeocode(location);
+		const reverse = await reverseGeocode(maps.apiKey, location);
 		pickup = reverse.ok ? reverse.result.address : pickup;
 		pickupPlaceId = undefined;
 
@@ -276,7 +270,7 @@
 				if (pickupAutoFollow) {
 					pickupPoint = location;
 					void (async () => {
-						const reverse = await reverseGeocode(location);
+						const reverse = await reverseGeocode(maps.apiKey, location);
 						pickup = reverse.ok ? reverse.result.address : pickup;
 					})();
 				}

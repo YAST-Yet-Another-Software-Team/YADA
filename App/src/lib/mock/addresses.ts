@@ -2,8 +2,8 @@
  * Offline fallback addresses for the KNUST / Ayeduase service area.
  *
  * `AddressAutocomplete` searches these when Google Places is unavailable — no
- * `VITE_GOOGLE_MAPS_API_KEY`, or maps disabled — so the request form stays
- * usable on a dev machine without credentials.
+ * `GOOGLE_MAPS_API_KEY` configured — so the request form stays usable on a dev
+ * machine without credentials.
  */
 export const LOCAL_SUGGESTIONS = [
 	{

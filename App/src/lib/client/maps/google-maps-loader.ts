@@ -1,19 +1,21 @@
 /**
- * Required Google Cloud APIs for YADA (when MAPS_ENABLED / VITE_MAPS_ENABLED=true):
+ * Required Google Cloud APIs for YADA (enabled by setting GOOGLE_MAPS_API_KEY):
  * - Maps JavaScript API
  * - Places API (New)
  * - Geocoding API
  * - Routes API
+ *
+ * The key is supplied by the caller rather than read here, because it arrives
+ * at runtime through the root layout — see `./maps-config.svelte`.
  */
 
-import { MAPS_ENABLED } from './maps-enabled';
 import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
 
 let configuredApiKey: string | null = null;
 
 function configure(apiKey: string) {
-  if (!MAPS_ENABLED) {
-    throw new Error('Maps are disabled for this environment.');
+  if (!apiKey) {
+    throw new Error('Google Maps is not configured (GOOGLE_MAPS_API_KEY is unset).');
   }
   if (configuredApiKey !== apiKey) {
     setOptions({ key: apiKey, v: 'weekly' });
@@ -41,8 +43,8 @@ export function loadGoogleMapsRoutes(apiKey: string) {
   return importLibrary('routes');
 }
 
-/** Places library including PlaceAutocompleteElement (Places API New). */
-export async function loadPlaceAutocompleteElement(apiKey: string) {
-  const places = await loadGoogleMapsPlaces(apiKey);
-  return places;
+/** `AdvancedMarkerElement` and `PinElement`, which replace `google.maps.Marker`. */
+export function loadGoogleMapsMarker(apiKey: string) {
+  configure(apiKey);
+  return importLibrary('marker');
 }
