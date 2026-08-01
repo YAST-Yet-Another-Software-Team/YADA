@@ -123,6 +123,24 @@ export function courierProfileOf(name: string | null | undefined, fallback = 'Co
 }
 
 /**
+ * The courier's own standing: the cached average and how many verdicts stand
+ * behind it. A rating drives behaviour only if the rider actually sees it, so
+ * their screens read the same cache the matching rubric ranks by.
+ */
+export async function getCourierRating(userId: string) {
+  const [row] = await db
+    .select({ rating: courierProfiles.rating, ratingCount: courierProfiles.ratingCount })
+    .from(courierProfiles)
+    .where(eq(courierProfiles.userId, userId))
+    .limit(1);
+
+  return {
+    average: row && row.ratingCount > 0 ? Number(row.rating) : null,
+    count: row?.ratingCount ?? 0
+  };
+}
+
+/**
  * What every courier rides.
  *
  * YADA is a motor courier service — the SRS calls it that in its first line —

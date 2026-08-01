@@ -50,6 +50,13 @@
       "when": 1784750157308,
       "tag": "0006_backfill_courier_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784750157309,
+      "tag": "0007_trip_ratings",
+      "breakpoints": true
     }
   ]
 }

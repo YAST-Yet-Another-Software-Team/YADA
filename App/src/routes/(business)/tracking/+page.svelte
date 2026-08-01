@@ -7,6 +7,7 @@
 	import Avatar from '$lib/components/ui/Avatar.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import IconButton from '$lib/components/ui/IconButton.svelte';
+	import RatingStars from '$lib/components/ui/RatingStars.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
 	import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
@@ -53,6 +54,18 @@
 	let routePath = $state<LatLng[]>([]);
 	let cancelling = $state(false);
 	let confirming = $state(false);
+
+	/**
+	 * The rating exchange (SRS 2.2.1.5). `myRating` is what the server says this
+	 * business already gave — null until they rate, whole stars after — and the
+	 * rest is the form being filled in. What's submitted feeds the courier's
+	 * rolling average, which the matching rubric ranks by.
+	 */
+	let myRating = $state<number | null>(null);
+	let ratingValue = $state(0);
+	let ratingComment = $state('');
+	let ratingBusy = $state(false);
+	let ratingError = $state('');
 	let unsub: (() => void) | null = null;
 	let refreshTimer: ReturnType<typeof setInterval> | undefined;
 	let joinedTripId: string | null = null;
@@ -148,6 +161,7 @@
 				assignedCourierId: payload.trip.assignedCourierId ?? null,
 				courier: payload.trip.courier ?? null
 			};
+			myRating = payload.trip.myRating ?? null;
 			loadError = '';
 
 			// Adopt the stored fix only until the socket starts talking. It is the
@@ -255,6 +269,41 @@
 			actionError = 'Could not confirm the pickup. Check your connection.';
 		} finally {
 			confirming = false;
+		}
+	}
+
+	async function submitRating() {
+		if (!trip || ratingValue === 0 || ratingBusy) return;
+
+		ratingBusy = true;
+		ratingError = '';
+
+		try {
+			const response = await fetch('/api/trips/rate', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					tripId: trip.id,
+					stars: ratingValue,
+					comment: ratingComment.trim() || undefined
+				})
+			});
+
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				// A conflict means another tab beat this one to it — re-read rather
+				// than argue, and the stars show up read-only.
+				ratingError = payload?.message ?? 'Could not save your rating.';
+				if (response.status === 409) await loadTrip(trip.id);
+				return;
+			}
+
+			myRating = ratingValue;
+		} catch {
+			ratingError = 'Could not save your rating. Check your connection.';
+		} finally {
+			ratingBusy = false;
 		}
 	}
 
@@ -415,8 +464,8 @@
 				{#if trip?.courier}
 					<p class="text-xs text-ink-tertiary">
 						{trip.courier.vehicleType ?? 'Rider'}{trip.courier.rating
-							? ` · ${trip.courier.rating.toFixed(1)}★`
-							: ''}
+							? ` · ${trip.courier.rating.toFixed(1)}★ (${trip.courier.ratingCount})`
+							: ' · not yet rated'}
 					</p>
 				{/if}
 			</div>
@@ -501,7 +550,42 @@
 					{cancelling ? 'Cancelling…' : 'Cancel request'}
 				</Button>
 			{:else if closed}
-				<Button variant="primary" size="sm" onclick={() => goto('/history')}>View in history</Button>
+				{#if trip?.status === 'completed'}
+					<!-- The prompt lands at the moment of delivery (SRS 2.2.1.5), while
+					     the trip is still on screen and the rider still has a face. -->
+					<div class="flex flex-col gap-3 border-t border-border pt-4">
+						{#if myRating != null}
+							<div class="flex items-center justify-between gap-3">
+								<p class="text-sm font-semibold text-ink">Your rating</p>
+								<RatingStars value={myRating} readonly size={20} />
+							</div>
+						{:else}
+							<p class="text-sm font-semibold text-ink">
+								How was {trip.courier?.name ?? 'your rider'}?
+							</p>
+							<RatingStars bind:value={ratingValue} />
+							<textarea
+								bind:value={ratingComment}
+								rows={2}
+								maxlength={500}
+								placeholder="Anything worth noting? (optional)"
+								class="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-disabled focus:border-primary"
+							></textarea>
+							{#if ratingError}
+								<Alert>{ratingError}</Alert>
+							{/if}
+							<Button
+								variant="primary"
+								size="sm"
+								disabled={ratingValue === 0 || ratingBusy}
+								onclick={submitRating}
+							>
+								{ratingBusy ? 'Saving…' : 'Rate rider'}
+							</Button>
+						{/if}
+					</div>
+				{/if}
+				<Button variant="ghost" size="sm" onclick={() => goto('/history')}>View in history</Button>
 			{/if}
 		</div>
 	</aside>

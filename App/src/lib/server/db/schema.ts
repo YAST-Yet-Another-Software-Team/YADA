@@ -1,4 +1,14 @@
-import { boolean, numeric, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  integer,
+  numeric,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid
+} from 'drizzle-orm/pg-core';
 
 export const userRoleEnum = pgEnum('user_role', ['business', 'courier']);
 
@@ -108,7 +118,12 @@ export const courierProfiles = pgTable('courier_profiles', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   vehicleType: text('vehicle_type').notNull(),
+  // The rolling average of this courier's `trip_ratings`, cached here so every
+  // screen that names a rider doesn't re-aggregate. `rating_count` rides along
+  // because an average without its weight can't be smoothed — a lone 5.0 and
+  // two hundred of them must not rank the same (see `data/matching`).
   rating: numeric('rating', { precision: 3, scale: 2 }).notNull().default('0.00'),
+  ratingCount: integer('rating_count').notNull().default(0),
   active: boolean('active').notNull().default(true),
   currentLatitude: numeric('current_latitude', { precision: 10, scale: 6 }),
   currentLongitude: numeric('current_longitude', { precision: 10, scale: 6 }),
@@ -140,6 +155,36 @@ export const deliveryRequests = pgTable('delivery_requests', {
   acceptedAt: timestamp('accepted_at', { withTimezone: true }),
   completedAt: timestamp('completed_at', { withTimezone: true })
 });
+
+/**
+ * One party's verdict on the other, per trip.
+ *
+ * Direction-agnostic (`rater` → `rated`) even though only the business→courier
+ * flow exists today: SRS 3.4 has both parties rating each other, and the
+ * courier→business half will be the same row with the columns swapped. The
+ * unique constraint is what makes "rate this trip" idempotent-hostile — a
+ * second submission is a conflict, not a louder first one.
+ */
+export const tripRatings = pgTable(
+  'trip_ratings',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tripId: uuid('trip_id')
+      .notNull()
+      .references(() => deliveryRequests.id, { onDelete: 'cascade' }),
+    raterId: text('rater_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    ratedId: text('rated_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** 1–5, whole stars. Range-checked in the migration and again by the API. */
+    stars: integer('stars').notNull(),
+    comment: text('comment'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => [unique('trip_ratings_once_per_rater').on(table.tripId, table.raterId)]
+);
 
 export const tripEvents = pgTable('trip_events', {
   id: uuid('id').defaultRandom().primaryKey(),

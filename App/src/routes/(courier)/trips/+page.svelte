@@ -18,6 +18,7 @@
         totalDistanceKm: number;
         activeTrips: number;
       };
+      rating: { average: number | null; count: number };
       historyTrips: Array<{
         id: string;
         businessName: string;
@@ -70,7 +71,7 @@
       </div>
     </div>
 
-    <div class="mt-3 grid grid-cols-3 gap-2">
+    <div class="mt-3 grid grid-cols-4 gap-2">
       <div class="rounded-lg bg-surface px-3 py-3 shadow-sm">
         <p class="text-eyebrow text-ink-tertiary">Trips</p>
         <p class="font-mono-data mt-1 text-lg font-bold text-ink">{totalTrips}</p>
@@ -82,6 +83,14 @@
       <div class="rounded-lg bg-surface px-3 py-3 shadow-sm">
         <p class="text-eyebrow text-ink-tertiary">Distance</p>
         <p class="font-mono-data mt-1 text-lg font-bold text-ink">{data.summary.totalDistanceKm.toFixed(1)} km</p>
+      </div>
+      <!-- The score businesses rate them by and matching will rank them by —
+           visible to the rider, because a number nobody sees changes nothing. -->
+      <div class="rounded-lg bg-surface px-3 py-3 shadow-sm">
+        <p class="text-eyebrow text-ink-tertiary">Rating</p>
+        <p class="font-mono-data mt-1 text-lg font-bold text-ink">
+          {data.rating.average != null ? `${data.rating.average.toFixed(1)}★` : '—'}
+        </p>
       </div>
     </div>
   </div>

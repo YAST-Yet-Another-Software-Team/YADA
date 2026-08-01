@@ -156,6 +156,8 @@ export type CourierSummary = {
   phone: string | null;
   vehicleType: string | null;
   rating: number | null;
+  /** How many ratings stand behind the average. 4.9★ over 200 trips ≠ one 5★. */
+  ratingCount: number;
 };
 
 /**
@@ -193,6 +195,8 @@ export type DashboardTripRecord = {
   status: TripStage;
   completedAt: string | null;
   notes: string | null;
+  /** The stars this business gave, or null while the trip is unrated. */
+  myRating?: number | null;
   pickupLat?: number | null;
   pickupLng?: number | null;
   dropoffLat?: number | null;

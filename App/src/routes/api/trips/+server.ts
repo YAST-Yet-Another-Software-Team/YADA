@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { apiError } from '$lib/server/api-guard';
 import { getBusinessAddress, getCourierSummary } from '$lib/server/data/business';
 import { getCourierFix } from '$lib/server/data/courier-location';
+import { ratingByRaterForTrip } from '$lib/server/data/ratings';
 import { db } from '$lib/server/db';
 import { deliveryRequests, tripEvents } from '$lib/server/db/schema';
 import { assertInZone, containsPoint } from '$lib/shared/geo/service-area';
@@ -150,6 +151,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		: null;
 	const courierFix = trip.assignedCourierId ? await getCourierFix(trip.assignedCourierId) : null;
 
+	// Whether this business has already rated the trip, so the tracking screen
+	// offers the stars once and shows them read-only ever after. Only asked for
+	// a completed trip viewed by its business — everyone else gets null.
+	const myRating =
+		user.id === trip.businessId && trip.status === 'completed'
+			? await ratingByRaterForTrip(user.id, trip.id)
+			: null;
+
 	const pickupLat = trip.pickupLatitude != null ? Number(trip.pickupLatitude) : null;
 	const pickupLng = trip.pickupLongitude != null ? Number(trip.pickupLongitude) : null;
 	const dropoffLat = trip.dropoffLatitude != null ? Number(trip.dropoffLatitude) : null;
@@ -163,6 +172,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			businessId: trip.businessId,
 			assignedCourierId: trip.assignedCourierId,
 			courier,
+			myRating,
 			courierLocation: courierFix
 				? {
 						lat: courierFix.point.lat,

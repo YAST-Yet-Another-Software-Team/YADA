@@ -58,7 +58,8 @@ export async function getCourierSummary(courierId: string): Promise<CourierSumma
       image: users.image,
       phone: users.phoneNumber,
       vehicleType: courierProfiles.vehicleType,
-      rating: courierProfiles.rating
+      rating: courierProfiles.rating,
+      ratingCount: courierProfiles.ratingCount
     })
     .from(users)
     .leftJoin(courierProfiles, eq(courierProfiles.userId, users.id))
@@ -74,7 +75,10 @@ export async function getCourierSummary(courierId: string): Promise<CourierSumma
     image: row.image,
     phone: row.phone,
     vehicleType: row.vehicleType,
-    rating: row.rating != null ? Number(row.rating) : null
+    // An average over nothing is display noise, not a score — null until the
+    // first rating actually exists.
+    rating: row.rating != null && (row.ratingCount ?? 0) > 0 ? Number(row.rating) : null,
+    ratingCount: row.ratingCount ?? 0
   };
 }
 

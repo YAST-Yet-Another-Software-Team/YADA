@@ -5,6 +5,7 @@ import type { DashboardTripRecord } from '$lib/utils/types';
 
 import { db } from '../db';
 import { businessProfiles, deliveryRequests, users } from '../db/schema';
+import { ratingsByRaterFor } from './ratings';
 
 /**
  * Names for the couriers on a set of trips.
@@ -74,6 +75,13 @@ export async function getDashboardTrips(ownerId: string) {
 		records.map((record) => record.assignedCourierId).filter((id): id is string => id != null)
 	);
 
+	// Which of these trips the business has already rated, so History offers the
+	// stars exactly once per delivery.
+	const myRatings = await ratingsByRaterFor(
+		ownerId,
+		records.map((record) => record.id)
+	);
+
 	const mapped = records.map((record) => {
 		const baseId = formatTripId(record.id);
 		const status = toDispatchStage(record.status);
@@ -95,6 +103,7 @@ export async function getDashboardTrips(ownerId: string) {
 			status,
 			completedAt,
 			notes: record.notes,
+			myRating: myRatings.get(record.id) ?? null,
 			pickupLat: record.pickupLatitude != null ? Number(record.pickupLatitude) : null,
 			pickupLng: record.pickupLongitude != null ? Number(record.pickupLongitude) : null,
 			dropoffLat: record.dropoffLatitude != null ? Number(record.dropoffLatitude) : null,

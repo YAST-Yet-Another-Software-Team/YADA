@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
+	import Alert from '$lib/components/ui/Alert.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
+	import RatingStars from '$lib/components/ui/RatingStars.svelte';
 	import SelectMenu from '$lib/components/ui/SelectMenu.svelte';
 	import StatusPill from '$lib/components/ui/StatusPill.svelte';
 	import Tabs from '$lib/components/ui/Tabs.svelte';
@@ -47,8 +49,45 @@
 		goto('/request');
 	}
 
+	/** The rating form inside the details panel; reset per trip on open. */
+	let ratingValue = $state(0);
+	let ratingBusy = $state(false);
+	let ratingError = $state('');
+
+	async function submitRating() {
+		if (!selected || ratingValue === 0 || ratingBusy) return;
+
+		ratingBusy = true;
+		ratingError = '';
+
+		try {
+			const response = await fetch('/api/trips/rate', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ tripId: selected.rawId, stars: ratingValue })
+			});
+
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				ratingError = payload?.message ?? 'Could not save your rating.';
+				return;
+			}
+
+			// The open panel updates in place; the list behind it re-reads so the
+			// same trip doesn't offer stars twice.
+			selected = { ...selected, myRating: ratingValue };
+			await invalidateAll();
+		} catch {
+			ratingError = 'Could not save your rating. Check your connection.';
+		} finally {
+			ratingBusy = false;
+		}
+	}
+
 	function openDetails(trip: DashboardTripRecord) {
 		selected = trip;
+		ratingValue = 0;
+		ratingError = '';
 	}
 
 	function closeDetails() {
@@ -207,6 +246,35 @@
 					<dd class="mt-1 text-ink-secondary">{selected.notes ?? '—'}</dd>
 				</div>
 			</dl>
+
+			{#if selected.status === 'delivered' && selected.rider}
+				<!-- SRS 2.2.1.5 — the catch-up surface for a trip whose completion the
+				     business didn't watch happen. -->
+				<div class="mt-6 border-t border-border pt-4">
+					{#if selected.myRating != null}
+						<div class="flex items-center justify-between gap-3">
+							<p class="text-sm font-semibold text-ink">Your rating</p>
+							<RatingStars value={selected.myRating} readonly size={20} />
+						</div>
+					{:else}
+						<div class="flex flex-col gap-3">
+							<p class="text-sm font-semibold text-ink">How was {selected.rider}?</p>
+							<RatingStars bind:value={ratingValue} />
+							{#if ratingError}
+								<Alert>{ratingError}</Alert>
+							{/if}
+							<Button
+								variant="primary"
+								size="sm"
+								disabled={ratingValue === 0 || ratingBusy}
+								onclick={submitRating}
+							>
+								{ratingBusy ? 'Saving…' : 'Rate rider'}
+							</Button>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</aside>
 	</div>
 {/if}
