@@ -43,6 +43,13 @@
       "when": 1784750157307,
       "tag": "0005_trip_status_picked_up",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784750157308,
+      "tag": "0006_backfill_courier_profiles",
+      "breakpoints": true
     }
   ]
 }

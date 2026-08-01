@@ -269,8 +269,8 @@
 				<div>
 					<h1 class="text-xl font-semibold text-ink">Where do you dispatch from?</h1>
 					<p class="mt-1 text-sm text-ink-secondary">
-						We don't have an address on file for this account. Search or pin it once, and
-						every request after this leaves from there.
+						Set this once and every delivery you request leaves from there. Search your
+						address, or tap the map to place the pin exactly.
 					</p>
 				</div>
 

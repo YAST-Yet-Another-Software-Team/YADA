@@ -151,6 +151,8 @@ export type CourierSummary = {
   id: string;
   name: string;
   initials: string;
+  /** Their profile photo, as a data URL. SRS 3.3: the business sees it on acceptance. */
+  image: string | null;
   phone: string | null;
   vehicleType: string | null;
   rating: number | null;

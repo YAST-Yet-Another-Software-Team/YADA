@@ -55,6 +55,7 @@ export async function getCourierSummary(courierId: string): Promise<CourierSumma
     .select({
       id: users.id,
       name: users.name,
+      image: users.image,
       phone: users.phoneNumber,
       vehicleType: courierProfiles.vehicleType,
       rating: courierProfiles.rating
@@ -70,6 +71,7 @@ export async function getCourierSummary(courierId: string): Promise<CourierSumma
     id: row.id,
     name: row.name,
     initials: initials(row.name, 'C'),
+    image: row.image,
     phone: row.phone,
     vehicleType: row.vehicleType,
     rating: row.rating != null ? Number(row.rating) : null

@@ -5,7 +5,7 @@ import { initials } from '$lib/shared/text';
 import type { CourierRequest, CourierTrip } from '$lib/utils/types';
 
 import { db } from '../db';
-import { deliveryRequests, users } from '../db/schema';
+import { courierProfiles, deliveryRequests, users } from '../db/schema';
 
 export type CourierHomeSummary = {
   completedTrips: number;
@@ -120,6 +120,51 @@ function summarize(trips: CourierTrip[], activeTrips: number): CourierHomeSummar
 export function courierProfileOf(name: string | null | undefined, fallback = 'Courier') {
   const displayName = name || fallback;
   return { name: displayName, initials: initials(displayName, 'C') };
+}
+
+/**
+ * What every courier rides.
+ *
+ * YADA is a motor courier service — the SRS calls it that in its first line —
+ * so the vehicle is a property of the product, not a question for the sign-up
+ * form. The column stays because the schema has it and the business-facing
+ * screens read it; it simply isn't asked for.
+ */
+export const COURIER_VEHICLE_TYPE = 'Motorbike';
+
+/**
+ * Create the courier's profile row, at sign-up.
+ *
+ * Nothing created one before: only the dev seed did, so a courier who actually
+ * registered had a user record and no profile. `POST /api/location` writes the
+ * live position into this table, and an update against a row that isn't there
+ * changes nothing — their position was silently dropped on every fix, which is
+ * also why the business map and the proximity checks had nothing to read.
+ *
+ * An upsert because `user_id` is not unique on this table, so a retried sign-up
+ * would otherwise leave two rows and make "the courier's profile" ambiguous.
+ */
+export async function saveCourierProfile(
+  userId: string,
+  input: { vehicleType?: string } = {}
+) {
+  const vehicleType = input.vehicleType ?? COURIER_VEHICLE_TYPE;
+
+  const [existing] = await db
+    .select({ id: courierProfiles.id })
+    .from(courierProfiles)
+    .where(eq(courierProfiles.userId, userId))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(courierProfiles)
+      .set({ vehicleType, updatedAt: new Date() })
+      .where(eq(courierProfiles.id, existing.id));
+    return;
+  }
+
+  await db.insert(courierProfiles).values({ userId, vehicleType });
 }
 
 // ---------------------------------------------------------------------------

@@ -398,8 +398,12 @@
 		{/if}
 
 		<div class="flex items-center gap-3">
+			<!-- SRS 3.3: on acceptance the business sees the courier's name, photo and
+			     rating. The photo is whatever they registered with. -->
 			<Avatar
 				initials={trip?.courier?.initials ?? '··'}
+				src={trip?.courier?.image ?? null}
+				alt={trip?.courier ? `${trip.courier.name}, your rider` : ''}
 				status={searching ? 'offline' : 'online'}
 				size={48}
 			/>
