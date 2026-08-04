@@ -14,7 +14,14 @@
 	import type { LatLng } from '$lib/utils/types';
 	import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
-	import { joinTripRoom, leaveTripRoom, LOCATION_STALE_MS, onRiderLocation } from '../realtime';
+	import {
+		isRealtimeEnabled,
+		joinTripRoom,
+		leaveTripRoom,
+		LOCATION_STALE_MS,
+		onRiderLocation,
+		setRealtimeEnabled
+	} from '../realtime';
 	import { DISPATCH_TIMEOUT_SECONDS, ringForElapsed, ringLabel } from '$lib/shared/dispatch';
 	import { isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
 	import type { CourierSummary, RiderLocationEvent, TripStatus } from '$lib/utils/types';
@@ -34,6 +41,12 @@
 	};
 
 	const POLL_MS = 4000;
+
+	// Deployments without a Socket.IO server (Cloudflare Workers) say so through
+	// the root layout; without this the client would retry a connection forever.
+	// This page is the only consumer of the socket layer, so it is the only place
+	// that has to tell it. See DEPLOYMENT.md §5.
+	setRealtimeEnabled(page.data.realtimeEnabled !== false);
 
 	const STATUS_LABELS: Record<TripStatus, string> = {
 		requested: 'Waiting for a rider',
@@ -190,13 +203,25 @@
 			dispatchFetchedAt = Date.now();
 			loadError = '';
 
-			// Adopt the stored fix only until the socket starts talking. It is the
-			// rider's last known position, which is exactly what the map needs at the
-			// moment of a match and exactly what a live fix should replace.
+			// The stored fix is the rider's last known position — exactly what the map
+			// needs at the moment of a match. With a socket listening it is only a
+			// seed, since a live fix arrives sooner and should win. Without one it is
+			// the only source there is, so it has to be taken on every poll, and
+			// through the same handler a live fix takes: the dot moves, and the line
+			// is redrawn if the rider has left it.
 			const fix = payload.trip.courierLocation;
-			if (fix && !riderPoint) {
-				riderPoint = { lat: fix.lat, lng: fix.lng };
-				riderStale = Date.now() - new Date(fix.recordedAt).getTime() > LOCATION_STALE_MS;
+			if (fix) {
+				if (!isRealtimeEnabled()) {
+					handleRiderLocation({
+						tripId: trip.id,
+						lat: fix.lat,
+						lng: fix.lng,
+						recordedAt: fix.recordedAt
+					});
+				} else if (!riderPoint) {
+					riderPoint = { lat: fix.lat, lng: fix.lng };
+					riderStale = Date.now() - new Date(fix.recordedAt).getTime() > LOCATION_STALE_MS;
+				}
 			}
 
 			if (etaText === '—' && trip.estimatedDurationMinutes) {
