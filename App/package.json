@@ -13,7 +13,7 @@
     "build:node": "BUILD_TARGET=node vite build",
     "start": "npm run build:node && node server.js",
     "cf:dev": "vite build && wrangler dev",
-    "deploy": "vite build && wrangler deploy",
+    "deploy": "vite build && wrangler deploy --keep-vars",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "lint": "prettier --check .",
     "format": "prettier --write .",

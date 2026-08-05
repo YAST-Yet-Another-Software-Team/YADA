@@ -18,12 +18,18 @@
     // where vite-plugin-socket-io does attach one.
     "REALTIME_ENABLED": "false",
     // Must exactly match the origin the browser uses, or sign-ins appear to
-    // succeed and then don't stick. Update after the first deploy tells you the
-    // workers.dev subdomain.
-    "BETTER_AUTH_URL": "https://yada.workers.dev"
+    // succeed and then don't stick.
+    "BETTER_AUTH_URL": "https://yada.flaviosobbin04.workers.dev",
+    "SOCKET_CORS_ORIGIN": "https://yada.flaviosobbin04.workers.dev"
   }
   // Secrets (never in this file): DATABASE_URL — the Neon *pooled* string,
-  // BETTER_AUTH_SECRET, GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_MAP_ID,
-  // OAUTH_GOOGLE_CLIENT_ID, OAUTH_GOOGLE_CLIENT_SECRET.
+  // BETTER_AUTH_SECRET, BETTER_AUTH_API_KEY, GOOGLE_MAPS_API_KEY,
+  // GOOGLE_MAPS_MAP_ID, OAUTH_GOOGLE_CLIENT_ID, OAUTH_GOOGLE_CLIENT_SECRET.
   // Set with: wrangler secret put <NAME>
+  //
+  // ⚠️ These are currently set as *plaintext dashboard variables*, not secrets.
+  // A CLI `npm run deploy` reconciles vars against this file, so it would drop
+  // every dashboard-only variable — including DATABASE_URL — and take the
+  // deployment down. Move them to `wrangler secret put` before deploying from
+  // the CLI; secrets are stored separately and survive a deploy.
 }
