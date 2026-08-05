@@ -70,9 +70,9 @@
   );
 
   async function updateRoute(from: LatLng) {
-    if (!maps.enabled) return;
+    if (!maps.routingEnabled) return;
     try {
-      const route = await computeDrivingRoute(maps.apiKey, from, pickupPoint, { force: true });
+      const route = await computeDrivingRoute(from, pickupPoint, { force: true });
       routePath = route.path;
       etaText = route.durationText;
     } catch {

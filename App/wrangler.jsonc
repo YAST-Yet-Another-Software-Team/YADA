@@ -1,6 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "yada",
+  // A SEPARATE Worker from the Google build on `deployment`, deliberately.
+  // Both stacks stay deployed side by side so the OSM one can be compared
+  // against the Google one on the same database and the same accounts. Do not
+  // rename this to `yada` on this branch — that would overwrite the other
+  // deployment rather than sit beside it.
+  "name": "yada-osm",
   "main": ".svelte-kit/cloudflare/_worker.js",
   "compatibility_date": "2026-08-04",
   // Better Auth and Drizzle both pull Node built-ins.
@@ -18,18 +23,30 @@
     // where vite-plugin-socket-io does attach one.
     "REALTIME_ENABLED": "false",
     // Must exactly match the origin the browser uses, or sign-ins appear to
-    // succeed and then don't stick.
-    "BETTER_AUTH_URL": "https://yada.flaviosobbin04.workers.dev",
-    "SOCKET_CORS_ORIGIN": "https://yada.flaviosobbin04.workers.dev"
+    // succeed and then don't stick. This is the OSM origin, not the Google one.
+    "BETTER_AUTH_URL": "https://yada-osm.flaviosobbin04.workers.dev",
+    "SOCKET_CORS_ORIGIN": "https://yada-osm.flaviosobbin04.workers.dev",
+    // MapLibre style document. OpenFreeMap serves OSM tiles with no key, no
+    // quota and no sign-up; swap for a Protomaps or self-hosted style URL to
+    // change the cartography. Blank it and the map falls back to the grid
+    // placeholder, which is the only way `maps.enabled` is false on this stack.
+    "MAP_STYLE_URL": "https://tiles.openfreemap.org/styles/liberty"
   }
-  // Secrets (never in this file): DATABASE_URL — the Neon *pooled* string,
-  // BETTER_AUTH_SECRET, BETTER_AUTH_API_KEY, GOOGLE_MAPS_API_KEY,
-  // GOOGLE_MAPS_MAP_ID, OAUTH_GOOGLE_CLIENT_ID, OAUTH_GOOGLE_CLIENT_SECRET.
-  // Set with: wrangler secret put <NAME>
+  // Secrets (never in this file), set with `wrangler secret put <NAME>`:
+  //   DATABASE_URL           the Neon *pooled* string (contains -pooler)
+  //   BETTER_AUTH_SECRET
+  //   BETTER_AUTH_API_KEY
+  //   OAUTH_GOOGLE_CLIENT_ID
+  //   OAUTH_GOOGLE_CLIENT_SECRET
+  //   ORS_API_KEY            OpenRouteService; absent means routingEnabled is
+  //                          false and the app falls back to no ETA rather
+  //                          than erroring. It is a secret and not a var
+  //                          because ORS keys cannot be referrer-locked, which
+  //                          is the whole reason /api/geo/route exists.
   //
-  // ⚠️ These are currently set as *plaintext dashboard variables*, not secrets.
-  // A CLI `npm run deploy` reconciles vars against this file, so it would drop
-  // every dashboard-only variable — including DATABASE_URL — and take the
-  // deployment down. Move them to `wrangler secret put` before deploying from
-  // the CLI; secrets are stored separately and survive a deploy.
+  // No GOOGLE_MAPS_* here: this stack has no browser map credential at all.
+  //
+  // Unlike the `yada` worker, nothing on this one was ever set as a plaintext
+  // dashboard variable — set them as secrets from the start and `npm run deploy`
+  // needs no --keep-vars guard.
 }

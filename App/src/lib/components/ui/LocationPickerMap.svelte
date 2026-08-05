@@ -15,8 +15,8 @@
 
   /**
    * Module scope, not instance scope: the caches have to outlive a single visit
-   * to a picker, or navigating away and back re-bills every lookup against the
-   * Maps quota. Pickers are the only thing in the app that geocodes.
+   * to a picker, or navigating away and back re-runs every lookup against
+   * Photon's rate limit. Pickers are the only thing in the app that geocodes.
    */
   const geocodeCache = createClientGeocodeCache();
   const searchCache = new TtlCache<CachedGeocode[]>({ persistKey: 'yada:address-search-v1' });
@@ -32,15 +32,16 @@
    *
    *   1. the landmark table — free, curated, and the name people here use;
    *   2. the cache — free, and holds a month of previously named cells;
-   *   3. the Geocoding API — billed once, then cached;
+   *   3. Photon, then Nominatim — free too, but rate-limited and remote, so the
+   *      answer is cached the moment it arrives;
    *   4. "Near <landmark>" — for a point the geocoder couldn't name, or named
    *      with a Plus Code, which is coordinates in another costume;
    *   5. a plain "Pinned location", which at least reads as a thing.
    *
-   * The key is a parameter because module scope cannot read component context —
-   * the same reason `computeDrivingRoute` takes one.
+   * Nothing here is billed any more, but the order still earns its keep: steps 1
+   * and 2 answer instantly and offline, which is what the pin actually needs.
    */
-  async function nameForPoint(apiKey: string, point: LatLng, mapsEnabled: boolean) {
+  async function nameForPoint(point: LatLng, mapsEnabled: boolean) {
     const known = describePoint(point);
     if (known && !known.startsWith('Near ')) return { address: known, failed: false };
 
@@ -51,7 +52,7 @@
     if (!mapsEnabled) return { address: known ?? UNNAMED_POINT, failed: false };
 
     try {
-      const entry = await lookupAddress(apiKey, point);
+      const entry = await lookupAddress(point);
 
       // Prefer a landmark we know over a Plus Code we don't. Either way the
       // label that gets shown is the label that gets cached, so the next tap in
@@ -65,12 +66,12 @@
     }
   }
 
-  async function searchAddress(apiKey: string, query: string): Promise<CachedGeocode[]> {
+  async function searchAddress(query: string): Promise<CachedGeocode[]> {
     const key = forwardCacheKey(query);
     const cached = searchCache.get(key);
     if (cached) return cached;
 
-    const results = await forwardGeocode(apiKey, query);
+    const results = await forwardGeocode(query);
     if (results.length > 0) searchCache.set(key, results);
 
     return results;
@@ -84,8 +85,8 @@
    * Both, deliberately. Typing is how you get near the right place quickly;
    * tapping is how you say which side of the road, which gate, which block —
    * things an address string around KNUST doesn't distinguish. Whichever route
-   * is taken, the output is the same: a coordinate, plus whatever Google calls
-   * it, which is what a delivery actually needs.
+   * is taken, the output is the same: a coordinate, plus whatever OSM calls it,
+   * which is what a delivery actually needs.
    *
    * Renders the map pane and its search bar, filling its positioned parent. The
    * settled address is bound out rather than shown here, because the callers put
@@ -152,9 +153,10 @@
   let searched = $state(false);
 
   /**
-   * A row in the suggestion list: either a Places prediction, which costs a
-   * lookup to resolve, or a landmark from the table, which is already a
-   * coordinate and a name and so costs nothing at all.
+   * A row in the suggestion list: either a Photon prediction or a landmark from
+   * the table. Both already carry a coordinate and a name, so neither costs a
+   * second lookup to take — the split survives because the table answers
+   * offline and instantly, and so still goes first.
    */
   type PickerSuggestion =
     | ({ kind: 'place' } & PlaceSuggestion)
@@ -210,7 +212,7 @@
 
     resolving = true;
     try {
-      const named = await nameForPoint(maps.apiKey, next, maps.enabled);
+      const named = await nameForPoint(next, maps.enabled);
       address = named.address;
 
       // A pin that couldn't be named is still a valid pin — it keeps whatever
@@ -265,7 +267,7 @@
       suggesting = true;
 
       try {
-        const results = await fetchPlaceSuggestions(maps.apiKey, text);
+        const results = await fetchPlaceSuggestions(text);
         if (request !== suggestRequest) return;
 
         // Local names keep the top of the list; predictions fill in behind them,
@@ -356,7 +358,7 @@
     matches = [];
 
     try {
-      const results = await searchAddress(maps.apiKey, text);
+      const results = await searchAddress(text);
       // Out-of-zone matches are dropped here rather than offered and then
       // refused on selection.
       const inZone = results.filter((result) => containsPoint({ lat: result.lat, lng: result.lng }));

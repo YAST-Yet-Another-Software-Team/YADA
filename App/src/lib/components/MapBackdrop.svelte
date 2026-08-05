@@ -13,8 +13,25 @@
 </script>
 
 <script lang="ts">
+  /**
+   * The map pane, on MapLibre GL JS with OpenStreetMap tiles.
+   *
+   * The props contract is deliberately identical to the Google implementation
+   * this replaces — a dozen call sites depend on it, and preserving it is what
+   * made the swap a single-file change. `polylinePath` stays `$bindable` for the
+   * same reason, even though nothing here writes back to it.
+   *
+   * MapLibre differs from the Google SDK in two ways that shape the code below.
+   * It is a module import rather than a script the page loads at runtime, so
+   * there is no loader and no API key — but it must be imported dynamically,
+   * because it touches `window` at module scope and would break SSR. And it has
+   * no marker/polyline objects with a `map` property: markers are DOM elements
+   * attached to the map, and a line is a GeoJSON source with a layer over it,
+   * which is why the route is updated by calling `setData` rather than by
+   * tearing down and rebuilding.
+   */
   import { onDestroy, onMount, type Snippet } from 'svelte';
-  import { loadGoogleMaps, loadGoogleMapsMarker } from '$lib/client/maps/google-maps-loader';
+  import type { GeoJSONSource, LngLatLike, Map as MapLibreMap, Marker } from 'maplibre-gl';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
   import type { LatLng } from '$lib/utils/types';
@@ -44,14 +61,13 @@
     onpick?: (detail: { lat: number; lng: number }) => void;
   } = $props();
 
+  const ROUTE_SOURCE = 'yada-route';
+  const ROUTE_LAYER = 'yada-route-line';
+
   let mapElement = $state<HTMLDivElement | null>(null);
   let mapState = $state<'fallback' | 'loading' | 'ready' | 'error'>('fallback');
-  let map = $state<google.maps.Map | null>(null);
-  let clickListener: google.maps.MapsEventListener | null = null;
-  let googleMaps = $state<typeof google.maps | null>(null);
-  let markerApi = $state<google.maps.MarkerLibrary | null>(null);
-  let renderedMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
-  let routePolyline: google.maps.Polyline | null = null;
+  let map: MapLibreMap | null = null;
+  let renderedMarkers: Marker[] = [];
   let lastCenteredKey = '';
   const maps = getMapsConfig();
 
@@ -65,125 +81,66 @@
     return `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
   }
 
-  function panToPoint(point: LatLng, nextZoom?: number | null) {
-    if (!map) return;
-    map.panTo(point);
-    const targetZoom = nextZoom ?? Math.max(map.getZoom() ?? KUMASI_DEFAULT_ZOOM, 16);
-    map.setZoom(targetZoom);
+  /** MapLibre speaks [lng, lat]; the rest of the app speaks {lat, lng}. */
+  function toLngLat(point: LatLng): LngLatLike {
+    return [point.lng, point.lat];
   }
 
-  onMount(async () => {
-    if (!maps.enabled) {
-      mapState = 'fallback';
-      return;
-    }
+  function panToPoint(point: LatLng, nextZoom?: number | null) {
+    if (!map) return;
+    map.easeTo({
+      center: toLngLat(point),
+      zoom: nextZoom ?? Math.max(map.getZoom(), 16),
+      duration: 400
+    });
+  }
 
-    if (!mapElement) {
-      return;
-    }
-
-    mapState = 'loading';
-
-    try {
-      const [mapsLibrary, markerLibrary] = await Promise.all([
-        loadGoogleMaps(maps.apiKey),
-        loadGoogleMapsMarker(maps.apiKey)
-      ]);
-
-      if (!mapElement) {
-        return;
-      }
-
-      googleMaps = window.google.maps;
-      markerApi = markerLibrary;
-
-      map = new mapsLibrary.Map(mapElement, {
-        center: center ?? KUMASI_CENTER,
-        zoom: zoom ?? KUMASI_DEFAULT_ZOOM,
-        // AdvancedMarkerElement renders nothing without a Map ID.
-        mapId: maps.mapId,
-        disableDefaultUI: true,
-        clickableIcons: false,
-        gestureHandling: 'greedy',
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false
-      });
-
-      if (interactive) {
-        clickListener = map.addListener('click', (event: google.maps.MapMouseEvent) => {
-          if (!event.latLng) {
-            return;
-          }
-
-          onpick?.({
-            lat: event.latLng.lat(),
-            lng: event.latLng.lng()
-          });
-        });
-      }
-
-      mapState = 'ready';
-      lastCenteredKey = centerKey(center ?? KUMASI_CENTER);
-      syncMarkers();
-      syncPolyline();
-    } catch (error) {
-      console.error('Unable to load Google Maps.', error);
-      mapState = 'error';
-    }
-  });
-
-  /** A dot for roles that aren't a dropped pin — riders and businesses. */
-  function circleContent(marker: MapMarker, color: string) {
-    const diameter = (marker.role === 'rider' ? 12 : 10) * 2;
+  /**
+   * A teardrop for a dropped pin, a dot for everything else — the same visual
+   * split the Google build drew with PinElement and a styled div.
+   */
+  function markerElement(marker: MapMarker) {
+    const color = markerColor(marker);
+    const isPin = marker.role === 'search' || marker.role === 'dropoff' || marker.role === 'pickup';
     const element = document.createElement('div');
 
-    element.style.width = `${diameter}px`;
-    element.style.height = `${diameter}px`;
-    element.style.borderRadius = '50%';
-    element.style.background = color;
-    element.style.border = `2px solid ${MAP_COLORS.surface}`;
-    element.style.boxSizing = 'content-box';
+    if (isPin) {
+      element.innerHTML = `
+        <svg width="26" height="34" viewBox="0 0 26 34" aria-hidden="true">
+          <path d="M13 33C13 33 25 20.5 25 13A12 12 0 1 0 1 13c0 7.5 12 20 12 20Z"
+                fill="${color}" stroke="${MAP_COLORS.surface}" stroke-width="2"/>
+          <circle cx="13" cy="13" r="4.5" fill="${MAP_COLORS.surface}"/>
+        </svg>`;
+      element.style.transform = 'translateY(-6px)';
+    } else {
+      const diameter = (marker.role === 'rider' ? 12 : 10) * 2;
+      element.style.width = `${diameter}px`;
+      element.style.height = `${diameter}px`;
+      element.style.borderRadius = '50%';
+      element.style.background = color;
+      element.style.border = `2px solid ${MAP_COLORS.surface}`;
+      element.style.boxSizing = 'content-box';
+    }
+
+    // Staleness is expressed on the element, as it was before.
+    element.style.opacity = marker.stale ? '0.45' : '1';
+    if (marker.label) element.title = marker.label;
 
     return element;
   }
 
   function syncMarkers() {
-    renderedMarkers.forEach((marker) => (marker.map = null));
+    renderedMarkers.forEach((marker) => marker.remove());
     renderedMarkers = [];
 
-    const currentMarkerApi = markerApi;
+    const instance = map;
+    if (!instance) return;
 
-    if (!map || !currentMarkerApi) {
-      return;
-    }
-
-    renderedMarkers = markers.map((marker) => {
-      const color = markerColor(marker);
-      const isPin = marker.role === 'search' || marker.role === 'dropoff' || marker.role === 'pickup';
-
-      // PinElement extends HTMLElement, so it is its own content.
-      const content: HTMLElement = isPin
-        ? new currentMarkerApi.PinElement({
-            background: color,
-            borderColor: MAP_COLORS.surface,
-            glyphColor: MAP_COLORS.surface,
-            scale: 1.2
-          })
-        : circleContent(marker, color);
-
-      // AdvancedMarkerElement has no opacity option — it takes a DOM element,
-      // so staleness is expressed on the element itself.
-      content.style.opacity = marker.stale ? '0.45' : '1';
-
-      return new currentMarkerApi.AdvancedMarkerElement({
-        map,
-        position: { lat: marker.lat, lng: marker.lng },
-        title: marker.label,
-        zIndex: marker.role === 'search' || marker.role === 'dropoff' ? 999 : 10,
-        content
-      });
-    });
+    renderedMarkers = markers.map((marker) =>
+      new MarkerCtor({ element: markerElement(marker), anchor: 'center' })
+        .setLngLat(toLngLat(marker))
+        .addTo(instance)
+    );
 
     if (followId) {
       const target = markers.find((m) => m.id === followId);
@@ -193,24 +150,104 @@
     }
   }
 
+  /**
+   * Update the route line in place.
+   *
+   * The source and layer are created once, when the style loads, and only their
+   * data changes afterwards — removing and re-adding a layer on every fix makes
+   * the line flicker, and mid-trip this runs whenever the rider leaves it.
+   */
   function syncPolyline() {
-    if (routePolyline) {
-      routePolyline.setMap(null);
-      routePolyline = null;
-    }
+    const instance = map;
+    if (!instance || !instance.isStyleLoaded()) return;
 
-    if (!map || !googleMaps || polylinePath.length < 2) {
+    const source = instance.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
+    if (!source) return;
+
+    source.setData({
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'LineString',
+        coordinates: polylinePath.length > 1 ? polylinePath.map((p) => [p.lng, p.lat]) : []
+      }
+    });
+  }
+
+  // Held at module-instance scope because `syncMarkers` needs the constructor and
+  // the dynamic import that supplies it resolves inside onMount.
+  let MarkerCtor: typeof Marker;
+
+  onMount(async () => {
+    if (!maps.enabled || !mapElement) {
+      mapState = 'fallback';
       return;
     }
 
-    routePolyline = new googleMaps.Polyline({
-      map,
-      path: polylinePath,
-      strokeColor: MAP_COLORS.primary,
-      strokeOpacity: 0.9,
-      strokeWeight: 4
-    });
-  }
+    mapState = 'loading';
+
+    try {
+      // Dynamic: maplibre-gl reads `window` at module scope, so a static import
+      // would break SSR for every page that shows a map.
+      const maplibre = await import('maplibre-gl');
+      await import('maplibre-gl/dist/maplibre-gl.css');
+
+      if (!mapElement) return;
+
+      MarkerCtor = maplibre.Marker;
+
+      map = new maplibre.Map({
+        container: mapElement,
+        style: maps.styleUrl,
+        center: toLngLat(center ?? KUMASI_CENTER),
+        zoom: zoom ?? KUMASI_DEFAULT_ZOOM,
+        attributionControl: { compact: true },
+        // The Google build set `disableDefaultUI`; these are the equivalents.
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchZoomRotate: true
+      });
+
+      map.touchZoomRotate.disableRotation();
+
+      if (interactive) {
+        map.on('click', (event) => {
+          onpick?.({ lat: event.lngLat.lat, lng: event.lngLat.lng });
+        });
+        map.getCanvas().style.cursor = 'crosshair';
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        map?.once('load', () => resolve());
+        map?.once('error', (event) => reject(event.error ?? new Error('Map failed to load.')));
+      });
+
+      // Create the route source and layer once; syncPolyline only sets data.
+      map.addSource(ROUTE_SOURCE, {
+        type: 'geojson',
+        data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } }
+      });
+      map.addLayer({
+        id: ROUTE_LAYER,
+        type: 'line',
+        source: ROUTE_SOURCE,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': MAP_COLORS.primary,
+          'line-width': 4,
+          'line-opacity': 0.9
+        }
+      });
+
+      mapState = 'ready';
+      lastCenteredKey = centerKey(center ?? KUMASI_CENTER);
+      syncMarkers();
+      syncPolyline();
+    } catch (error) {
+      console.error('Unable to load the map.', error);
+      mapState = 'error';
+    }
+  });
 
   $effect(() => {
     if (mapState === 'ready' && map && center) {
@@ -243,9 +280,10 @@
   });
 
   onDestroy(() => {
-    clickListener?.remove();
-    renderedMarkers.forEach((marker) => (marker.map = null));
-    routePolyline?.setMap(null);
+    renderedMarkers.forEach((marker) => marker.remove());
+    renderedMarkers = [];
+    map?.remove();
+    map = null;
   });
 </script>
 
@@ -254,7 +292,6 @@
     bind:this={mapElement}
     class="absolute inset-0 transition-opacity duration-300"
     class:opacity-0={mapState !== 'ready'}
-    style:cursor={interactive ? 'crosshair' : 'default'}
   ></div>
 
   {#if mapState !== 'ready'}
@@ -264,11 +301,11 @@
     >
       <div class="font-mono-data absolute left-4 top-4 text-xs tracking-wide text-neutral-400">
         {#if !maps.enabled}
-          MAP PLACEHOLDER — set GOOGLE_MAPS_API_KEY
+          MAP PLACEHOLDER — set MAP_STYLE_URL
         {:else if mapState === 'loading'}
           LOADING KUMASI MAP…
         {:else if mapState === 'error'}
-          GOOGLE MAPS FAILED — FALLING BACK TO MOCK MAP
+          MAP TILES FAILED — FALLING BACK TO MOCK MAP
         {:else}
           MAPS TEMPORARILY DISABLED
         {/if}

@@ -67,9 +67,9 @@
   );
 
   async function updateRoute(from: LatLng) {
-    if (!maps.enabled) return;
+    if (!maps.routingEnabled) return;
     try {
-      const route = await computeDrivingRoute(maps.apiKey, from, dropoffPoint, { force: true });
+      const route = await computeDrivingRoute(from, dropoffPoint, { force: true });
       routePath = route.path;
       etaText = route.durationText;
     } catch {

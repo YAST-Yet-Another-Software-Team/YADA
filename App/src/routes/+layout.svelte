@@ -14,12 +14,12 @@
   // svelte-ignore state_referenced_locally
   const session = createSession(data.user);
   // svelte-ignore state_referenced_locally
-  const maps = createMapsConfig(data.googleMapsApiKey, data.googleMapsMapId);
+  const maps = createMapsConfig(data.mapStyleUrl, data.routingEnabled);
 
   // And keep both in step if a later navigation reruns the layout load.
   $effect(() => {
     session.hydrate(data.user);
-    maps.hydrate(data.googleMapsApiKey, data.googleMapsMapId);
+    maps.hydrate(data.mapStyleUrl, data.routingEnabled);
   });
 </script>
 
