@@ -13,7 +13,7 @@
 	} = $props();
 </script>
 
-<div class="flex flex-1 flex-col bg-neutral-100">
+<div class="flex flex-1 flex-col bg-surface-sunken">
 	<header class="relative flex items-center justify-center px-4 pb-2 pt-4">
 		<a
 			href={backHref}

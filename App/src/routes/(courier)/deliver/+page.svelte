@@ -197,7 +197,7 @@
     </div>
 
     {#if data.trip.notes}
-      <p class="rounded-lg bg-neutral-50 px-3 py-2 text-sm text-ink-secondary">{data.trip.notes}</p>
+      <p class="rounded-lg bg-bg px-3 py-2 text-sm text-ink-secondary">{data.trip.notes}</p>
     {/if}
 
     {#if actionError}

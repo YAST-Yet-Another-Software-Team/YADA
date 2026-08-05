@@ -1,0 +1,12 @@
+{
+  // `@tailwind` and `@layer` are PostCSS directives that Tailwind compiles away
+  // before a browser ever sees them. VS Code's built-in CSS language service
+  // does not know the Tailwind plugin exists, so it reports every one of them as
+  // `unknownAtRules`. The rules are valid; only the linter is uninformed.
+  //
+  // Install "Tailwind CSS IntelliSense" (bradlc.vscode-tailwindcss) for token
+  // completion on top of this — see .vscode/extensions.json.
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore"
+}

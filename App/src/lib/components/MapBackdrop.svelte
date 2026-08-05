@@ -289,7 +289,7 @@
   });
 </script>
 
-<div class="absolute inset-0 overflow-hidden bg-neutral-100">
+<div class="absolute inset-0 overflow-hidden bg-surface-sunken">
   <div
     bind:this={mapElement}
     class="absolute inset-0 transition-opacity duration-300"
@@ -299,10 +299,10 @@
 
   {#if mapState !== 'ready'}
     <div
-      class="absolute inset-0 overflow-hidden bg-neutral-100"
-      style="background-image: linear-gradient(var(--neutral-200) 1px, transparent 1px), linear-gradient(90deg, var(--neutral-200) 1px, transparent 1px); background-size: 28px 28px;"
+      class="absolute inset-0 overflow-hidden bg-surface-sunken"
+      style="background-image: linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px); background-size: 28px 28px;"
     >
-      <div class="font-mono-data absolute left-4 top-4 text-xs tracking-wide text-neutral-400">
+      <div class="font-mono-data absolute left-4 top-4 text-xs tracking-wide text-ink-tertiary">
         {#if !maps.enabled}
           MAP PLACEHOLDER — set GOOGLE_MAPS_API_KEY
         {:else if mapState === 'loading'}

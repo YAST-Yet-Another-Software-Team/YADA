@@ -36,7 +36,7 @@
 		</div>
 		<a
 			href="/profile/edit"
-			class="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink hover:bg-neutral-50"
+			class="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink hover:bg-wash"
 		>
 			Edit
 		</a>

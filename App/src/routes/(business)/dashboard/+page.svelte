@@ -250,7 +250,7 @@
         </div>
         <button
           type="button"
-          class="rounded-md px-2 py-1 text-sm font-semibold text-ink-secondary hover:bg-neutral-100"
+          class="rounded-md px-2 py-1 text-sm font-semibold text-ink-secondary hover:bg-wash"
           onclick={closePanel}
         >
           Close

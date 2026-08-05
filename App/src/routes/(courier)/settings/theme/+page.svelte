@@ -2,9 +2,7 @@
 	import { onMount } from 'svelte';
 	import SettingsSubpage from '$lib/components/SettingsSubpage.svelte';
 	import IconCheck from '~icons/mdi/check-bold';
-
-	const THEME_KEY = 'yada.courierTheme';
-	type Theme = 'system' | 'light' | 'dark';
+	import { readTheme, setTheme, type Theme } from '$lib/client/theme';
 
 	let theme = $state<Theme>('system');
 
@@ -14,14 +12,15 @@
 		{ id: 'dark', label: 'Dark', hint: 'Always dark appearance' }
 	];
 
+	// Read rather than apply: the inline script in app.html has already put the
+	// saved choice on <html>. This only syncs the checkmark to it.
 	onMount(() => {
-		const saved = localStorage.getItem(THEME_KEY);
-		if (saved === 'light' || saved === 'dark' || saved === 'system') theme = saved;
+		theme = readTheme();
 	});
 
 	function select(next: Theme) {
 		theme = next;
-		localStorage.setItem(THEME_KEY, next);
+		setTheme(next);
 	}
 </script>
 

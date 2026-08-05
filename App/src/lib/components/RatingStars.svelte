@@ -42,7 +42,7 @@
       {#if star <= shown}
         <IconStar width={size} height={size} class="text-warning" aria-hidden="true" />
       {:else}
-        <IconStarOutline width={size} height={size} class="text-neutral-300" aria-hidden="true" />
+        <IconStarOutline width={size} height={size} class="text-border-strong" aria-hidden="true" />
       {/if}
     {/each}
   </span>
@@ -68,7 +68,7 @@
         {#if star <= shown}
           <IconStar width={size} height={size} class="text-warning" aria-hidden="true" />
         {:else}
-          <IconStarOutline width={size} height={size} class="text-neutral-300" aria-hidden="true" />
+          <IconStarOutline width={size} height={size} class="text-border-strong" aria-hidden="true" />
         {/if}
       </button>
     {/each}

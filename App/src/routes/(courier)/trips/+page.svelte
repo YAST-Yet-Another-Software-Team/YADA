@@ -61,7 +61,7 @@
           class="inline-flex items-center gap-2 rounded-full bg-surface px-3 py-2 text-xs font-semibold text-primary shadow-sm"
           onclick={() => goto('/home')}
         >
-          <span class="h-2 w-2 rounded-full {online.online ? 'bg-success' : 'bg-neutral-400'}"></span>
+          <span class="h-2 w-2 rounded-full {online.online ? 'bg-success' : 'bg-ink-disabled'}"></span>
           {online.online ? 'Online' : 'Offline'}
         </button>
 

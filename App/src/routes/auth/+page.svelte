@@ -432,7 +432,7 @@
                         class="h-1 flex-1 rounded-full transition-colors {index <=
                         step
                           ? 'bg-primary'
-                          : 'bg-neutral-200'}"
+                          : 'bg-border'}"
                       ></span>
                     {/each}
                   </div>
@@ -535,7 +535,7 @@
                         </div>
 
                         <label
-                          class="cursor-pointer rounded-md border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50"
+                          class="cursor-pointer rounded-md border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-wash"
                         >
                           <input
                             type="file"
@@ -676,7 +676,7 @@
                 <button
                   type="submit"
                   disabled={!data.googleEnabled || googlePending}
-                  class="inline-flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-4 py-3 text-base font-semibold text-ink transition-colors hover:bg-neutral-50 focus-visible:outline focus-visible:outline-3 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
+                  class="inline-flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-4 py-3 text-base font-semibold text-ink transition-colors hover:bg-wash focus-visible:outline focus-visible:outline-3 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <IconGoogle class="h-5 w-5 shrink-0" aria-hidden="true" />
                   {googlePending

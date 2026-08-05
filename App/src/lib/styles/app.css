@@ -13,20 +13,57 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  /* The switch the whole theme turns on. Every semantic token in the Design
+     System is a `light-dark()` pair, and `light-dark()` reads the *used*
+     `color-scheme` — so declaring both here is what makes the app follow the
+     OS setting, and overriding it below is what makes the in-app picker work.
+     It also hands native UI (scrollbars, date pickers, form controls) the same
+     answer, which a class-based dark mode cannot do. */
+  color-scheme: light dark;
 
   /* App-level additions — kept here rather than in the Design System because
      they are specific to this app's chrome. Both derive from DS values so they
      stay in step with the ramps. */
 
   /* Upward shadow for the bottom tab bar; the DS elevation scale only casts
-     downward. Same warm shadow hue as --shadow-xs, negative Y. */
-  --shadow-nav: 0 -2px 10px oklch(20% 0.02 30 / 0.06);
+     downward. Same warm shadow hue as --shadow-xs, negative Y. A shadow that
+     works by darkening is invisible against a dark page, so the dark half
+     leans on opacity instead of hue. */
+  --shadow-nav: light-dark(0 -2px 10px oklch(20% 0.02 30 / 0.06), 0 -2px 10px oklch(0% 0 0 / 0.45));
+
+  /* The page behind the phone-width column. Deliberately a step darker than
+     --color-bg in light mode so the column reads as a device against a desk;
+     in dark there is nothing below the page colour to step down to, so it
+     meets --color-bg there. */
+  --color-shell: light-dark(var(--neutral-200), var(--neutral-950));
+
+  /* Transient fills for hover and press on otherwise-transparent controls.
+     These are the one place the light and dark ramps must move in *opposite*
+     directions: a wash over white gets darker, a wash over near-black gets
+     lighter. Every other surface token can mirror; these cannot. */
+  --color-wash:        light-dark(var(--neutral-100), var(--neutral-800));
+  --color-wash-strong: light-dark(var(--neutral-200), var(--neutral-700));
+}
+
+/* The in-app theme picker (courier settings → Theme) writes one of these onto
+   <html>; "system" removes the attribute and falls back to the :root rule
+   above. Because the only thing being set is `color-scheme`, no token is
+   restated — the `light-dark()` pairs re-resolve on their own. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 html,
 body {
   min-height: 100%;
+}
+
+html {
+  scroll-behavior: smooth;  
 }
 
 body {

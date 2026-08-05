@@ -42,7 +42,7 @@
 		height: 1.625rem;
 		appearance: none;
 		border-radius: var(--radius-full);
-		background: var(--neutral-300);
+		background: var(--color-border-strong);
 		position: relative;
 		transition: background var(--duration-normal) var(--ease-standard);
 		cursor: pointer;

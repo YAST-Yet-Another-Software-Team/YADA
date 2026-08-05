@@ -19,7 +19,7 @@
   > = {
     searching: {
       label: 'Finding rider',
-      className: 'bg-neutral-100 text-neutral-700',
+      className: 'bg-surface-sunken text-ink-secondary',
       pulse: true,
       icon: IconSearch
     },

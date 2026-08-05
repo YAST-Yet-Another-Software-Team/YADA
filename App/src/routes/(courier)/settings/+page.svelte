@@ -42,7 +42,7 @@
 	<title>App Settings | YADA Courier</title>
 </svelte:head>
 
-<div class="flex flex-1 flex-col bg-neutral-100">
+<div class="flex flex-1 flex-col bg-surface-sunken">
 	<header class="px-4 pb-2 pt-4 text-center">
 		<h1 class="text-lg font-bold text-ink">App Settings</h1>
 	</header>

@@ -279,9 +279,9 @@
 					{/if}
 				{:else}
 					<span
-						class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-ink-tertiary"
+						class="inline-flex items-center gap-1.5 rounded-full bg-surface-sunken px-3 py-1 text-xs font-semibold text-ink-tertiary"
 					>
-						<span class="h-2 w-2 rounded-full bg-neutral-400"></span>
+						<span class="h-2 w-2 rounded-full bg-ink-disabled"></span>
 						Offline
 					</span>
 					<p class="mt-2 text-sm font-semibold text-ink">You're offline</p>
