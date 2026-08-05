@@ -2,6 +2,14 @@
 	import { onMount } from 'svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { getSession } from '$auth/session.svelte';
+	import IconBell from '~icons/mdi/bell-outline';
+	import IconTheme from '~icons/mdi/theme-light-dark';
+	import IconTranslate from '~icons/mdi/translate';
+	import IconShieldCheck from '~icons/mdi/shield-check-outline';
+	import IconDocument from '~icons/mdi/file-document-outline';
+	import IconFeedback from '~icons/mdi/message-outline';
+	import IconInfo from '~icons/mdi/information-outline';
+	import IconChevronRight from '~icons/mdi/chevron-right';
 	import { getCourierOnline } from '../courier-online.svelte';
 
 	const session = getSession();
@@ -47,53 +55,31 @@
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 				<a href="/settings/notifications" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10 21a2 2 0 0 0 4 0" /><circle
-								cx="18"
-								cy="6"
-								r="2.5"
-							/></svg
-						>
+						<IconBell class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Notification Settings</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 				<a href="/settings/theme" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><circle cx="12" cy="12" r="9" /><path d="M12 3v18" /><path
-								d="M12 3a9 9 0 0 1 0 18"
-								fill="currentColor"
-								opacity="0.2"
-							/></svg
-						>
+						<IconTheme class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Theme</span>
 					<span class="settings-value">{themeLabel}</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 				<a href="/settings/languages" class="settings-row settings-row-last">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" /><path
-								d="M9 9h.01M13 9h2M9 13h6"
-							/></svg
-						>
+						<IconTranslate class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Preferred Languages</span>
 					<span class="settings-value">{languageLabel}</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 			</div>
@@ -106,30 +92,20 @@
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 				<a href="/settings/privacy" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><path d="M12 3 4 7v5c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V7l-8-4Z" /><path d="m9 12 2 2 4-4" /></svg
-						>
+						<IconShieldCheck class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Privacy Policy</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 				<a href="/settings/terms" class="settings-row settings-row-last">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><path d="M8 3h7l5 5v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" /><path
-								d="M15 3v5h5M9 13h6M9 17h6"
-							/></svg
-						>
+						<IconDocument class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Terms of Service</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 			</div>
@@ -142,28 +118,20 @@
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 				<a href="/settings/feedback" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><path d="M21 11a8 8 0 0 1-8 8H7l-4 3V9a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z" /></svg
-						>
+						<IconFeedback class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Feedback</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 				<a href="/settings/about" class="settings-row settings-row-last">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg
-						>
+						<IconInfo class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">About Us</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 			</div>

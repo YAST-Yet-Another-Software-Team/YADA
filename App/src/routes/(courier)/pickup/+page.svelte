@@ -9,6 +9,8 @@
   import type { LatLng, TripStatus } from '$lib/utils/types';
   import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
+  import IconCheck from '~icons/mdi/check';
+  import IconArrowRight from '~icons/mdi/arrow-right';
   import { startCourierLocationReporter } from '../location-reporter';
 
   let {
@@ -197,11 +199,13 @@
   <div class="z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg">
     {#if collected}
       <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1 text-sm font-semibold text-primary">
-        ✓ Parcel collected
+        <IconCheck class="h-4 w-4 shrink-0" aria-hidden="true" />
+        Parcel collected
       </span>
     {:else}
       <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary-subtle px-3 py-1 text-sm font-semibold text-secondary-700">
-        → Heading to pickup · {etaText}
+        <IconArrowRight class="h-4 w-4 shrink-0" aria-hidden="true" />
+        Heading to pickup · {etaText}
       </span>
     {/if}
 

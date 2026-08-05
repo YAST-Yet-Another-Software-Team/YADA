@@ -101,6 +101,8 @@
   } from '$lib/client/maps/places';
   import { getCurrentDeviceLocation } from '$lib/shared/geo/device-location';
   import { containsPoint } from '$lib/shared/geo/service-area';
+  import IconSearch from '~icons/mdi/magnify';
+  import IconPin from '~icons/mdi/map-marker-outline';
 
   type PickerMarker = {
     id: string;
@@ -476,16 +478,7 @@
   <div
     class="flex items-center gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 shadow-sm backdrop-blur-sm focus-within:border-primary"
   >
-    <svg
-      viewBox="0 0 24 24"
-      class="h-4 w-4 shrink-0 text-ink-tertiary"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-    </svg>
+    <IconSearch class="h-4 w-4 shrink-0 text-ink-tertiary" aria-hidden="true" />
     <input
       type="search"
       class="w-full border-0 bg-transparent text-sm text-ink outline-none placeholder:text-ink-disabled"
@@ -541,17 +534,7 @@
               void applySuggestion(suggestion);
             }}
           >
-            <svg
-              viewBox="0 0 24 24"
-              class="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-tertiary"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <path d="M12 22s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" />
-              <circle cx="12" cy="10" r="2" />
-            </svg>
+            <IconPin class="mt-0.5 h-4 w-4 shrink-0 text-ink-tertiary" aria-hidden="true" />
             <span class="min-w-0 flex-1">
               <span class="block truncate text-sm font-semibold text-ink">{suggestion.mainText}</span>
               {#if suggestion.secondaryText}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import SettingsSubpage from '$lib/components/SettingsSubpage.svelte';
+	import IconCheck from '~icons/mdi/check-bold';
 
 	const LANG_KEY = 'yada.courierLanguage';
 	type Lang = 'en' | 'tw' | 'fr';
@@ -40,14 +41,7 @@
 			>
 				<span class="flex-1 text-base font-medium text-ink">{option.label}</span>
 				{#if language === option.id}
-					<svg
-						viewBox="0 0 24 24"
-						class="h-5 w-5 text-primary"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2.5"
-						><path d="m5 12 5 5L20 7" /></svg
-					>
+					<IconCheck class="h-5 w-5 text-primary" aria-hidden="true" />
 				{/if}
 			</button>
 		{/each}

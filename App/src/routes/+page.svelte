@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Button from '$lib/components/Button.svelte';
 	import { getSession } from '$auth/session.svelte';
+	import IconCheck from '~icons/mdi/check-bold';
 
 	/** Deep-link straight into a sign-up, pre-set to a role. Only this page has
 	 *  role-specific calls to action, so it owns the URL shape. */
@@ -202,18 +203,7 @@
 					<ul class="mt-5 flex flex-col gap-2.5">
 						{#each audience.points as point}
 							<li class="flex items-start gap-2.5 text-sm text-ink-secondary">
-								<svg
-									viewBox="0 0 24 24"
-									class="mt-0.5 h-4 w-4 shrink-0 text-primary"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2.5"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-								>
-									<path d="m5 12 5 5L20 7" />
-								</svg>
+								<IconCheck class="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
 								{point}
 							</li>
 						{/each}

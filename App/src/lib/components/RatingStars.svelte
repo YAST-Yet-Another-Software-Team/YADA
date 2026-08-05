@@ -1,4 +1,7 @@
 <script lang="ts">
+  import IconStar from '~icons/mdi/star';
+  import IconStarOutline from '~icons/mdi/star-outline';
+
   /**
    * Five stars, either as an input or as a fact.
    *
@@ -36,21 +39,11 @@
     aria-label={`Rated ${value} out of 5`}
   >
     {#each stars as star (star)}
-      <svg
-        viewBox="0 0 24 24"
-        width={size}
-        height={size}
-        class={star <= shown ? "text-warning" : "text-neutral-300"}
-        fill={star <= shown ? "currentColor" : "none"}
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <path
-          d="M12 2.5l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95L12 2.5z"
-        />
-      </svg>
+      {#if star <= shown}
+        <IconStar width={size} height={size} class="text-warning" aria-hidden="true" />
+      {:else}
+        <IconStarOutline width={size} height={size} class="text-neutral-300" aria-hidden="true" />
+      {/if}
     {/each}
   </span>
 {:else}
@@ -72,21 +65,11 @@
         onfocus={() => (hovered = star)}
         onclick={() => (value = star)}
       >
-        <svg
-          viewBox="0 0 24 24"
-          width={size}
-          height={size}
-          class={star <= shown ? "text-warning" : "text-neutral-300"}
-          fill={star <= shown ? "currentColor" : "none"}
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path
-            d="M12 2.5l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95L12 2.5z"
-          />
-        </svg>
+        {#if star <= shown}
+          <IconStar width={size} height={size} class="text-warning" aria-hidden="true" />
+        {:else}
+          <IconStarOutline width={size} height={size} class="text-neutral-300" aria-hidden="true" />
+        {/if}
       </button>
     {/each}
   </div>

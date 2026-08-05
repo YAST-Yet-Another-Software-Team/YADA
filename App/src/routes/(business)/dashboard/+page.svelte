@@ -7,6 +7,7 @@
   import Button from "$lib/components/Button.svelte";
   import Card from "$lib/components/Card.svelte";
   import StatusPill from "$lib/components/StatusPill.svelte";
+  import IconPlus from "~icons/mdi/plus";
   import type { DashboardTripRecord } from "$lib/utils/types";
   import { DashboardViewPreference } from "./dashboard-view.svelte";
 
@@ -191,9 +192,10 @@
         </div>
 
         <div class="hidden lg:block">
-          <Button variant="primary" size="sm" onclick={newRequest}
-            >+ New request</Button
-          >
+          <Button variant="primary" size="sm" onclick={newRequest}>
+            <IconPlus class="h-4 w-4" aria-hidden="true" />
+            New request
+          </Button>
         </div>
       </div>
     </div>
@@ -215,9 +217,10 @@
   <div
     class="fixed bottom-0 left-0 right-0 border-t border-border bg-surface p-4 lg:hidden"
   >
-    <Button variant="primary" size="lg" fullWidth onclick={newRequest}
-      >+ New request</Button
-    >
+    <Button variant="primary" size="lg" fullWidth onclick={newRequest}>
+      <IconPlus class="h-5 w-5" aria-hidden="true" />
+      New request
+    </Button>
   </div>
 </div>
 

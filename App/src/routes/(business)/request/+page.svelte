@@ -6,6 +6,7 @@
 	import { computeDrivingRoute } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
+	import IconChevronLeft from '~icons/mdi/chevron-left';
 	import type { LatLng } from '$lib/utils/types';
 
 	let {
@@ -170,9 +171,7 @@
 <div class="flex min-h-0 flex-1 flex-col bg-surface lg:overflow-hidden">
 	<div class="flex items-center gap-3 border-b border-border px-4 py-3 lg:hidden">
 		<a href="/dashboard" class="text-ink" aria-label="Back">
-			<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"
-				><path d="m15 18-6-6 6-6" /></svg
-			>
+			<IconChevronLeft class="h-6 w-6" aria-hidden="true" />
 		</a>
 		<h1 class="text-lg font-semibold text-ink">New request</h1>
 	</div>

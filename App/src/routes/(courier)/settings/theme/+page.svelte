@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import SettingsSubpage from '$lib/components/SettingsSubpage.svelte';
+	import IconCheck from '~icons/mdi/check-bold';
 
 	const THEME_KEY = 'yada.courierTheme';
 	type Theme = 'system' | 'light' | 'dark';
@@ -43,14 +44,7 @@
 					<span class="mt-0.5 block text-xs text-ink-tertiary">{option.hint}</span>
 				</span>
 				{#if theme === option.id}
-					<svg
-						viewBox="0 0 24 24"
-						class="h-5 w-5 text-primary"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2.5"
-						><path d="m5 12 5 5L20 7" /></svg
-					>
+					<IconCheck class="h-5 w-5 text-primary" aria-hidden="true" />
 				{/if}
 			</button>
 		{/each}

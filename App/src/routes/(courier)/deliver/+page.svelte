@@ -14,6 +14,9 @@
   import type { LatLng } from '$lib/utils/types';
   import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
+  import IconArrowRight from '~icons/mdi/arrow-right';
+  import IconPhone from '~icons/mdi/phone';
+  import IconMessage from '~icons/mdi/message-text-outline';
   import { startCourierLocationReporter } from '../location-reporter';
 
   let {
@@ -184,7 +187,8 @@
 
   <div class="z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg">
     <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1 text-sm font-semibold text-primary">
-      → Delivering · {etaText}
+      <IconArrowRight class="h-4 w-4 shrink-0" aria-hidden="true" />
+      Delivering · {etaText}
     </span>
 
     <div>
@@ -202,16 +206,10 @@
 
     <div class="flex items-center gap-3">
       <IconButton ariaLabel="Call customer" variant="outline">
-        <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2">
-          <path
-            d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.5-1.1a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2Z"
-          />
-        </svg>
+        <IconPhone class="h-[18px] w-[18px]" aria-hidden="true" />
       </IconButton>
       <IconButton ariaLabel="Message customer" variant="outline">
-        <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-        </svg>
+        <IconMessage class="h-[18px] w-[18px]" aria-hidden="true" />
       </IconButton>
       <div class="flex-1"></div>
       {#if atDropoff}

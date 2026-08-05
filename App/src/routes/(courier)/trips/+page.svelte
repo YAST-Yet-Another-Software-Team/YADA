@@ -5,6 +5,8 @@
   import { toTripStage } from '$lib/shared/trip-status';
   import type { TripStatus } from '$lib/utils/types';
   import IconButton from '$lib/components/IconButton.svelte';
+  import IconChevronLeft from '~icons/mdi/chevron-left';
+  import IconStar from '~icons/mdi/star';
   import { getCourierOnline } from '../courier-online.svelte';
 
   let {
@@ -64,9 +66,7 @@
         </button>
 
         <IconButton ariaLabel="Back to home" onclick={() => goto('/home')}>
-          <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m15 18-6-6 6-6" />
-          </svg>
+          <IconChevronLeft class="h-5 w-5" aria-hidden="true" />
         </IconButton>
       </div>
     </div>
@@ -88,8 +88,13 @@
            visible to the rider, because a number nobody sees changes nothing. -->
       <div class="rounded-lg bg-surface px-3 py-3 shadow-sm">
         <p class="text-eyebrow text-ink-tertiary">Rating</p>
-        <p class="font-mono-data mt-1 text-lg font-bold text-ink">
-          {data.rating.average != null ? `${data.rating.average.toFixed(1)}★` : '—'}
+        <p class="font-mono-data mt-1 flex items-center gap-1 text-lg font-bold text-ink">
+          {#if data.rating.average != null}
+            {data.rating.average.toFixed(1)}
+            <IconStar class="h-4 w-4 shrink-0 text-warning" aria-label="stars" />
+          {:else}
+            —
+          {/if}
         </p>
       </div>
     </div>

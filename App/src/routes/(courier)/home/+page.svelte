@@ -10,6 +10,7 @@
 	import { getCourierOnline } from '../courier-online.svelte';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 	import { courierTripHref } from '$lib/shared/trip-status';
+	import IconArrowRight from '~icons/mdi/arrow-right';
 	import type { TripStatus } from '$lib/utils/types';
 
 	let {
@@ -258,8 +259,10 @@
 					</span>
 					{#if data.activeTrip}
 						<p class="mt-2 text-sm font-semibold text-ink">{data.activeTrip.businessName}</p>
-						<p class="mt-0.5 text-xs text-ink-secondary">
-							{data.activeTrip.pickupAddress} → {data.activeTrip.dropoffAddress}
+						<p class="mt-0.5 flex items-center gap-1 text-xs text-ink-secondary">
+							<span class="min-w-0 truncate">{data.activeTrip.pickupAddress}</span>
+							<IconArrowRight class="h-3.5 w-3.5 shrink-0 text-ink-tertiary" aria-label="to" />
+							<span class="min-w-0 truncate">{data.activeTrip.dropoffAddress}</span>
 						</p>
 					{:else if data.pendingRequests.length > 0}
 						<p class="mt-2 text-sm font-semibold text-ink">
@@ -318,8 +321,10 @@
 							New request
 						</p>
 						<p class="text-sm font-semibold text-ink">{currentRequest.businessName}</p>
-						<p class="mt-0.5 text-xs text-ink-secondary">
-							{currentRequest.pickupAddress} → {currentRequest.dropoffAddress}
+						<p class="mt-0.5 flex items-center gap-1 text-xs text-ink-secondary">
+							<span class="min-w-0 truncate">{currentRequest.pickupAddress}</span>
+							<IconArrowRight class="h-3.5 w-3.5 shrink-0 text-ink-tertiary" aria-label="to" />
+							<span class="min-w-0 truncate">{currentRequest.dropoffAddress}</span>
 						</p>
 						{#if currentRequest.notes}
 							<p class="mt-1 text-xs text-ink-tertiary">{currentRequest.notes}</p>

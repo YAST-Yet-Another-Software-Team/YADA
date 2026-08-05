@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import Button from '$lib/components/Button.svelte';
   import Card from '$lib/components/Card.svelte';
+  import IconCheck from '~icons/mdi/check-bold';
 
   let {
     data
@@ -30,9 +31,7 @@
 
 <div class="flex h-full min-h-[inherit] flex-1 flex-col items-center bg-bg px-6 py-10 text-center">
   <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success-subtle text-success">
-    <svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="2.5">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
+    <IconCheck class="h-8 w-8" aria-hidden="true" />
   </div>
 
   <h1 class="text-2xl font-bold text-ink">Delivered!</h1>

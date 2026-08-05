@@ -22,6 +22,11 @@
 		onRiderLocation,
 		setRealtimeEnabled
 	} from '../realtime';
+	import IconChevronLeft from '~icons/mdi/chevron-left';
+	import IconPhone from '~icons/mdi/phone';
+	import IconMessage from '~icons/mdi/message-text-outline';
+	import IconArrowRight from '~icons/mdi/arrow-right';
+	import IconStar from '~icons/mdi/star';
 	import { DISPATCH_TIMEOUT_SECONDS, ringForElapsed, ringLabel } from '$lib/shared/dispatch';
 	import { isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
 	import type { CourierSummary, RiderLocationEvent, TripStatus } from '$lib/utils/types';
@@ -493,9 +498,7 @@
 	<div class="relative min-h-[40svh] flex-1 lg:min-h-0">
 		<div class="absolute left-4 top-4 z-10 lg:hidden">
 			<IconButton ariaLabel="Back" onclick={() => goto('/dashboard')}>
-				<svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2"
-					><path d="m15 18-6-6 6-6" /></svg
-				>
+				<IconChevronLeft class="h-5 w-5" aria-hidden="true" />
 			</IconButton>
 		</div>
 
@@ -558,10 +561,15 @@
 				</p>
 				<p class="text-sm text-ink-secondary">{statusLabel}</p>
 				{#if trip?.courier}
-					<p class="text-xs text-ink-tertiary">
-						{trip.courier.vehicleType ?? 'Rider'}{trip.courier.rating
-							? ` · ${trip.courier.rating.toFixed(1)}★ (${trip.courier.ratingCount})`
-							: ' · not yet rated'}
+					<p class="flex items-center gap-1 text-xs text-ink-tertiary">
+						<span>{trip.courier.vehicleType ?? 'Rider'}</span>
+						{#if trip.courier.rating}
+							<span aria-hidden="true">·</span>
+							<IconStar class="h-3.5 w-3.5 shrink-0 text-warning" aria-hidden="true" />
+							<span>{trip.courier.rating.toFixed(1)} ({trip.courier.ratingCount})</span>
+						{:else}
+							<span>· not yet rated</span>
+						{/if}
 					</p>
 				{/if}
 			</div>
@@ -582,8 +590,10 @@
 		{/if}
 
 		<div class="hidden border-t border-border pt-3 lg:block">
-			<p class="text-sm text-ink-secondary">
-				{trip?.pickupAddress ?? 'Pickup'} → {trip?.dropoffAddress ?? 'Dropoff'}
+			<p class="flex items-center gap-1.5 text-sm text-ink-secondary">
+				<span class="min-w-0 truncate">{trip?.pickupAddress ?? 'Pickup'}</span>
+				<IconArrowRight class="h-4 w-4 shrink-0 text-ink-tertiary" aria-label="to" />
+				<span class="min-w-0 truncate">{trip?.dropoffAddress ?? 'Dropoff'}</span>
 			</p>
 			{#if searching && !closed}
 				<p class="mt-2 text-sm text-ink-secondary">
@@ -601,20 +611,14 @@
 					class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
 					aria-label="Call {trip.courier.name}"
 				>
-					<svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2"
-						><path
-							d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.5-1.1a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2Z"
-						/></svg
-					>
+					<IconPhone class="h-[18px] w-[18px]" aria-hidden="true" />
 				</a>
 				<a
 					href="sms:{trip.courier.phone}"
 					class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
 					aria-label="Message {trip.courier.name}"
 				>
-					<svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2"
-						><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg
-					>
+					<IconMessage class="h-[18px] w-[18px]" aria-hidden="true" />
 				</a>
 				<p class="font-mono-data text-sm text-ink-secondary">{trip.courier.phone}</p>
 			</div>
