@@ -1,8 +1,17 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import { Pool, neonConfig } from "@neondatabase/serverless";
 import { env } from "$env/dynamic/private";
 
 import * as schema from "./schema";
+
+/**
+ * Neon's serverless driver speaks Postgres over WebSocket rather than raw TCP,
+ * which Workers cannot open. It keeps interactive transactions — `ratings.ts`
+ * writes a rating and the courier's cached average in one — so this is a drop-in
+ * for `pg.Pool` rather than the HTTP driver, which would not.
+ *
+ * Use the Neon *pooled* connection string (the one containing `-pooler`).
+ */
 
 const databaseUrl = env.DATABASE_URL ?? "";
 
@@ -23,19 +32,20 @@ if (
   );
 }
 
+// Workers provides WebSocket natively; Node does not until v22, and the local
+// Socket.IO server still runs on Node. The specifier is held in a variable so
+// the bundler leaves it alone — `ws` must never be pulled into the Worker build.
+if (typeof WebSocket === "undefined") {
+  const wsSpecifier = "ws";
+  neonConfig.webSocketConstructor = (
+    await import(/* @vite-ignore */ wsSpecifier)
+  ).default;
+}
+
 const globalDb = globalThis as GlobalDbCache;
 
 if (!globalDb.__yada_db__) {
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: databaseUrl.includes("sslmode=require")
-      ? { rejectUnauthorized: false }
-      : undefined,
-    allowExitOnIdle: true,
-    connectionTimeoutMillis: 10_000,
-    idleTimeoutMillis: 30_000,
-    max: 5,
-  });
+  const pool = new Pool({ connectionString: databaseUrl });
 
   globalDb.__yada_db__ = {
     pool,

@@ -12,9 +12,31 @@ import type { RiderLocationEvent } from '$lib/utils/types';
  */
 
 let socket: Socket | null = null;
+let enabled = true;
+
+/**
+ * Turn the socket layer off where nothing is listening.
+ *
+ * Cloudflare Workers has no always-on process for Socket.IO to attach to, so
+ * `io()` there would retry forever — a reconnect storm against the request
+ * quota. The root layout calls this with the server's `REALTIME_ENABLED`.
+ *
+ * Module scope rather than context — unlike the Maps config this is only ever
+ * read in the browser (`getRealtimeSocket` refuses on the server), so there is
+ * no in-flight SSR request to leak it between.
+ */
+export function setRealtimeEnabled(value: boolean) {
+  enabled = value;
+
+  if (!value && socket) {
+    socket.close();
+    socket = null;
+  }
+}
 
 function getRealtimeSocket() {
   if (typeof window === 'undefined') return null;
+  if (!enabled) return null;
   if (socket) return socket;
 
   socket = io({
@@ -25,6 +47,14 @@ function getRealtimeSocket() {
   });
 
   return socket;
+}
+
+/**
+ * Whether live fixes can arrive at all. Tracking needs this to know whether the
+ * polled fix is a seed for the socket or the only source it will ever get.
+ */
+export function isRealtimeEnabled() {
+  return enabled;
 }
 
 export function joinTripRoom(tripId: string) {
