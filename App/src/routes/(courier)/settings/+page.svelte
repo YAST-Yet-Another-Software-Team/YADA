@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import Button from '$lib/components/Button.svelte';
 	import { getSession } from '$auth/session.svelte';
 	import { getCourierOnline } from '../courier-online.svelte';
 

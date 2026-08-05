@@ -1,5 +1,5 @@
 <script lang="ts">
-	import StatusPill from '$lib/components/ui/StatusPill.svelte';
+	import StatusPill from '$lib/components/StatusPill.svelte';
 	import type { DashboardTripRecord } from '$lib/utils/types';
 
 	let {

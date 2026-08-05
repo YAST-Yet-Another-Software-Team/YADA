@@ -1,3 +1,5 @@
+/// <reference types="unplugin-icons/types/svelte" />
+
 import type { auth } from '$auth/auth.server';
 import type { SessionUser } from '$lib/utils/types';
 

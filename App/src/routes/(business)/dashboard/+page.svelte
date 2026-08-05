@@ -1,12 +1,12 @@
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
-  import DashboardBoard from "$lib/components/business/DashboardBoard.svelte";
-  import DashboardTable from "$lib/components/business/DashboardTable.svelte";
+  import DashboardBoard from "$lib/components/DashboardBoard.svelte";
+  import DashboardTable from "$lib/components/DashboardTable.svelte";
   import MapBackdrop from "$lib/components/MapBackdrop.svelte";
-  import Alert from "$lib/components/ui/Alert.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Card from "$lib/components/ui/Card.svelte";
-  import StatusPill from "$lib/components/ui/StatusPill.svelte";
+  import Alert from "$lib/components/Alert.svelte";
+  import Button from "$lib/components/Button.svelte";
+  import Card from "$lib/components/Card.svelte";
+  import StatusPill from "$lib/components/StatusPill.svelte";
   import type { DashboardTripRecord } from "$lib/utils/types";
   import { DashboardViewPreference } from "./dashboard-view.svelte";
 

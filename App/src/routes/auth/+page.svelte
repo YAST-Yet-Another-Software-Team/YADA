@@ -4,9 +4,9 @@
   import { page } from "$app/state";
   import { slide } from "svelte/transition";
   import type { SubmitFunction } from "@sveltejs/kit";
-  import Alert from "$lib/components/ui/Alert.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Input from "$lib/components/ui/Input.svelte";
+  import Alert from "$lib/components/Alert.svelte";
+  import Button from "$lib/components/Button.svelte";
+  import Input from "$lib/components/Input.svelte";
   import {
     ProfilePhotoError,
     readProfilePhoto,

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import SettingsSubpage from '$lib/components/courier/SettingsSubpage.svelte';
+	import SettingsSubpage from '$lib/components/SettingsSubpage.svelte';
 
 	let offers = $state(true);
 	let status = $state(true);

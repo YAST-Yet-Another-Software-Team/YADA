@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { page } from "$app/state";
-  import ProfileMenu from "$lib/components/business/ProfileMenu.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
+  import ProfileMenu from "$lib/components/ProfileMenu.svelte";
+  import Avatar from "$lib/components/Avatar.svelte";
   import { getSession } from "$auth/session.svelte";
   import { initials } from "$lib/shared/text";
 

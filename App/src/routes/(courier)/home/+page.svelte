@@ -2,8 +2,8 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import Alert from '$lib/components/ui/Alert.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import Alert from '$lib/components/Alert.svelte';
+	import Button from '$lib/components/Button.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
 	import { startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
 	import { startCourierLocationReporter } from '../location-reporter';

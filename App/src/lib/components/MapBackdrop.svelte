@@ -1,4 +1,8 @@
 <script module lang="ts">
+  import type { Component } from 'svelte';
+  import RacingHelmetIcon from '~icons/mdi/racing-helmet';
+  import ShopIcon from '~icons/solar/shop-bold';
+
   type MapMarkerRole = 'pickup' | 'dropoff' | 'rider' | 'business' | 'search';
 
   type MapMarker = {
@@ -10,10 +14,21 @@
     accent?: boolean;
     stale?: boolean;
   };
+
+  /**
+   * The two roles that are a *who* rather than a *where*. Pickup, dropoff and
+   * search are points on a route and stay as dropped pins; a courier and a
+   * business are parties, so they get a glyph that says which one you're
+   * looking at without reading the tooltip.
+   */
+  const ROLE_ICONS: Partial<Record<MapMarkerRole, Component>> = {
+    rider: RacingHelmetIcon,
+    business: ShopIcon
+  };
 </script>
 
 <script lang="ts">
-  import { onDestroy, onMount, type Snippet } from 'svelte';
+  import { mount, onDestroy, onMount, unmount, type Snippet } from 'svelte';
   import { loadGoogleMaps, loadGoogleMapsMarker } from '$lib/client/maps/google-maps-loader';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
@@ -51,6 +66,7 @@
   let googleMaps = $state<typeof google.maps | null>(null);
   let markerApi = $state<google.maps.MarkerLibrary | null>(null);
   let renderedMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
+  let renderedIcons: Record<string, unknown>[] = [];
   let routePolyline: google.maps.Polyline | null = null;
   let lastCenteredKey = '';
   const maps = getMapsConfig();
@@ -133,8 +149,14 @@
     }
   });
 
-  /** A dot for roles that aren't a dropped pin — riders and businesses. */
-  function circleContent(marker: MapMarker, color: string) {
+  /**
+   * A disc for roles that aren't a dropped pin — riders and businesses. The
+   * role colour fills the disc and the glyph is knocked out of it in surface
+   * white, so the marker still reads as its role at a glance from the colour
+   * alone, the way it did when these were plain dots.
+   */
+  function discContent(marker: MapMarker, color: string) {
+    const icon = marker.role ? ROLE_ICONS[marker.role] : undefined;
     const diameter = (marker.role === 'rider' ? 12 : 10) * 2;
     const element = document.createElement('div');
 
@@ -145,12 +167,29 @@
     element.style.border = `2px solid ${MAP_COLORS.surface}`;
     element.style.boxSizing = 'content-box';
 
+    if (icon) {
+      element.style.display = 'flex';
+      element.style.alignItems = 'center';
+      element.style.justifyContent = 'center';
+      // The icons draw with `currentColor`, so one colour on the host is enough.
+      element.style.color = MAP_COLORS.surface;
+
+      renderedIcons.push(
+        mount(icon, {
+          target: element,
+          props: { width: diameter * 0.68, height: diameter * 0.68 }
+        })
+      );
+    }
+
     return element;
   }
 
   function syncMarkers() {
     renderedMarkers.forEach((marker) => (marker.map = null));
     renderedMarkers = [];
+    renderedIcons.forEach((icon) => void unmount(icon));
+    renderedIcons = [];
 
     const currentMarkerApi = markerApi;
 
@@ -170,7 +209,7 @@
             glyphColor: MAP_COLORS.surface,
             scale: 1.2
           })
-        : circleContent(marker, color);
+        : discContent(marker, color);
 
       // AdvancedMarkerElement has no opacity option — it takes a DOM element,
       // so staleness is expressed on the element itself.
@@ -245,6 +284,7 @@
   onDestroy(() => {
     clickListener?.remove();
     renderedMarkers.forEach((marker) => (marker.map = null));
+    renderedIcons.forEach((icon) => void unmount(icon));
     routePolyline?.setMap(null);
   });
 </script>

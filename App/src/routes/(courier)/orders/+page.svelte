@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import StatusPill from '$lib/components/ui/StatusPill.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import Card from '$lib/components/Card.svelte';
+	import StatusPill from '$lib/components/StatusPill.svelte';
 	import { courierTripHref } from '$lib/shared/trip-status';
 	import { toTripStage } from '$lib/shared/trip-status';
 	import type { TripStatus } from '$lib/utils/types';

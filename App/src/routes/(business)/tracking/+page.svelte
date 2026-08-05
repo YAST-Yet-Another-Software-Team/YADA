@@ -3,12 +3,12 @@
 	import { page } from '$app/state';
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
-	import Alert from '$lib/components/ui/Alert.svelte';
-	import Avatar from '$lib/components/ui/Avatar.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import IconButton from '$lib/components/ui/IconButton.svelte';
-	import RatingStars from '$lib/components/ui/RatingStars.svelte';
-	import StatusPill from '$lib/components/ui/StatusPill.svelte';
+	import Alert from '$lib/components/Alert.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import IconButton from '$lib/components/IconButton.svelte';
+	import RatingStars from '$lib/components/RatingStars.svelte';
+	import StatusPill from '$lib/components/StatusPill.svelte';
 	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
 	import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
 	import type { LatLng } from '$lib/utils/types';

@@ -2,8 +2,8 @@
   import { goto, invalidateAll } from '$app/navigation';
   import { onDestroy, onMount } from 'svelte';
   import MapBackdrop from '$lib/components/MapBackdrop.svelte';
-  import Alert from '$lib/components/ui/Alert.svelte';
-  import Button from '$lib/components/ui/Button.svelte';
+  import Alert from '$lib/components/Alert.svelte';
+  import Button from '$lib/components/Button.svelte';
   import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
   import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
   import type { LatLng, TripStatus } from '$lib/utils/types';
