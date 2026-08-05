@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import SettingsSubpage from '$lib/components/courier/SettingsSubpage.svelte';
+	import SettingsSubpage from '$lib/components/SettingsSubpage.svelte';
 
 	const THEME_KEY = 'yada.courierTheme';
 	type Theme = 'system' | 'light' | 'dark';

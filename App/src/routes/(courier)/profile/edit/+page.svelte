@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import Alert from '$lib/components/ui/Alert.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
-	import Tabs from '$lib/components/ui/Tabs.svelte';
-	import SettingsSubpage from '$lib/components/courier/SettingsSubpage.svelte';
+	import Alert from '$lib/components/Alert.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import Input from '$lib/components/Input.svelte';
+	import Tabs from '$lib/components/Tabs.svelte';
+	import SettingsSubpage from '$lib/components/SettingsSubpage.svelte';
 	import { getSession } from '$auth/session.svelte';
 	import { messageOf } from '$auth/errors';
 

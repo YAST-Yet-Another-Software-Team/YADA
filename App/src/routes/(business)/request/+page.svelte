@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import Alert from '$lib/components/ui/Alert.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import LocationPickerMap from '$lib/components/ui/LocationPickerMap.svelte';
+	import Alert from '$lib/components/Alert.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import LocationPickerMap from '$lib/components/LocationPickerMap.svelte';
 	import { computeDrivingRoute } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';

@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import Alert from '$lib/components/ui/Alert.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import RatingStars from '$lib/components/ui/RatingStars.svelte';
-	import SelectMenu from '$lib/components/ui/SelectMenu.svelte';
-	import StatusPill from '$lib/components/ui/StatusPill.svelte';
-	import Tabs from '$lib/components/ui/Tabs.svelte';
+	import Alert from '$lib/components/Alert.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import Card from '$lib/components/Card.svelte';
+	import RatingStars from '$lib/components/RatingStars.svelte';
+	import SelectMenu from '$lib/components/SelectMenu.svelte';
+	import StatusPill from '$lib/components/StatusPill.svelte';
+	import Tabs from '$lib/components/Tabs.svelte';
 	import type { DashboardTripRecord } from '$lib/utils/types';
 
 	let {
@@ -44,10 +44,6 @@
 	);
 
 	const mobileList = $derived(tab === 'active' ? [] : filtered);
-
-	function requestNew() {
-		goto('/request');
-	}
 
 	/** The rating form inside the details panel; reset per trip on open. */
 	let ratingValue = $state(0);
@@ -186,10 +182,6 @@
 				{/each}
 			</tbody>
 		</table>
-	</div>
-
-	<div class="lg:hidden">
-		<Button variant="primary" size="lg" fullWidth onclick={requestNew}>Request a courier</Button>
 	</div>
 </div>
 

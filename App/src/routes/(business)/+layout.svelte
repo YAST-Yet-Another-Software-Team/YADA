@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { page } from "$app/state";
-  import ProfileMenu from "$lib/components/business/ProfileMenu.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
+  import ProfileMenu from "$lib/components/ProfileMenu.svelte";
+  import Avatar from "$lib/components/Avatar.svelte";
   import { getSession } from "$auth/session.svelte";
   import { initials } from "$lib/shared/text";
 
@@ -47,10 +47,11 @@
 
   /**
    * Screens where the page *is* the content, rather than sitting on the
-   * workspace canvas: the request map wants every pixel under the header, so the
-   * padded, width-capped, bordered card that suits a dashboard only crops it.
+   * workspace canvas: the request and tracking maps want every pixel under the
+   * header, so the padded, width-capped, bordered card that suits a dashboard
+   * only crops them.
    */
-  const fullBleed = $derived(path === "/request");
+  const fullBleed = $derived(path === "/request" || path === "/tracking");
 
   function toggleProfile(e: MouseEvent) {
     e.stopPropagation();

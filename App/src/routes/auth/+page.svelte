@@ -4,9 +4,9 @@
   import { page } from "$app/state";
   import { slide } from "svelte/transition";
   import type { SubmitFunction } from "@sveltejs/kit";
-  import Alert from "$lib/components/ui/Alert.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Input from "$lib/components/ui/Input.svelte";
+  import Alert from "$lib/components/Alert.svelte";
+  import Button from "$lib/components/Button.svelte";
+  import Input from "$lib/components/Input.svelte";
   import {
     ProfilePhotoError,
     readProfilePhoto,
@@ -576,7 +576,7 @@
                   <div class="flex items-center gap-3">
                     {#if step > 0}
                       <Button
-                        variant="ghost"
+                        variant="neutral"
                         size="lg"
                         onclick={() => (step = 0)}
                       >
@@ -741,12 +741,6 @@
               </a>
             </div>
           {/if}
-
-          <p
-            class="mt-4 text-center text-xs leading-relaxed text-ink-tertiary lg:mt-6"
-          >
-            No payment info needed — YADA only locates and tracks riders.
-          </p>
         </div>
       </section>
     </div>

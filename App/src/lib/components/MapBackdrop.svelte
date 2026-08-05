@@ -1,4 +1,8 @@
 <script module lang="ts">
+  import type { Component } from 'svelte';
+  import RacingHelmetIcon from '~icons/mdi/racing-helmet';
+  import ShopIcon from '~icons/solar/shop-bold';
+
   type MapMarkerRole = 'pickup' | 'dropoff' | 'rider' | 'business' | 'search';
 
   type MapMarker = {
@@ -9,6 +13,17 @@
     role?: MapMarkerRole;
     accent?: boolean;
     stale?: boolean;
+  };
+
+  /**
+   * The two roles that are a *who* rather than a *where*. Pickup, dropoff and
+   * search are points on a route and stay as dropped pins; a courier and a
+   * business are parties, so they get a glyph that says which one you're
+   * looking at without reading the tooltip.
+   */
+  const ROLE_ICONS: Partial<Record<MapMarkerRole, Component>> = {
+    rider: RacingHelmetIcon,
+    business: ShopIcon
   };
 </script>
 
@@ -132,6 +147,8 @@
   function syncMarkers() {
     renderedMarkers.forEach((marker) => marker.remove());
     renderedMarkers = [];
+    renderedIcons.forEach((icon) => void unmount(icon));
+    renderedIcons = [];
 
     const instance = map;
     if (!instance) return;

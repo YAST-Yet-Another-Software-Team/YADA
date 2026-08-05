@@ -1,6 +1,6 @@
 <script lang="ts">
-	import SettingsSubpage from '$lib/components/courier/SettingsSubpage.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import SettingsSubpage from '$lib/components/SettingsSubpage.svelte';
+	import Button from '$lib/components/Button.svelte';
 
 	let message = $state('');
 	let sent = $state(false);

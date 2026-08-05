@@ -3,12 +3,12 @@
 	import { page } from '$app/state';
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
-	import Alert from '$lib/components/ui/Alert.svelte';
-	import Avatar from '$lib/components/ui/Avatar.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import IconButton from '$lib/components/ui/IconButton.svelte';
-	import RatingStars from '$lib/components/ui/RatingStars.svelte';
-	import StatusPill from '$lib/components/ui/StatusPill.svelte';
+	import Alert from '$lib/components/Alert.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import IconButton from '$lib/components/IconButton.svelte';
+	import RatingStars from '$lib/components/RatingStars.svelte';
+	import StatusPill from '$lib/components/StatusPill.svelte';
 	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
 	import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
 	import type { LatLng } from '$lib/utils/types';
@@ -485,9 +485,11 @@
 	<title>Tracking | YADA</title>
 </svelte:head>
 
-<div
-	class="relative flex min-h-[calc(100svh-3.25rem)] flex-col lg:min-h-[calc(100svh-58px-3rem)] lg:flex-row lg:overflow-hidden lg:rounded-lg lg:border lg:border-border lg:bg-surface"
->
+<!-- Full-bleed, like `/request`: the layout hands this page the height left under
+     the header, so there is no card frame to draw and no viewport arithmetic to
+     do here — `flex-1` takes what's left and `min-h-0` lets the map shrink into
+     it instead of overflowing. -->
+<div class="relative flex min-h-0 flex-1 flex-col bg-surface lg:flex-row lg:overflow-hidden">
 	<div class="relative min-h-[40svh] flex-1 lg:min-h-0">
 		<div class="absolute left-4 top-4 z-10 lg:hidden">
 			<IconButton ariaLabel="Back" onclick={() => goto('/dashboard')}>
@@ -525,8 +527,11 @@
 		</MapBackdrop>
 	</div>
 
+	<!-- Mobile keeps the sheet look, because there the panel sits *over* the map
+	     and needs an edge to read as lifted off it. On desktop it's a column
+	     beside the map, so it scrolls itself rather than growing the page. -->
 	<aside
-		class="z-10 flex flex-col gap-4 rounded-t-xl border-t border-border bg-surface p-6 shadow-lg lg:w-[320px] lg:shrink-0 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none"
+		class="z-10 flex flex-col gap-4 rounded-t-xl border-t border-border bg-surface p-6 shadow-lg lg:w-[320px] lg:shrink-0 lg:overflow-y-auto lg:rounded-none lg:border-t-0 lg:shadow-none"
 	>
 		<StatusPill status={toDispatchStage(trip?.status ?? 'requested')} />
 
@@ -654,7 +659,7 @@
 						</span>
 					</p>
 				{/if}
-				<Button variant="ghost" size="sm" disabled={cancelling} onclick={cancelRequest}>
+				<Button variant="outline" size="sm" disabled={cancelling} onclick={cancelRequest}>
 					{cancelling ? 'Cancelling…' : 'Cancel request'}
 				</Button>
 			{:else if closed}
@@ -693,7 +698,7 @@
 						{/if}
 					</div>
 				{/if}
-				<Button variant="ghost" size="sm" onclick={() => goto('/history')}>View in history</Button>
+				<Button variant="neutral" size="sm" onclick={() => goto('/history')}>View in history</Button>
 			{/if}
 		</div>
 	</aside>

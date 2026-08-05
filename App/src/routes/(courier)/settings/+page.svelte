@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import Button from '$lib/components/Button.svelte';
 	import { getSession } from '$auth/session.svelte';
 	import { getCourierOnline } from '../courier-online.svelte';
 
@@ -170,7 +170,7 @@
 		</section>
 
 		<div class="mt-auto pt-2">
-			<Button variant="ghost" fullWidth onclick={signOut}>Sign out</Button>
+			<Button variant="neutral" fullWidth onclick={signOut}>Sign out</Button>
 		</div>
 	</div>
 </div>
