@@ -659,7 +659,7 @@
 						</span>
 					</p>
 				{/if}
-				<Button variant="ghost" size="sm" disabled={cancelling} onclick={cancelRequest}>
+				<Button variant="outline" size="sm" disabled={cancelling} onclick={cancelRequest}>
 					{cancelling ? 'Cancelling…' : 'Cancel request'}
 				</Button>
 			{:else if closed}
@@ -698,7 +698,7 @@
 						{/if}
 					</div>
 				{/if}
-				<Button variant="ghost" size="sm" onclick={() => goto('/history')}>View in history</Button>
+				<Button variant="neutral" size="sm" onclick={() => goto('/history')}>View in history</Button>
 			{/if}
 		</div>
 	</aside>

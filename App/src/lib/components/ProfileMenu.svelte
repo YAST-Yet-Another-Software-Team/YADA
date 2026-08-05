@@ -67,7 +67,7 @@
 			</div>
 		</dl>
 		<div class="border-t border-border pt-3">
-			<Button variant="ghost" size="sm" fullWidth onclick={signOut}>Sign out</Button>
+			<Button variant="outline" size="sm" fullWidth onclick={signOut}>Sign out</Button>
 		</div>
 	</div>
 {/if}

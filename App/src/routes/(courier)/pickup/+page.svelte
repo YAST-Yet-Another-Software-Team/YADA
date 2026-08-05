@@ -235,7 +235,7 @@
     {/if}
 
     <div class="flex items-center gap-3">
-      <Button variant="ghost" size="sm" onclick={() => goto('/home')}>Back home</Button>
+      <Button variant="neutral" size="sm" onclick={() => goto('/home')}>Back home</Button>
       <div class="flex-1"></div>
       {#if collected}
         <Button variant="primary" size="sm" disabled={starting} onclick={startDelivery}>

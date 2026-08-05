@@ -92,7 +92,7 @@
 					</a>
 				{:else}
 					<a href="/auth" class="hidden sm:block">
-						<Button variant="ghost" size="sm">Sign in</Button>
+						<Button variant="neutral" size="sm">Sign in</Button>
 					</a>
 					<a href={signUpHref('business')}>
 						<Button variant="primary" size="sm">Get started</Button>

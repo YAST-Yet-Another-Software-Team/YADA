@@ -77,6 +77,6 @@
 	</section>
 
 	<div class="mt-auto">
-		<Button variant="ghost" fullWidth onclick={signOut}>Sign out</Button>
+		<Button variant="neutral" fullWidth onclick={signOut}>Sign out</Button>
 	</div>
 </div>

@@ -1,11 +1,25 @@
 import { auth, toAuthRole } from '$auth/auth.server';
 import { building } from '$app/environment';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, RequestEvent } from '@sveltejs/kit';
+
+import { withRequestDatabase } from '$lib/server/db';
 
 const AUTH_BASE = '/api/auth';
 
 function isAuthRequest(pathname: string) {
   return pathname === AUTH_BASE || pathname.startsWith(`${AUTH_BASE}/`);
+}
+
+/**
+ * The Workers `ExecutionContext.waitUntil`, when there is one.
+ *
+ * Under adapter-node — dev, and the Socket.IO build — `platform` is undefined,
+ * and `withRequestDatabase` has nothing to defer there anyway.
+ */
+function waitUntilFor(event: RequestEvent) {
+  const context = event.platform?.context;
+
+  return context ? context.waitUntil.bind(context) : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -17,37 +31,42 @@ function isAuthRequest(pathname: string) {
 // is set to localhost (or vice versa). Because this returns a Response before
 // routing, there is deliberately no /api/auth/[...all] route to back it up —
 // such a route could never be reached.
+//
+// Everything below runs inside `withRequestDatabase`, which on Workers is what
+// gives the request its own Neon pool. Nothing that touches the database may
+// escape it — see the comment in $lib/server/db.
 // ---------------------------------------------------------------------------
-export const handle: Handle = async ({ event, resolve }) => {
-  if (!building && isAuthRequest(event.url.pathname)) {
-    return auth.handler(event.request);
-  }
+export const handle: Handle = async ({ event, resolve }) =>
+  withRequestDatabase(async () => {
+    if (!building && isAuthRequest(event.url.pathname)) {
+      return auth.handler(event.request);
+    }
 
-  try {
-    const session = await auth.api.getSession({ headers: event.request.headers });
+    try {
+      const session = await auth.api.getSession({ headers: event.request.headers });
 
-    if (session?.user) {
-      // phoneNumber and role arrive as additionalFields, which aren't in the
-      // base user type — read them off the record and narrow explicitly.
-      const fields = session.user as Record<string, unknown>;
+      if (session?.user) {
+        // phoneNumber and role arrive as additionalFields, which aren't in the
+        // base user type — read them off the record and narrow explicitly.
+        const fields = session.user as Record<string, unknown>;
 
-      event.locals.session = session.session;
-      event.locals.user = {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email ?? null,
-        phone: typeof fields.phoneNumber === 'string' ? fields.phoneNumber : null,
-        role: toAuthRole(fields.role),
-        image: session.user.image ?? null
-      };
-    } else {
+        event.locals.session = session.session;
+        event.locals.user = {
+          id: session.user.id,
+          name: session.user.name,
+          email: session.user.email ?? null,
+          phone: typeof fields.phoneNumber === 'string' ? fields.phoneNumber : null,
+          role: toAuthRole(fields.role),
+          image: session.user.image ?? null
+        };
+      } else {
+        event.locals.session = null;
+        event.locals.user = null;
+      }
+    } catch {
       event.locals.session = null;
       event.locals.user = null;
     }
-  } catch {
-    event.locals.session = null;
-    event.locals.user = null;
-  }
 
-  return resolve(event);
-};
+    return resolve(event);
+  }, waitUntilFor(event));

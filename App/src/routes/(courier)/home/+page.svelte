@@ -327,7 +327,7 @@
 					</div>
 					<div class="flex items-center gap-2">
 						<Button
-							variant="ghost"
+							variant="neutral"
 							size="sm"
 							disabled={decliningId === currentRequest.id}
 							onclick={() => declineRequest(currentRequest.id)}
@@ -356,9 +356,9 @@
 
 		{#if online.online}
 			{#if data.pendingRequests.length === 0 || data.activeTrip}
-				<Button variant="ghost" size="lg" fullWidth onclick={goOffline}>Go offline</Button>
+				<Button variant="neutral" size="lg" fullWidth onclick={goOffline}>Go offline</Button>
 			{:else}
-				<Button variant="ghost" size="sm" fullWidth onclick={goOffline}>Go offline</Button>
+				<Button variant="neutral" size="sm" fullWidth onclick={goOffline}>Go offline</Button>
 			{/if}
 		{:else}
 			<Button variant="primary" size="lg" fullWidth onclick={goOnline}>Go online</Button>

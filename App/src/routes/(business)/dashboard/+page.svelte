@@ -337,7 +337,7 @@
           <div class="flex-1"></div>
           {#if canCancelSelected}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               disabled={cancelling}
               onclick={cancelSelected}

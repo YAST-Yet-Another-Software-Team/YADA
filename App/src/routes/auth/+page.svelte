@@ -576,7 +576,7 @@
                   <div class="flex items-center gap-3">
                     {#if step > 0}
                       <Button
-                        variant="ghost"
+                        variant="neutral"
                         size="lg"
                         onclick={() => (step = 0)}
                       >
