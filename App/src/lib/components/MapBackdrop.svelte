@@ -1,4 +1,8 @@
 <script module lang="ts">
+  import type { Component } from 'svelte';
+  import RacingHelmetIcon from '~icons/mdi/racing-helmet';
+  import ShopIcon from '~icons/solar/shop-bold';
+
   type MapMarkerRole = 'pickup' | 'dropoff' | 'rider' | 'business' | 'search';
 
   type MapMarker = {
@@ -9,6 +13,17 @@
     role?: MapMarkerRole;
     accent?: boolean;
     stale?: boolean;
+  };
+
+  /**
+   * The two roles that are a *who* rather than a *where*. Pickup, dropoff and
+   * search are points on a route and stay as dropped pins; a courier and a
+   * business are parties, so they get a glyph that says which one you're
+   * looking at without reading the tooltip.
+   */
+  const ROLE_ICONS: Partial<Record<MapMarkerRole, Component>> = {
+    rider: RacingHelmetIcon,
+    business: ShopIcon
   };
 </script>
 
@@ -30,7 +45,7 @@
    * which is why the route is updated by calling `setData` rather than by
    * tearing down and rebuilding.
    */
-  import { onDestroy, onMount, type Snippet } from 'svelte';
+  import { mount, onDestroy, onMount, unmount, type Snippet } from 'svelte';
   import type { GeoJSONSource, LngLatLike, Map as MapLibreMap, Marker } from 'maplibre-gl';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
@@ -68,6 +83,8 @@
   let mapState = $state<'fallback' | 'loading' | 'ready' | 'error'>('fallback');
   let map: MapLibreMap | null = null;
   let renderedMarkers: Marker[] = [];
+  /** Icon components mounted into marker elements, held so they can be torn down. */
+  let renderedIcons: Record<string, unknown>[] = [];
   let lastCenteredKey = '';
   const maps = getMapsConfig();
 
@@ -96,8 +113,13 @@
   }
 
   /**
-   * A teardrop for a dropped pin, a dot for everything else — the same visual
-   * split the Google build drew with PinElement and a styled div.
+   * A teardrop for a dropped pin, a glyph disc for everything else — the same
+   * visual split the Google build drew with PinElement and a styled div.
+   *
+   * The disc carries the role's icon knocked out in surface white, so a courier
+   * and a business are told apart by shape as well as by colour. MapLibre takes
+   * a DOM element it does not own, which is what makes mounting a Svelte
+   * component into it work here the same way it did under the Google SDK.
    */
   function markerElement(marker: MapMarker) {
     const color = markerColor(marker);
@@ -113,13 +135,30 @@
         </svg>`;
       element.style.transform = 'translateY(-6px)';
     } else {
+      const icon = marker.role ? ROLE_ICONS[marker.role] : undefined;
       const diameter = (marker.role === 'rider' ? 12 : 10) * 2;
+
       element.style.width = `${diameter}px`;
       element.style.height = `${diameter}px`;
       element.style.borderRadius = '50%';
       element.style.background = color;
       element.style.border = `2px solid ${MAP_COLORS.surface}`;
       element.style.boxSizing = 'content-box';
+
+      if (icon) {
+        element.style.display = 'flex';
+        element.style.alignItems = 'center';
+        element.style.justifyContent = 'center';
+        // The icons draw with `currentColor`, so one colour on the host is enough.
+        element.style.color = MAP_COLORS.surface;
+
+        renderedIcons.push(
+          mount(icon, {
+            target: element,
+            props: { width: diameter * 0.68, height: diameter * 0.68 }
+          })
+        );
+      }
     }
 
     // Staleness is expressed on the element, as it was before.
@@ -132,6 +171,8 @@
   function syncMarkers() {
     renderedMarkers.forEach((marker) => marker.remove());
     renderedMarkers = [];
+    renderedIcons.forEach((icon) => void unmount(icon));
+    renderedIcons = [];
 
     const instance = map;
     if (!instance) return;
@@ -282,6 +323,8 @@
   onDestroy(() => {
     renderedMarkers.forEach((marker) => marker.remove());
     renderedMarkers = [];
+    renderedIcons.forEach((icon) => void unmount(icon));
+    renderedIcons = [];
     map?.remove();
     map = null;
   });

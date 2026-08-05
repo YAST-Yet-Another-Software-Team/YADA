@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import Avatar from '$lib/components/ui/Avatar.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
+	import Button from '$lib/components/Button.svelte';
 	import { getSession } from '$auth/session.svelte';
 	import { initials } from '$lib/shared/text';
 
@@ -67,7 +67,7 @@
 			</div>
 		</dl>
 		<div class="border-t border-border pt-3">
-			<Button variant="ghost" size="sm" fullWidth onclick={signOut}>Sign out</Button>
+			<Button variant="outline" size="sm" fullWidth onclick={signOut}>Sign out</Button>
 		</div>
 	</div>
 {/if}

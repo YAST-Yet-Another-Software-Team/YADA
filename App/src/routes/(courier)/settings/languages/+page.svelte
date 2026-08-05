@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import SettingsSubpage from '$lib/components/courier/SettingsSubpage.svelte';
+	import SettingsSubpage from '$lib/components/SettingsSubpage.svelte';
 
 	const LANG_KEY = 'yada.courierLanguage';
 	type Lang = 'en' | 'tw' | 'fr';

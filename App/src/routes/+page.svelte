@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Button from '$lib/components/ui/Button.svelte';
+	import Button from '$lib/components/Button.svelte';
 	import { getSession } from '$auth/session.svelte';
 
 	/** Deep-link straight into a sign-up, pre-set to a role. Only this page has
@@ -70,7 +70,7 @@
 </script>
 
 <svelte:head>
-	<title>YADA — delivery tracking for Kumasi</title>
+	<title>YADA — delivery request & tracking for Kumasi</title>
 	<meta
 		name="description"
 		content="YADA connects Kumasi businesses with couriers nearby, and keeps both sides on the same map from pickup to drop-off."
@@ -92,7 +92,7 @@
 					</a>
 				{:else}
 					<a href="/auth" class="hidden sm:block">
-						<Button variant="ghost" size="sm">Sign in</Button>
+						<Button variant="neutral" size="sm">Sign in</Button>
 					</a>
 					<a href={signUpHref('business')}>
 						<Button variant="primary" size="sm">Get started</Button>
