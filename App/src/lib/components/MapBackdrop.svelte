@@ -33,7 +33,8 @@
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
   import type { LatLng } from '$lib/utils/types';
-  import { MAP_COLORS, MAP_ROLE_COLORS } from '$lib/styles/map-colors';
+  import { MAP_COLORS, MAP_ROLE_COLORS, MAP_SURFACE } from '$lib/styles/map-colors';
+  import { resolveTheme, watchResolvedTheme, type ResolvedTheme } from '$lib/client/theme';
 
   let {
     routeLabel = false,
@@ -71,6 +72,15 @@
   let lastCenteredKey = '';
   const maps = getMapsConfig();
 
+  /**
+   * Held rather than derived because the map is rebuilt from it, and rebuilding
+   * has to happen at a moment of our choosing rather than mid-render.
+   * Server-side it is never read: nothing draws until onMount.
+   */
+  let theme: ResolvedTheme = 'light';
+  let mapsLibrary: google.maps.MapsLibrary | null = null;
+  let stopThemeWatch: (() => void) | null = null;
+
   function markerColor(marker: MapMarker) {
     if (marker.role) return MAP_ROLE_COLORS[marker.role];
     return marker.accent ? MAP_COLORS.primary : MAP_COLORS.secondary;
@@ -88,6 +98,76 @@
     map.setZoom(targetZoom);
   }
 
+  /**
+   * Build the map at the current theme.
+   *
+   * Separate from onMount because `colorScheme` is a construction-time option —
+   * the Maps SDK offers no setter for it — so following a theme change means
+   * building a second map, not restyling the first. Everything the map owns
+   * (markers, the route line, the click listener) is therefore re-established
+   * here rather than once at mount.
+   */
+  function buildMap() {
+    if (!mapsLibrary || !mapElement) {
+      return;
+    }
+
+    map = new mapsLibrary.Map(mapElement, {
+      center: center ?? KUMASI_CENTER,
+      zoom: zoom ?? KUMASI_DEFAULT_ZOOM,
+      // AdvancedMarkerElement renders nothing without a Map ID.
+      mapId: maps.mapId,
+      // Google's own dark cartography. Passed explicitly rather than as
+      // FOLLOW_SYSTEM: that reads the OS only, which would ignore a user who
+      // picked a theme in settings against their system setting.
+      colorScheme: theme === 'dark' ? 'DARK' : 'LIGHT',
+      disableDefaultUI: true,
+      clickableIcons: false,
+      gestureHandling: 'greedy',
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false
+    });
+
+    if (interactive) {
+      clickListener = map.addListener('click', (event: google.maps.MapMouseEvent) => {
+        if (!event.latLng) {
+          return;
+        }
+
+        onpick?.({
+          lat: event.latLng.lat(),
+          lng: event.latLng.lng()
+        });
+      });
+    }
+
+    mapState = 'ready';
+    lastCenteredKey = centerKey(center ?? KUMASI_CENTER);
+    syncMarkers();
+    syncPolyline();
+  }
+
+  /**
+   * Release everything attached to the current map.
+   *
+   * The Maps SDK has no `destroy()`; dropping every reference we hold and
+   * letting the next `new Map()` take over the container is the documented
+   * shape of this. Markers and the polyline must be detached explicitly or they
+   * stay bound to the discarded instance and leak.
+   */
+  function teardownMap() {
+    clickListener?.remove();
+    clickListener = null;
+    renderedMarkers.forEach((marker) => (marker.map = null));
+    renderedMarkers = [];
+    renderedIcons.forEach((icon) => void unmount(icon));
+    renderedIcons = [];
+    routePolyline?.setMap(null);
+    routePolyline = null;
+    map = null;
+  }
+
   onMount(async () => {
     if (!maps.enabled) {
       mapState = 'fallback';
@@ -98,10 +178,11 @@
       return;
     }
 
+    theme = resolveTheme();
     mapState = 'loading';
 
     try {
-      const [mapsLibrary, markerLibrary] = await Promise.all([
+      const [mapsLibraryResult, markerLibrary] = await Promise.all([
         loadGoogleMaps(maps.apiKey),
         loadGoogleMapsMarker(maps.apiKey)
       ]);
@@ -112,37 +193,20 @@
 
       googleMaps = window.google.maps;
       markerApi = markerLibrary;
+      mapsLibrary = mapsLibraryResult;
 
-      map = new mapsLibrary.Map(mapElement, {
-        center: center ?? KUMASI_CENTER,
-        zoom: zoom ?? KUMASI_DEFAULT_ZOOM,
-        // AdvancedMarkerElement renders nothing without a Map ID.
-        mapId: maps.mapId,
-        disableDefaultUI: true,
-        clickableIcons: false,
-        gestureHandling: 'greedy',
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false
+      buildMap();
+
+      stopThemeWatch = watchResolvedTheme((next) => {
+        theme = next;
+
+        if (mapState !== 'ready') {
+          return;
+        }
+
+        teardownMap();
+        buildMap();
       });
-
-      if (interactive) {
-        clickListener = map.addListener('click', (event: google.maps.MapMouseEvent) => {
-          if (!event.latLng) {
-            return;
-          }
-
-          onpick?.({
-            lat: event.latLng.lat(),
-            lng: event.latLng.lng()
-          });
-        });
-      }
-
-      mapState = 'ready';
-      lastCenteredKey = centerKey(center ?? KUMASI_CENTER);
-      syncMarkers();
-      syncPolyline();
     } catch (error) {
       console.error('Unable to load Google Maps.', error);
       mapState = 'error';
@@ -151,9 +215,11 @@
 
   /**
    * A disc for roles that aren't a dropped pin — riders and businesses. The
-   * role colour fills the disc and the glyph is knocked out of it in surface
-   * white, so the marker still reads as its role at a glance from the colour
-   * alone, the way it did when these were plain dots.
+   * role colour fills the disc and the glyph is knocked out of it in the
+   * surface colour, so the marker still reads as its role at a glance from the
+   * colour alone, the way it did when these were plain dots. The knockout
+   * follows the theme: white against Google's light basemap, near-black against
+   * its dark one, so the ring reads as separation either way instead of glare.
    */
   function discContent(marker: MapMarker, color: string) {
     const icon = marker.role ? ROLE_ICONS[marker.role] : undefined;
@@ -164,7 +230,7 @@
     element.style.height = `${diameter}px`;
     element.style.borderRadius = '50%';
     element.style.background = color;
-    element.style.border = `2px solid ${MAP_COLORS.surface}`;
+    element.style.border = `2px solid ${MAP_SURFACE[theme]}`;
     element.style.boxSizing = 'content-box';
 
     if (icon) {
@@ -172,7 +238,7 @@
       element.style.alignItems = 'center';
       element.style.justifyContent = 'center';
       // The icons draw with `currentColor`, so one colour on the host is enough.
-      element.style.color = MAP_COLORS.surface;
+      element.style.color = MAP_SURFACE[theme];
 
       renderedIcons.push(
         mount(icon, {
@@ -205,8 +271,8 @@
       const content: HTMLElement = isPin
         ? new currentMarkerApi.PinElement({
             background: color,
-            borderColor: MAP_COLORS.surface,
-            glyphColor: MAP_COLORS.surface,
+            borderColor: MAP_SURFACE[theme],
+            glyphColor: MAP_SURFACE[theme],
             scale: 1.2
           })
         : discContent(marker, color);
@@ -282,10 +348,9 @@
   });
 
   onDestroy(() => {
-    clickListener?.remove();
-    renderedMarkers.forEach((marker) => (marker.map = null));
-    renderedIcons.forEach((icon) => void unmount(icon));
-    routePolyline?.setMap(null);
+    stopThemeWatch?.();
+    stopThemeWatch = null;
+    teardownMap();
   });
 </script>
 

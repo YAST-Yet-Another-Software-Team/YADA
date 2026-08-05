@@ -55,3 +55,62 @@ export function setTheme(theme: Theme) {
     // Nothing to do — the theme still applies for this session.
   }
 }
+
+/**
+ * `Theme` is what the user asked for; `ResolvedTheme` is what the page is
+ * actually painting. CSS never needs the difference — `light-dark()` collapses
+ * it — but anything drawing outside CSS does, because a canvas cannot resolve
+ * `system` on its own.
+ */
+export type ResolvedTheme = 'light' | 'dark';
+
+const DARK_QUERY = '(prefers-color-scheme: dark)';
+
+/** Which of the two is on screen right now. Browser only. */
+export function resolveTheme(): ResolvedTheme {
+  const override = document.documentElement.dataset.theme;
+
+  if (override === 'light' || override === 'dark') {
+    return override;
+  }
+
+  return window.matchMedia(DARK_QUERY).matches ? 'dark' : 'light';
+}
+
+/**
+ * Call back whenever the resolved theme flips, and return an unsubscribe.
+ *
+ * Two sources, because a flip has two causes: the OS scheme changing under a
+ * user on `system`, and the in-app picker writing `data-theme` onto <html>.
+ * The second fires no event of its own, hence the observer. Both are funnelled
+ * through one comparison so a change that resolves to the same value — picking
+ * "Dark" while the OS was already dark — costs the caller nothing.
+ */
+export function watchResolvedTheme(onChange: (theme: ResolvedTheme) => void): () => void {
+  let current = resolveTheme();
+
+  const emit = () => {
+    const next = resolveTheme();
+
+    if (next === current) {
+      return;
+    }
+
+    current = next;
+    onChange(next);
+  };
+
+  const media = window.matchMedia(DARK_QUERY);
+  media.addEventListener('change', emit);
+
+  const observer = new MutationObserver(emit);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme']
+  });
+
+  return () => {
+    media.removeEventListener('change', emit);
+    observer.disconnect();
+  };
+}
