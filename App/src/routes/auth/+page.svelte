@@ -203,24 +203,8 @@
     >
       <!-- Mobile-only compact brand band -->
       <section
-        class="relative flex shrink-0 items-center justify-between overflow-hidden bg-primary px-5 py-4 lg:hidden"
+        class="relative flex w-full items-center justify-end shrink-0 overflow-hidden bg-primary px-5 py-4 lg:hidden"
       >
-        <div
-          class="pointer-events-none absolute -right-3 -top-3 grid grid-cols-4 gap-1.5 opacity-30"
-        >
-          {#each miniDotGrid as _}
-            <span class="h-1 w-1 rounded-full bg-primary-on"></span>
-          {/each}
-        </div>
-
-        <a
-          href="/"
-          class="relative z-10 inline-flex rounded-lg bg-surface p-1.5 shadow-sm"
-          aria-label="YADA home"
-        >
-          <img src="/logo.svg" alt="" class="h-8 w-auto" />
-        </a>
-
         <div class="relative z-10 flex items-center gap-3">
           <div
             class="relative h-px w-12 border-t-2 border-dashed border-primary-on/40"

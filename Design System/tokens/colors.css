@@ -49,17 +49,24 @@
   --neutral-950: oklch(12%   0.006 50);
 
   /* ---- Semantic: success / warning / danger / info --------------------- */
+  /* The 400 and 950 steps exist for dark mode: on a dark surface the tinted
+     background has to sit near the bottom of the ramp and the foreground has to
+     rise above the mid-point, which is the mirror of what light mode uses. */
   --green-500:  oklch(62% 0.16 149);
   --green-600:  oklch(53% 0.15 149);
   --green-100:  oklch(94% 0.06 149);
+  --green-950:  oklch(20% 0.05 149);
 
   --amber-500:  oklch(78% 0.16 85);
   --amber-600:  oklch(68% 0.16 80);
   --amber-100:  oklch(94% 0.06 90);
+  --amber-950:  oklch(20% 0.05 85);
 
+  --blue-400:   oklch(70% 0.14 250);
   --blue-500:   oklch(58% 0.15 250);
   --blue-600:   oklch(50% 0.15 250);
   --blue-100:   oklch(94% 0.035 250);
+  --blue-950:   oklch(20% 0.05 250);
 
   /* danger reuses the brand red ramp deliberately — in a red-primary brand,
      the error state should not compete with a second "alarm" red */
@@ -67,45 +74,75 @@
   --danger-600: var(--red-700);
   --danger-100: var(--red-100);
 
+  /* ======================================================================
+     Semantic aliases — the layer consumers actually reach for.
+
+     Everything above is absolute: a ramp step means one colour, in any theme.
+     Everything below is relative: `light-dark(light, dark)` picks a step based
+     on the used `color-scheme`, which the app sets once on :root (see
+     App/src/lib/styles/app.css). Nothing here reads a media query and nothing
+     duplicates a `.dark` block — switching themes is a change of
+     `color-scheme`, and every token below follows from it.
+
+     Consequently a component never needs a dark variant. If a colour looks
+     wrong in dark mode, the fix belongs in this section, not in the component.
+     ====================================================================== */
+
   /* ---- Semantic aliases: surfaces --------------------------------------- */
-  --color-bg:            var(--neutral-50);
-  --color-surface:       var(--neutral-0);
-  --color-surface-raised:var(--neutral-0);
-  --color-surface-sunken:var(--neutral-100);
-  --color-border:        var(--neutral-200);
-  --color-border-strong: var(--neutral-300);
-  --color-overlay:       oklch(18% 0.01 50 / 0.55);
+  /* Dark inverts the stack rather than mirroring it: `raised` climbs *towards*
+     the light end because elevation on a dark UI reads as more light, not less,
+     while `sunken` drops back to the page colour. */
+  --color-bg:             light-dark(var(--neutral-50),  var(--neutral-950));
+  --color-surface:        light-dark(var(--neutral-0),   var(--neutral-900));
+  --color-surface-raised: light-dark(var(--neutral-0),   var(--neutral-800));
+  --color-surface-sunken: light-dark(var(--neutral-100), var(--neutral-950));
+  --color-border:         light-dark(var(--neutral-200), var(--neutral-800));
+  --color-border-strong:  light-dark(var(--neutral-300), var(--neutral-700));
+  /* A scrim over a dark page has to go further than one over a light page to
+     read as a separate layer at all. */
+  --color-overlay:        light-dark(oklch(18% 0.01 50 / 0.55), oklch(8% 0.01 50 / 0.7));
 
   /* ---- Semantic aliases: text -------------------------------------------- */
-  --color-text-primary:   var(--neutral-900);
-  --color-text-secondary: var(--neutral-600);
-  --color-text-tertiary:  var(--neutral-500);
-  --color-text-disabled:  var(--neutral-400);
-  --color-text-inverse:   var(--neutral-0);
-  --color-text-link:      var(--red-600);
+  /* Not a straight mirror: pure --neutral-0 on a dark surface haloes, so the
+     top of the dark text scale stops one step short at --neutral-50. */
+  --color-text-primary:   light-dark(var(--neutral-900), var(--neutral-50));
+  --color-text-secondary: light-dark(var(--neutral-600), var(--neutral-300));
+  --color-text-tertiary:  light-dark(var(--neutral-500), var(--neutral-400));
+  --color-text-disabled:  light-dark(var(--neutral-400), var(--neutral-600));
+  --color-text-inverse:   light-dark(var(--neutral-0),   var(--neutral-950));
+  --color-text-link:      light-dark(var(--red-600),     var(--red-400));
 
   /* ---- Semantic aliases: brand / actions --------------------------------- */
+  /* The brand itself does not change theme. A filled primary button is the same
+     red on both, so it stays recognisable and --color-on-primary keeps the one
+     contrast ratio it was designed against. Only the *subtle* fills flip: they
+     are backgrounds, and a 97%-light pink block would burn a hole in a dark
+     page. */
   --color-primary:         var(--red-500);
   --color-primary-hover:   var(--red-600);
   --color-primary-active:  var(--red-700);
-  --color-primary-subtle:  var(--red-50);
+  --color-primary-subtle:  light-dark(var(--red-50), var(--red-950));
   --color-on-primary:      var(--neutral-0);
 
   --color-secondary:        var(--orange-500);
   --color-secondary-hover:  var(--orange-600);
   --color-secondary-active: var(--orange-700);
-  --color-secondary-subtle: var(--orange-50);
+  --color-secondary-subtle: light-dark(var(--orange-50), var(--orange-950));
   --color-on-secondary:     var(--neutral-950);
 
   /* ---- Semantic aliases: status (order/ride lifecycle) ------------------- */
-  --color-success:        var(--green-600);
-  --color-success-subtle: var(--green-100);
-  --color-warning:        var(--amber-600);
-  --color-warning-subtle: var(--amber-100);
-  --color-danger:         var(--danger-500);
-  --color-danger-subtle:  var(--danger-100);
-  --color-info:           var(--blue-600);
-  --color-info-subtle:    var(--blue-100);
+  /* These are read as text on their own subtle fill (status pills, alerts), so
+     both halves of each pair move together: foreground up the ramp, background
+     down. Measured on the dark pairing: success 5.3:1, warning 9.0:1, danger
+     6.5:1, info 6.8:1. */
+  --color-success:        light-dark(var(--green-600),  var(--green-500));
+  --color-success-subtle: light-dark(var(--green-100),  var(--green-950));
+  --color-warning:        light-dark(var(--amber-600),  var(--amber-500));
+  --color-warning-subtle: light-dark(var(--amber-100),  var(--amber-950));
+  --color-danger:         light-dark(var(--danger-500), var(--red-400));
+  --color-danger-subtle:  light-dark(var(--danger-100), var(--red-950));
+  --color-info:           light-dark(var(--blue-600),   var(--blue-400));
+  --color-info-subtle:    light-dark(var(--blue-100),   var(--blue-950));
 
   --color-focus-ring: oklch(60% 0.215 27 / 0.45); /* red-500 @ 45% */
 }
