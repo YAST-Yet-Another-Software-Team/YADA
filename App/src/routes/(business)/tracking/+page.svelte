@@ -27,6 +27,7 @@
 	import IconMessage from '~icons/mdi/message-text-outline';
 	import IconArrowRight from '~icons/mdi/arrow-right';
 	import IconStar from '~icons/mdi/star';
+	import IconCheck from '~icons/mdi/check';
 	import { DISPATCH_TIMEOUT_SECONDS, ringForElapsed, ringLabel } from '$lib/shared/dispatch';
 	import { isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
 	import type { CourierSummary, RiderLocationEvent, TripStatus } from '$lib/utils/types';
@@ -41,6 +42,7 @@
 		dropoffLat: number;
 		dropoffLng: number;
 		estimatedDurationMinutes?: number | null;
+		completedAt?: string | null;
 		assignedCourierId?: string | null;
 		courier?: CourierSummary | null;
 	};
@@ -200,6 +202,7 @@
 				dropoffLat: payload.trip.dropoffLat,
 				dropoffLng: payload.trip.dropoffLng,
 				estimatedDurationMinutes: payload.trip.estimatedDurationMinutes,
+				completedAt: payload.trip.completedAt ?? null,
 				assignedCourierId: payload.trip.assignedCourierId ?? null,
 				courier: payload.trip.courier ?? null
 			};
@@ -484,6 +487,26 @@
 	);
 
 	const statusLabel = $derived(trip ? STATUS_LABELS[trip.status] : 'Loading…');
+
+	/** Delivery time in the viewer's own clock, for the completion screen. */
+	const completedTime = $derived(
+		trip?.completedAt
+			? new Date(trip.completedAt).toLocaleTimeString(undefined, {
+					hour: 'numeric',
+					minute: '2-digit'
+				})
+			: null
+	);
+
+	/**
+	 * A delivered trip stops being a map. On a phone the screen becomes the
+	 * receipt for it — what was delivered, by whom, and the one prompt worth
+	 * asking at that moment — because there is nothing left to watch move.
+	 */
+	const delivered = $derived(trip?.status === 'completed');
+
+	/** The order number as the rest of the workspace prints it. */
+	const shortId = $derived(trip ? `YD-${trip.id.slice(0, 4).toUpperCase()}` : '—');
 </script>
 
 <svelte:head>
@@ -494,8 +517,98 @@
      the header, so there is no card frame to draw and no viewport arithmetic to
      do here — `flex-1` takes what's left and `min-h-0` lets the map shrink into
      it instead of overflowing. -->
+<!-- The rating exchange, in one place: the phone shows it on the completion
+     screen, the desktop in the column beside the map, and neither should be able
+     to drift from the other. -->
+{#snippet ratingBlock()}
+	{#if myRating != null}
+		<div class="flex items-center justify-between gap-3">
+			<p class="text-sm font-semibold text-ink">Your rating</p>
+			<RatingStars value={myRating} readonly size={20} />
+		</div>
+	{:else}
+		<p class="text-sm font-semibold text-ink">
+			How was {trip?.courier?.name ?? 'your rider'}?
+		</p>
+		<RatingStars bind:value={ratingValue} />
+		<textarea
+			bind:value={ratingComment}
+			rows={2}
+			maxlength={500}
+			placeholder="Anything worth noting? (optional)"
+			class="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-disabled focus:border-primary"
+		></textarea>
+		{#if ratingError}
+			<Alert>{ratingError}</Alert>
+		{/if}
+		<Button
+			variant="primary"
+			size="sm"
+			disabled={ratingValue === 0 || ratingBusy}
+			onclick={submitRating}
+		>
+			{ratingBusy ? 'Saving…' : 'Rate rider'}
+		</Button>
+	{/if}
+{/snippet}
+
 <div class="relative flex min-h-0 flex-1 flex-col bg-surface lg:flex-row lg:overflow-hidden">
-	<div class="relative min-h-[40svh] flex-1 lg:min-h-0">
+	{#if delivered}
+		<!-- Phone-only completion screen. The desktop keeps map-and-column, where
+		     the operator is watching several jobs at once and this one closing is
+		     an update rather than the whole screen. -->
+		<section
+			class="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-10 lg:hidden"
+		>
+			<div class="mx-auto flex w-full max-w-sm flex-1 flex-col items-center text-center">
+				<span
+					class="flex h-16 w-16 items-center justify-center rounded-full bg-success-subtle text-success"
+				>
+					<IconCheck class="h-9 w-9" aria-hidden="true" />
+				</span>
+				<h1 class="mt-4 text-2xl font-bold text-ink">Delivered</h1>
+				<p class="mt-1 text-sm text-ink-secondary">{trip?.dropoffAddress}</p>
+
+				<dl
+					class="mt-6 w-full space-y-2.5 rounded-lg border border-border bg-surface p-4 text-left text-sm shadow-xs"
+				>
+					<div class="flex items-center justify-between gap-3">
+						<dt class="text-ink-secondary">Order</dt>
+						<dd class="font-mono-data text-ink">{shortId}</dd>
+					</div>
+					<div class="flex items-center justify-between gap-3">
+						<dt class="text-ink-secondary">Rider</dt>
+						<dd class="min-w-0 truncate text-ink">{trip?.courier?.name ?? '—'}</dd>
+					</div>
+					<div class="flex items-center justify-between gap-3">
+						<dt class="text-ink-secondary">Delivered</dt>
+						<dd class="font-mono-data text-ink">{completedTime ?? '—'}</dd>
+					</div>
+				</dl>
+
+				{#if trip?.courier}
+					<div
+						class="mt-3 flex w-full flex-col gap-3 rounded-lg border border-border bg-surface p-4 text-left shadow-xs"
+					>
+						{@render ratingBlock()}
+					</div>
+				{/if}
+
+				<div class="flex-1 pt-6"></div>
+
+				<div class="w-full space-y-2">
+					<Button variant="primary" size="lg" fullWidth onclick={() => goto('/dashboard')}>
+						Back to dashboard
+					</Button>
+					<Button variant="neutral" size="sm" fullWidth onclick={() => goto('/history')}>
+						View in history
+					</Button>
+				</div>
+			</div>
+		</section>
+	{/if}
+
+	<div class="relative min-h-[40svh] flex-1 lg:min-h-0 {delivered ? 'hidden lg:block' : ''}">
 		<div class="absolute left-4 top-4 z-10 lg:hidden">
 			<IconButton ariaLabel="Back" onclick={() => goto('/dashboard')}>
 				<IconChevronLeft class="h-5 w-5" aria-hidden="true" />
@@ -515,8 +628,11 @@
 			locationUnavailable={!searching && riderStale}
 		>
 			{#if searching && !closed}
+				<!-- Desktop only: on a phone the sheet below already narrates the
+				     search, and a second copy of it would collide with the back
+				     button. -->
 				<div
-					class="absolute left-1/2 top-4 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-surface/95 px-3 py-2 text-sm text-ink-secondary shadow-sm"
+					class="absolute left-1/2 top-4 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-surface/95 px-3 py-2 text-sm text-ink-secondary shadow-sm lg:block"
 				>
 					{#if dispatchExpired}
 						No rider accepted — ring again from the panel.
@@ -531,13 +647,14 @@
 	</div>
 
 	<!-- Mobile keeps the sheet look, because there the panel sits *over* the map
-	     and needs an edge to read as lifted off it. On desktop it's a column
-	     beside the map, so it scrolls itself rather than growing the page. -->
+	     and needs an edge to read as lifted off it — the same 28px lip the
+	     courier screens use. On desktop it's a column beside the map, so it
+	     scrolls itself rather than growing the page. -->
 	<aside
-		class="z-10 flex flex-col gap-4 rounded-t-xl border-t border-border bg-surface p-6 shadow-lg lg:w-[320px] lg:shrink-0 lg:overflow-y-auto lg:rounded-none lg:border-t-0 lg:shadow-none"
+		class="z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg lg:w-[320px] lg:shrink-0 lg:overflow-y-auto lg:rounded-none lg:border-t-0 lg:p-6 lg:shadow-none {delivered
+			? 'hidden lg:flex'
+			: ''}"
 	>
-		<StatusPill status={toDispatchStage(trip?.status ?? 'requested')} />
-
 		{#if loadError}
 			<Alert>{loadError}</Alert>
 		{/if}
@@ -545,7 +662,54 @@
 			<Alert>{actionError}</Alert>
 		{/if}
 
-		<div class="flex items-center gap-3">
+		{#if searching && !closed}
+			<!-- Matching. Nobody has taken the job, so there is no rider to show and
+			     no ETA to give: the sheet says what is happening and offers the one
+			     thing that can be done about it. Centred on a phone, where it's the
+			     whole screen; left-aligned in the desktop column, where it isn't. -->
+			<div class="flex flex-1 flex-col items-center gap-3 py-2 text-center lg:items-start lg:py-0 lg:text-left">
+				<StatusPill status="searching" />
+				<div>
+					<p class="text-lg font-semibold text-ink lg:text-base">Finding a rider near you</p>
+					<p class="mt-1 text-sm text-ink-secondary">
+						{#if dispatchExpired}
+							No rider accepted in time. Ring again, or cancel the request.
+						{:else if dispatchRing}
+							Ringing riders {ringLabel(dispatchRing.radiusKm)} of your pickup
+							<span class="font-mono-data">
+								· {Math.max(0, Math.ceil(DISPATCH_TIMEOUT_SECONDS - (dispatchElapsed ?? 0)))}s
+							</span>
+						{:else}
+							Usually under a minute.
+						{/if}
+					</p>
+				</div>
+
+				<p class="hidden w-full min-w-0 items-center gap-1.5 text-sm text-ink-secondary lg:flex">
+					<span class="min-w-0 truncate">{trip?.pickupAddress ?? 'Pickup'}</span>
+					<IconArrowRight class="h-4 w-4 shrink-0 text-ink-tertiary" aria-label="to" />
+					<span class="min-w-0 truncate">{trip?.dropoffAddress ?? 'Dropoff'}</span>
+				</p>
+			</div>
+
+			<div class="flex w-full flex-col gap-2">
+				{#if dispatchExpired && canCancel}
+					<!-- The 60-second search failed; per the spec the request is remade
+					     manually. Declines persist — riders who said no stay unrung. -->
+					<Button variant="primary" size="lg" fullWidth disabled={retrying} onclick={retryDispatch}>
+						{retrying ? 'Ringing…' : 'Ring riders again'}
+					</Button>
+				{/if}
+				{#if canCancel}
+					<Button variant="outline" size="sm" fullWidth disabled={cancelling} onclick={cancelRequest}>
+						{cancelling ? 'Cancelling…' : 'Cancel request'}
+					</Button>
+				{/if}
+			</div>
+		{:else}
+			<StatusPill status={toDispatchStage(trip?.status ?? 'requested')} />
+
+			<div class="flex items-center gap-3">
 			<!-- SRS 3.3: on acceptance the business sees the courier's name, photo and
 			     rating. The photo is whatever they registered with. -->
 			<Avatar
@@ -595,11 +759,6 @@
 				<IconArrowRight class="h-4 w-4 shrink-0 text-ink-tertiary" aria-label="to" />
 				<span class="min-w-0 truncate">{trip?.dropoffAddress ?? 'Dropoff'}</span>
 			</p>
-			{#if searching && !closed}
-				<p class="mt-2 text-sm text-ink-secondary">
-					We'll draw the route as soon as a rider takes this request.
-				</p>
-			{/if}
 		</div>
 
 		{#if !searching && !closed && trip?.courier?.phone}
@@ -645,65 +804,17 @@
 						{/if}
 					</p>
 				{/if}
-			{:else if canCancel}
-				{#if dispatchExpired}
-					<!-- The 60-second search failed; per the spec the request is remade
-					     manually. Declines persist — riders who said no stay unrung. -->
-					<p class="text-sm text-ink-secondary">
-						No rider accepted in time. Ring again, or cancel the request.
-					</p>
-					<Button variant="primary" size="sm" disabled={retrying} onclick={retryDispatch}>
-						{retrying ? 'Ringing…' : 'Ring riders again'}
-					</Button>
-				{:else if dispatchRing}
-					<p class="text-sm text-ink-secondary">
-						Ringing riders {ringLabel(dispatchRing.radiusKm)} of your pickup
-						<span class="font-mono-data">
-							· {Math.max(0, Math.ceil(DISPATCH_TIMEOUT_SECONDS - (dispatchElapsed ?? 0)))}s
-						</span>
-					</p>
-				{/if}
-				<Button variant="outline" size="sm" disabled={cancelling} onclick={cancelRequest}>
-					{cancelling ? 'Cancelling…' : 'Cancel request'}
-				</Button>
 			{:else if closed}
 				{#if trip?.status === 'completed'}
 					<!-- The prompt lands at the moment of delivery (SRS 2.2.1.5), while
 					     the trip is still on screen and the rider still has a face. -->
 					<div class="flex flex-col gap-3 border-t border-border pt-4">
-						{#if myRating != null}
-							<div class="flex items-center justify-between gap-3">
-								<p class="text-sm font-semibold text-ink">Your rating</p>
-								<RatingStars value={myRating} readonly size={20} />
-							</div>
-						{:else}
-							<p class="text-sm font-semibold text-ink">
-								How was {trip.courier?.name ?? 'your rider'}?
-							</p>
-							<RatingStars bind:value={ratingValue} />
-							<textarea
-								bind:value={ratingComment}
-								rows={2}
-								maxlength={500}
-								placeholder="Anything worth noting? (optional)"
-								class="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-disabled focus:border-primary"
-							></textarea>
-							{#if ratingError}
-								<Alert>{ratingError}</Alert>
-							{/if}
-							<Button
-								variant="primary"
-								size="sm"
-								disabled={ratingValue === 0 || ratingBusy}
-								onclick={submitRating}
-							>
-								{ratingBusy ? 'Saving…' : 'Rate rider'}
-							</Button>
-						{/if}
+						{@render ratingBlock()}
 					</div>
 				{/if}
 				<Button variant="neutral" size="sm" onclick={() => goto('/history')}>View in history</Button>
 			{/if}
-		</div>
+			</div>
+		{/if}
 	</aside>
 </div>

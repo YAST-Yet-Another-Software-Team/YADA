@@ -6,7 +6,8 @@
 	import { computeDrivingRoute } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
-	import IconChevronLeft from '~icons/mdi/chevron-left';
+	import IconCircle from '~icons/mdi/record-circle-outline';
+	import IconPin from '~icons/mdi/map-marker';
 	import type { LatLng } from '$lib/utils/types';
 
 	let {
@@ -166,19 +167,15 @@
 	<title>New request | YADA</title>
 </svelte:head>
 
-<!-- No card: the layout hands this page the whole area under the header, and a
-     map with a border around it is a map with less map in it. -->
+<!-- No card: the layout hands this page the whole area under the header (and the
+     header itself, on a phone, is the layout's back bar), and a map with a
+     border around it is a map with less map in it. -->
 <div class="flex min-h-0 flex-1 flex-col bg-surface lg:overflow-hidden">
-	<div class="flex items-center gap-3 border-b border-border px-4 py-3 lg:hidden">
-		<a href="/dashboard" class="text-ink" aria-label="Back">
-			<IconChevronLeft class="h-6 w-6" aria-hidden="true" />
-		</a>
-		<h1 class="text-lg font-semibold text-ink">New request</h1>
-	</div>
-
 	<div class="flex min-h-0 flex-1 flex-col lg:flex-row">
-		<!-- Map on top in portrait; right pane in landscape -->
-		<div class="relative order-1 min-h-[52svh] flex-1 lg:order-2 lg:min-h-0">
+		<!-- Map on top in portrait; right pane in landscape. It takes whatever the
+		     sheet below doesn't need, with a floor under it so the sheet can never
+		     grow over the pin the person is placing. -->
+		<div class="relative order-1 min-h-[38svh] flex-1 lg:order-2 lg:min-h-0">
 			{#if business}
 				<LocationPickerMap
 					bind:point={dropoffPoint}
@@ -206,54 +203,111 @@
 			{/if}
 		</div>
 
-		<!-- Request controls below in portrait; left pane in landscape -->
+		<!-- Request controls below in portrait; left pane in landscape.
+		     On a phone the panel lifts over the bottom of the map — the same
+		     rounded sheet the courier screens use — so the two read as one
+		     surface rather than two stacked panes. -->
 		<aside
-			class="relative z-20 order-2 flex w-full shrink-0 flex-col gap-5 overflow-visible border-t border-border bg-surface p-4 lg:order-1 lg:w-[320px] lg:overflow-y-auto lg:border-r lg:border-t-0 lg:p-6"
+			class="relative z-20 order-2 -mt-5 flex max-h-[58svh] w-full shrink-0 flex-col rounded-t-[28px] border-t border-border bg-surface shadow-lg lg:order-1 lg:mt-0 lg:max-h-none lg:w-[320px] lg:flex-none lg:rounded-none lg:border-r lg:border-t-0 lg:shadow-none"
 		>
-			{#if business}
-				<div class="hidden lg:block">
-					<h1 class="text-xl font-semibold text-ink">New delivery request</h1>
-					<p class="mt-1 text-sm text-ink-secondary">
-						Search the customer's address, then nudge the pin if it needs it.
-					</p>
-				</div>
-
-				{#if submitError}
-					<Alert>{submitError}</Alert>
-				{/if}
-
-				<section class="space-y-1">
-					<p class="text-eyebrow font-bold text-primary">Pickup</p>
-					<p class="text-sm font-semibold text-ink">{business.businessName}</p>
-					<p class="text-sm text-ink-secondary">{business.address}</p>
-				</section>
-
-				<section class="space-y-1">
-					<p class="text-eyebrow font-bold text-secondary-700">Deliver to</p>
-					{#if resolvingDropoff}
-						<p class="text-sm text-ink-tertiary">Reading that spot…</p>
-					{:else if dropoffAddress}
-						<p class="text-sm text-ink">{dropoffAddress}</p>
-					{:else}
-						<p class="text-sm text-ink-tertiary">
-							Search the address above, or tap the map.
+			<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 lg:gap-5 lg:p-6">
+				{#if business}
+					<div class="hidden lg:block">
+						<h1 class="text-xl font-semibold text-ink">New delivery request</h1>
+						<p class="mt-1 text-sm text-ink-secondary">
+							Search the customer's address, then nudge the pin if it needs it.
 						</p>
-					{/if}
-					{#if dropoffError}
-						<p class="text-xs font-medium text-danger">{dropoffError}</p>
-					{/if}
-				</section>
+					</div>
 
-				{#if estimate}
-					<section class="space-y-1 border-t border-border pt-4">
-						<p class="text-eyebrow font-bold text-primary">Estimate</p>
-						<p class="font-mono-data text-sm text-ink">
-							{estimate.distanceKm.toFixed(1)} km · {estimate.durationText}
-						</p>
+					{#if submitError}
+						<Alert>{submitError}</Alert>
+					{/if}
+
+					<!-- Two rows, one journey: the labelled boxes read as the form the
+					     wireframe asks for, and the connector between the pins says
+					     which way the parcel goes without a word. -->
+					<section class="space-y-2">
+						<div class="flex gap-3">
+							<div class="flex flex-col items-center pt-3.5">
+								<IconCircle class="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+								<span class="my-1 w-px flex-1 bg-border" aria-hidden="true"></span>
+								<IconPin
+									class="h-4 w-4 shrink-0 text-secondary-700"
+									aria-hidden="true"
+								/>
+							</div>
+
+							<div class="min-w-0 flex-1 space-y-2">
+								<div>
+									<p class="text-eyebrow mb-1 text-ink-tertiary">Pickup</p>
+									<div class="rounded-md border border-border bg-surface px-3 py-2.5">
+										<p class="truncate text-sm font-semibold text-ink">
+											{business.businessName}
+										</p>
+										<p class="truncate text-sm text-ink-secondary">{business.address}</p>
+									</div>
+								</div>
+
+								<div>
+									<p class="text-eyebrow mb-1 text-ink-tertiary">Deliver to</p>
+									<div
+										class="rounded-md border px-3 py-2.5 {dropoffAddress
+											? 'border-border bg-surface'
+											: 'border-dashed border-border bg-surface-sunken'}"
+									>
+										{#if resolvingDropoff}
+											<p class="text-sm text-ink-tertiary">Reading that spot…</p>
+										{:else if dropoffAddress}
+											<p class="text-sm text-ink">{dropoffAddress}</p>
+										{:else}
+											<p class="text-sm text-ink-tertiary">
+												Search on the map, or tap it to drop the pin.
+											</p>
+										{/if}
+									</div>
+									{#if dropoffError}
+										<p class="mt-1 text-xs font-medium text-danger">{dropoffError}</p>
+									{/if}
+								</div>
+							</div>
+						</div>
 					</section>
-				{/if}
 
-				<div class="mt-auto pt-2">
+					{#if estimate}
+						<section class="flex items-center justify-between border-t border-border pt-3">
+							<p class="text-eyebrow text-ink-tertiary">Estimate</p>
+							<p class="font-mono-data text-sm text-ink">
+								{estimate.distanceKm.toFixed(1)} km · {estimate.durationText}
+							</p>
+						</section>
+					{/if}
+				{:else}
+					<div>
+						<h1 class="text-xl font-semibold text-ink">Where do you dispatch from?</h1>
+						<p class="mt-1 text-sm text-ink-secondary">
+							Set this once and every delivery you request leaves from there. Search your
+							address, or tap the map to place the pin exactly.
+						</p>
+					</div>
+
+					{#if setupError}
+						<Alert>{setupError}</Alert>
+					{/if}
+
+					<div class="rounded-md border border-border bg-surface px-3 py-2.5">
+						<p class="text-sm {setupAddress ? 'text-ink' : 'text-ink-tertiary'}">
+							{setupAddress || 'No location pinned yet'}
+						</p>
+					</div>
+				{/if}
+			</div>
+
+			<!-- The one action, always on screen: on a phone it stays at the foot of
+			     the sheet however long the addresses run. -->
+			<div
+				class="shrink-0 border-t border-border px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 lg:border-t-0 lg:px-6 lg:pb-6 lg:pt-0"
+			>
+				{#if business}
 					<Button
 						variant="primary"
 						size="lg"
@@ -263,25 +317,7 @@
 					>
 						{submitting ? 'Sending…' : 'Request a rider'}
 					</Button>
-				</div>
-			{:else}
-				<div>
-					<h1 class="text-xl font-semibold text-ink">Where do you dispatch from?</h1>
-					<p class="mt-1 text-sm text-ink-secondary">
-						Set this once and every delivery you request leaves from there. Search your
-						address, or tap the map to place the pin exactly.
-					</p>
-				</div>
-
-				{#if setupError}
-					<Alert>{setupError}</Alert>
-				{/if}
-
-				<p class="text-sm {setupAddress ? 'text-ink' : 'text-ink-tertiary'}">
-					{setupAddress || 'No location pinned yet'}
-				</p>
-
-				<div class="mt-auto pt-2">
+				{:else}
 					<Button
 						variant="primary"
 						size="lg"
@@ -291,8 +327,8 @@
 					>
 						{savingAddress ? 'Saving…' : 'Save business address'}
 					</Button>
-				</div>
-			{/if}
+				{/if}
+			</div>
 		</aside>
 	</div>
 </div>

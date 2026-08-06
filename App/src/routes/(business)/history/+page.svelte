@@ -6,7 +6,6 @@
 	import RatingStars from '$lib/components/RatingStars.svelte';
 	import SelectMenu from '$lib/components/SelectMenu.svelte';
 	import StatusPill from '$lib/components/StatusPill.svelte';
-	import Tabs from '$lib/components/Tabs.svelte';
 	import type { DashboardTripRecord } from '$lib/utils/types';
 
 	let {
@@ -17,7 +16,6 @@
 		};
 	} = $props();
 
-	let tab = $state('history');
 	let statusFilter = $state('all');
 
 	// `all` is a real choice in the menu rather than the label doing double duty,
@@ -42,8 +40,6 @@
 			return statusOk && searchOk;
 		})
 	);
-
-	const mobileList = $derived(tab === 'active' ? [] : filtered);
 
 	/** The rating form inside the details panel; reset per trip on open. */
 	let ratingValue = $state(0);
@@ -95,16 +91,18 @@
 	<title>History | YADA</title>
 </svelte:head>
 
-<div class="flex flex-col gap-4 p-4 lg:gap-6 lg:p-0">
-	<div class="flex flex-wrap items-end justify-between gap-4">
+<div class="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-0">
+	<!-- No heading on a phone: the bar above already says Orders, and repeating it
+	     costs a line of a screen that is mostly list. -->
+	<div class="hidden flex-wrap items-end justify-between gap-4 lg:flex">
 		<div>
 			<h1 class="text-2xl font-semibold text-ink">Orders</h1>
-			<p class="mt-1 hidden text-sm text-ink-secondary lg:block">
+			<p class="mt-1 text-sm text-ink-secondary">
 				Delivery history — click an order for details
 			</p>
 		</div>
 
-		<div class="hidden flex-wrap items-center gap-2 lg:flex">
+		<div class="flex flex-wrap items-center gap-2">
 			<div class="w-44">
 				<SelectMenu
 					bind:value={statusFilter}
@@ -122,21 +120,42 @@
 		</div>
 	</div>
 
-	<div class="lg:hidden">
-		<Tabs
-			tabs={[
-				{ value: 'active', label: 'Active' },
-				{ value: 'history', label: 'History' }
-			]}
-			bind:active={tab}
+	<!-- The same two controls on a phone, sized for it. The tab strip that used
+	     to sit here offered an "Active" list that was always empty — active
+	     deliveries live on the dashboard, which is one tap away. -->
+	<div class="flex items-center gap-2 lg:hidden">
+		<div class="w-36 shrink-0">
+			<SelectMenu
+				bind:value={statusFilter}
+				label="Status"
+				ariaLabel="Filter orders by status"
+				options={statusOptions}
+			/>
+		</div>
+		<input
+			type="search"
+			placeholder="Search order #"
+			bind:value={search}
+			class="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
 		/>
 	</div>
 
 	<div class="flex flex-1 flex-col gap-3 lg:hidden">
-		{#if mobileList.length === 0}
-			<p class="py-8 text-center text-sm text-ink-secondary">No active orders right now.</p>
+		{#if filtered.length === 0}
+			<div
+				class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-10 text-center"
+			>
+				<p class="text-sm font-semibold text-ink">
+					{data.historyTrips.length === 0 ? 'No orders yet' : 'Nothing matches those filters'}
+				</p>
+				<p class="text-sm text-ink-secondary">
+					{data.historyTrips.length === 0
+						? 'Delivered and cancelled requests are kept here.'
+						: 'Try a different status, or clear the search.'}
+				</p>
+			</div>
 		{:else}
-			{#each mobileList as order (order.id)}
+			{#each filtered as order (order.id)}
 				<button type="button" class="w-full text-left" onclick={() => openDetails(order)}>
 					<Card>
 						<div class="flex items-center justify-between gap-3">
