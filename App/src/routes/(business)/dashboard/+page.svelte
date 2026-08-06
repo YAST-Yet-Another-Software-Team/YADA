@@ -325,6 +325,9 @@
                     lng: data.dashboard.businessProfile.lng,
                     label: data.dashboard.businessProfile.businessName,
                     role: "business" as const,
+                    // Same signal as the tracking map: the counter radiates
+                    // while its request is still looking for a rider.
+                    pulse: selected.status === "searching",
                   },
                 ]
               : []),

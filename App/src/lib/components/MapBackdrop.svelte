@@ -13,6 +13,13 @@
     role?: MapMarkerRole;
     accent?: boolean;
     stale?: boolean;
+    /**
+     * Rings expanding out of this marker — "something is happening here, and
+     * you are waiting on it". The one state that earns it is a business whose
+     * request is still ringing riders; a marker that pulses for no reason is
+     * just motion in the corner of a rider's eye.
+     */
+    pulse?: boolean;
   };
 
   /**
@@ -248,7 +255,38 @@
       );
     }
 
-    return element;
+    if (!marker.pulse) return element;
+
+    // Marker content is built imperatively, outside the template, so component
+    // CSS can't reach it — the rings are animated through the Web Animations
+    // API instead of a keyframes rule. Two of them, half a cycle apart, so the
+    // pulse reads as continuous rather than as a blink.
+    const host = document.createElement('div');
+    host.style.position = 'relative';
+    host.style.display = 'flex';
+    host.style.alignItems = 'center';
+    host.style.justifyContent = 'center';
+
+    for (const delay of [0, 1200]) {
+      const ring = document.createElement('div');
+      ring.style.position = 'absolute';
+      ring.style.width = `${diameter}px`;
+      ring.style.height = `${diameter}px`;
+      ring.style.borderRadius = '50%';
+      ring.style.border = `2px solid ${color}`;
+      ring.style.pointerEvents = 'none';
+      ring.animate(
+        [
+          { transform: 'scale(1)', opacity: 0.75 },
+          { transform: 'scale(3.4)', opacity: 0 }
+        ],
+        { duration: 2400, iterations: Infinity, delay, easing: 'ease-out' }
+      );
+      host.appendChild(ring);
+    }
+
+    host.appendChild(element);
+    return host;
   }
 
   function syncMarkers() {

@@ -461,7 +461,11 @@
 						lat: trip.pickupLat,
 						lng: trip.pickupLng,
 						label: trip.pickupAddress,
-						role: 'business' as const
+						role: 'business' as const,
+						// Rings while the request is still ringing riders: the search
+						// radiates from this counter, and the map is the only place that
+						// can show it happening. It stops the moment someone accepts.
+						pulse: searching && !closed
 					},
 					{
 						id: 'dropoff',
@@ -776,13 +780,6 @@
 					aria-label="Call {trip.courier.name}"
 				>
 					<IconPhone class="h-[18px] w-[18px]" aria-hidden="true" />
-				</a>
-				<a
-					href="sms:{trip.courier.phone}"
-					class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
-					aria-label="Message {trip.courier.name}"
-				>
-					<IconMessage class="h-[18px] w-[18px]" aria-hidden="true" />
 				</a>
 				<p class="font-mono-data text-sm text-ink-secondary">{trip.courier.phone}</p>
 			</div>

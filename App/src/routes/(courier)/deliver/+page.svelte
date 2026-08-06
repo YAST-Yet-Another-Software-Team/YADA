@@ -228,13 +228,6 @@
         >
           <IconPhone class="h-[18px] w-[18px]" aria-hidden="true" />
         </a>
-        <a
-          href="sms:{data.trip.businessPhone}"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
-          aria-label="Message {data.trip.businessName}"
-        >
-          <IconMessage class="h-[18px] w-[18px]" aria-hidden="true" />
-        </a>
       {/if}
       <div class="flex-1"></div>
       {#if atDropoff}

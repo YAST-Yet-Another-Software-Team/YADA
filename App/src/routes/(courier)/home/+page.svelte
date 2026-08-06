@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onDestroy, onMount, untrack } from 'svelte';
-	import { fade, fly } from 'svelte/transition';
+	import { fly } from 'svelte/transition';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import IconButton from '$lib/components/IconButton.svelte';
@@ -15,7 +15,6 @@
 	import IconClose from '~icons/mdi/close';
 	import IconStore from '~icons/mdi/storefront-outline';
 	import IconPin from '~icons/mdi/map-marker';
-	import IconMotorbike from '~icons/mdi/motorbike';
 	import { acceptOffer, countdownLabel, declineOffer, distanceLabel } from '../offers';
 	import type { CourierOffer, TripStatus } from '$lib/utils/types';
 
@@ -240,85 +239,47 @@
 		<!-- `routeLabel` is gone with the line: it drew a dashed segment across the
 		     placeholder map, which implied a route this screen never had. -->
 		<MapBackdrop
-			center={online.online ? pickupPoint : (deviceCenter ?? KUMASI_CENTER)}
-			markers={online.online && heroTrip
-				? [
-						{
-							id: 'pickup',
-							lat: pickupPoint.lat,
-							lng: pickupPoint.lng,
-							label: 'Pickup',
-							role: 'pickup' as const
-						},
-						...(dropoffPoint
-							? [
-									{
-										id: 'dropoff',
-										lat: dropoffPoint.lat,
-										lng: dropoffPoint.lng,
-										label: 'Dropoff',
-										role: 'dropoff' as const
-									}
-								]
-							: [])
-					]
-				: []}
+			center={heroTrip ? pickupPoint : (deviceCenter ?? KUMASI_CENTER)}
+			markers={[
+				// Where the rider is, always — the one thing the map should say when
+				// there is no job on it. Before this, an idle courier looked at an
+				// empty map with a graphic over the middle of it.
+				...(deviceCenter
+					? [
+							{
+								id: 'me',
+								lat: deviceCenter.lat,
+								lng: deviceCenter.lng,
+								label: 'You',
+								role: 'rider' as const
+							}
+						]
+					: []),
+				...(heroTrip
+					? [
+							{
+								id: 'pickup',
+								lat: pickupPoint.lat,
+								lng: pickupPoint.lng,
+								label: 'Pickup',
+								role: 'pickup' as const
+							},
+							...(dropoffPoint
+								? [
+										{
+											id: 'dropoff',
+											lat: dropoffPoint.lat,
+											lng: dropoffPoint.lng,
+											label: 'Dropoff',
+											role: 'dropoff' as const
+										}
+									]
+								: [])
+						]
+					: [])
+			]}
 		/>
 	</div>
-
-	<!-- The waiting state, centred on the map the way the wireframe draws it: a
-	     radar that is plainly *listening*, and one line saying what makes the
-	     phone ring. It steps aside the moment there is an offer or a live trip —
-	     both of those own the screen. -->
-	{#if !liveOffer && !data.activeTrip}
-		<div
-			class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center px-8 pb-40 text-center"
-			in:fade={{ duration: 200 }}
-		>
-			<div class="relative flex h-36 w-36 items-center justify-center">
-				{#if online.online}
-					<span class="absolute inset-3 rounded-full border-md border-primary/25" aria-hidden="true"
-					></span>
-					<span
-						class="absolute inset-0 animate-ping rounded-full border-md border-primary/40"
-						style="animation-duration: 2.4s;"
-						aria-hidden="true"
-					></span>
-					<span
-						class="absolute inset-5 animate-ping rounded-full border-md border-primary/50"
-						style="animation-duration: 2.4s; animation-delay: .6s;"
-						aria-hidden="true"
-					></span>
-				{:else}
-					<span class="absolute inset-0 rounded-full border-md border-border" aria-hidden="true"
-					></span>
-					<span class="absolute inset-5 rounded-full border-md border-border" aria-hidden="true"
-					></span>
-				{/if}
-				<span
-					class="relative flex h-16 w-16 items-center justify-center rounded-full {online.online
-						? 'bg-primary text-primary-on shadow-primary-glow'
-						: 'bg-surface text-ink-tertiary shadow-sm'}"
-				>
-					<IconMotorbike class="h-8 w-8" aria-hidden="true" />
-				</span>
-			</div>
-
-			<div class="mt-6 max-w-xs rounded-xl bg-surface/90 px-4 py-3 shadow-sm backdrop-blur-sm">
-				{#if online.online}
-					<p class="font-semibold text-ink">Waiting for a delivery request…</p>
-					<p class="mt-1 text-sm text-ink-secondary">
-						Stay nearby — businesses call riders by distance
-					</p>
-				{:else}
-					<p class="font-semibold text-ink">You're offline</p>
-					<p class="mt-1 text-sm text-ink-secondary">
-						Go online when you're ready to receive requests
-					</p>
-				{/if}
-			</div>
-		</div>
-	{/if}
 
 	<div class="relative z-20 mt-auto">
 		<!-- Shift state, riding just above the sheet that switches it. It sits over
@@ -450,9 +411,9 @@
 					{data.summary.tripsToday === 1 ? 'delivery' : 'deliveries'}
 				</span>
 			</div>
-			<Button variant="outline" size="lg" fullWidth onclick={goOffline}>Go offline</Button>
+			<Button variant="outline" size="sm" fullWidth onclick={goOffline}>Go offline</Button>
 		{:else}
-			<Button variant="primary" size="lg" fullWidth onclick={goOnline}>Go online</Button>
+			<Button variant="primary" size="sm" fullWidth onclick={goOnline}>Go online</Button>
 		{/if}
 		</div>
 	</div>
