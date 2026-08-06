@@ -4,7 +4,6 @@
   import MapBackdrop from '$lib/components/MapBackdrop.svelte';
   import Alert from '$lib/components/Alert.svelte';
   import Button from '$lib/components/Button.svelte';
-  import IconButton from '$lib/components/IconButton.svelte';
   import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
   import {
     DELIVERY_PROXIMITY_KM,
@@ -17,6 +16,8 @@
   import IconArrowRight from '~icons/mdi/arrow-right';
   import IconPhone from '~icons/mdi/phone';
   import IconMessage from '~icons/mdi/message-text-outline';
+  import IconNavigation from '~icons/mdi/navigation-variant-outline';
+  import { directionsHref } from '../offers';
   import { startCourierLocationReporter } from '../location-reporter';
 
   let {
@@ -26,6 +27,7 @@
       trip: {
         id: string;
         businessName: string;
+        businessPhone: string | null;
         pickupAddress: string;
         dropoffAddress: string;
         pickupLat: number | null;
@@ -205,12 +207,35 @@
     {/if}
 
     <div class="flex items-center gap-3">
-      <IconButton ariaLabel="Call customer" variant="outline">
-        <IconPhone class="h-[18px] w-[18px]" aria-hidden="true" />
-      </IconButton>
-      <IconButton ariaLabel="Message customer" variant="outline">
-        <IconMessage class="h-[18px] w-[18px]" aria-hidden="true" />
-      </IconButton>
+      <!-- Real links now. These were two buttons wired to nothing: there is no
+           customer account in YADA, so the person to reach about a parcel in
+           transit is the counter that sent it, and their number comes off the
+           trip. Navigation hands off to the phone's map app. -->
+      <a
+        href={directionsHref(dropoffPoint)}
+        target="_blank"
+        rel="noopener"
+        class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
+        aria-label="Navigate to {data.trip.dropoffAddress}"
+      >
+        <IconNavigation class="h-[18px] w-[18px]" aria-hidden="true" />
+      </a>
+      {#if data.trip.businessPhone}
+        <a
+          href="tel:{data.trip.businessPhone}"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
+          aria-label="Call {data.trip.businessName}"
+        >
+          <IconPhone class="h-[18px] w-[18px]" aria-hidden="true" />
+        </a>
+        <a
+          href="sms:{data.trip.businessPhone}"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
+          aria-label="Message {data.trip.businessName}"
+        >
+          <IconMessage class="h-[18px] w-[18px]" aria-hidden="true" />
+        </a>
+      {/if}
       <div class="flex-1"></div>
       {#if atDropoff}
         <Button variant="primary" size="sm" disabled={completing} onclick={markDelivered}>

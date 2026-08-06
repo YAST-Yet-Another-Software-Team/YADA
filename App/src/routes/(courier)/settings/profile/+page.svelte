@@ -8,6 +8,10 @@
 	import { getSession } from '$auth/session.svelte';
 	import { messageOf } from '$auth/errors';
 
+	let {
+		data
+	}: { data: { courierProfile: { vehicleType: string; plateNumber: string | null } } } = $props();
+
 	const editTabs = [
 		{ value: 'profile', label: 'Profile' },
 		{ value: 'password', label: 'Password' }
@@ -22,6 +26,12 @@
 	let name = $state(currentUser?.name ?? '');
 	let phone = $state(currentUser?.phone ?? '');
 	let email = $state(currentUser?.email ?? '');
+	// Lives on `courier_profiles`, not the account, so it saves through the
+	// courier profile endpoint alongside the Better Auth call below. Seeded once,
+	// like the fields above it: a later reload of `data` must not overwrite what
+	// the rider is in the middle of typing.
+	// svelte-ignore state_referenced_locally
+	let plate = $state(data.courierProfile.plateNumber ?? '');
 	let currentPassword = $state('');
 	let newPassword = $state('');
 	let confirmPassword = $state('');
@@ -29,10 +39,14 @@
 	let saved = $state(false);
 	let ready = $state(currentUser !== null);
 
+	const savedPlate = $derived(data.courierProfile.plateNumber ?? '');
+
 	const canSaveProfile = $derived(
 		ready &&
 			name.trim().length > 0 &&
-			(name.trim() !== (session.user?.name ?? '') || phone.trim() !== (session.user?.phone ?? ''))
+			(name.trim() !== (session.user?.name ?? '') ||
+				phone.trim() !== (session.user?.phone ?? '') ||
+				plate.trim().toUpperCase() !== savedPlate)
 	);
 
 	const canSavePassword = $derived(
@@ -49,9 +63,25 @@
 
 		try {
 			await session.updateProfile({ name: name.trim(), phone: phone.trim() });
+
+			// The plate is not part of the account, so it takes a second call.
+			// Errors from it are shown rather than swallowed: a rider who thinks
+			// they saved a plate they didn't is one a business can't identify.
+			const response = await fetch('/api/courier/profile', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ plateNumber: plate.trim() })
+			});
+
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				error = payload?.message ?? 'Unable to save your number plate.';
+				return;
+			}
+
 			saved = true;
 			setTimeout(() => {
-				goto('/profile');
+				goto('/settings');
 			}, 600);
 		} catch (err) {
 			console.error('Profile update failed.', err);
@@ -89,7 +119,7 @@
 	<title>Edit Profile | YADA Courier</title>
 </svelte:head>
 
-<SettingsSubpage title="Edit Profile" backHref="/profile">
+<SettingsSubpage title="Edit Profile">
 	{#if !ready}
 		<p class="text-sm text-ink-secondary">Loading profile…</p>
 	{:else}
@@ -111,6 +141,15 @@
 					<Input label="Email" type="email" bind:value={email} disabled />
 					<p class="text-xs text-ink-tertiary">
 						Email can’t be changed here. Contact support if you need to update it.
+					</p>
+					<Input
+						label="Number plate"
+						type="text"
+						placeholder="GT 4521-20"
+						bind:value={plate}
+					/>
+					<p class="text-xs text-ink-tertiary">
+						Businesses see this while they wait, so they know which bike is yours.
 					</p>
 				</div>
 

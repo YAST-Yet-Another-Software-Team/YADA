@@ -118,6 +118,11 @@ export const courierProfiles = pgTable('courier_profiles', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   vehicleType: text('vehicle_type').notNull(),
+  // The plate on the bike that turns up. Every YADA courier rides a motorbike,
+  // so the vehicle *type* tells a waiting business nothing; the plate is what
+  // lets them match the rider at the counter to the trip on their screen.
+  // Nullable: riders registered before this existed have none until they add it.
+  plateNumber: text('plate_number'),
   // The rolling average of this courier's `trip_ratings`, cached here so every
   // screen that names a rider doesn't re-aggregate. `rating_count` rides along
   // because an average without its weight can't be smoothed — a lone 5.0 and

@@ -123,7 +123,7 @@
         {mobileTitle}
       </h1>
 
-      <div class="relative pr-2" data-profile-menu>
+      <div class="relative pr-2" data-profile-menu style:display={page.url.pathname === "/request"? 'none' : 'block'}>
         <button
           type="button"
           class="rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-focus"

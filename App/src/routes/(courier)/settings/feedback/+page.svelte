@@ -30,7 +30,7 @@
 				id="feedback"
 				bind:value={message}
 				rows="5"
-				class="mt-2 w-full resize-none rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-ink outline-none focus:border-primary"
+				class="mt-2 w-full resize-none rounded-sm border border-border bg-bg p-3 text-sm text-ink outline-none focus:border-primary"
 				placeholder="Ideas, bugs, or delivery experience notes…"
 			></textarea>
 			<div class="mt-3">

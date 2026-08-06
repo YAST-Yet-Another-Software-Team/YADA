@@ -62,7 +62,7 @@
 </script>
 
 <span
-  class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold {s.className}"
+  class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold {s.className}"
 >
   <span class="inline-flex h-3.5 w-3.5 items-center justify-center {s.pulse ? 'animate-yada-pulse' : ''}">
     <Icon class="h-3.5 w-3.5" aria-hidden="true" />

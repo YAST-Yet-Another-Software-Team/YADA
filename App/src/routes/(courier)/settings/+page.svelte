@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { getSession } from '$auth/session.svelte';
+	import { initials } from '$lib/shared/text';
+	import IconAccount from '~icons/mdi/account-outline';
+	import IconPhone from '~icons/mdi/phone-outline';
+	import IconMail from '~icons/mdi/email-outline';
+	import IconPlate from '~icons/mdi/card-text-outline';
 	import IconBell from '~icons/mdi/bell-outline';
 	import IconTheme from '~icons/mdi/theme-light-dark';
 	import IconTranslate from '~icons/mdi/translate';
@@ -12,8 +18,27 @@
 	import IconChevronRight from '~icons/mdi/chevron-right';
 	import { getCourierOnline } from '../courier-online.svelte';
 
+	let {
+		data
+	}: { data: { courierProfile: { vehicleType: string; plateNumber: string | null } } } = $props();
+
 	const session = getSession();
 	const online = getCourierOnline();
+
+	// The account, which used to be a tab of its own. It is the same handful of
+	// fields the settings rows below are made of, so it reads as the first
+	// section of this screen rather than a second destination in the tab bar.
+	const user = $derived(session.user);
+	const avatarInitials = $derived(initials(user?.name, 'C'));
+	const profileName = $derived(user?.name || 'Courier');
+	const profileEmail = $derived(user?.email || 'No email on file');
+	const profilePhone = $derived(user?.phone || 'No phone on file');
+	/**
+	 * The bike, as anyone else identifies it. The vehicle *type* is the same for
+	 * every courier on YADA, so the plate is the only part of it worth a row —
+	 * and the only part a business can check when a rider pulls up.
+	 */
+	const plate = $derived(data.courierProfile.plateNumber);
 
 	const THEME_KEY = 'yada.courierTheme';
 	const LANG_KEY = 'yada.courierLanguage';
@@ -39,15 +64,84 @@
 </script>
 
 <svelte:head>
-	<title>App Settings | YADA Courier</title>
+	<title>Profile & Settings | YADA Courier</title>
 </svelte:head>
 
+<!-- The screen names itself in the layout's title bar. -->
 <div class="flex flex-1 flex-col bg-surface-sunken">
-	<header class="px-4 pb-2 pt-4 text-center">
-		<h1 class="text-lg font-bold text-ink">App Settings</h1>
-	</header>
+	<div class="flex flex-1 flex-col gap-5 px-4 pb-6 pt-4">
+		<!-- Who you are, first: name, shift state, and the way in to change either
+		     the details or the password. -->
+		<section class="rounded-lg bg-surface p-4 shadow-sm">
+			<div class="flex items-center gap-3">
+				<Avatar
+					initials={avatarInitials}
+					src={user?.image ?? null}
+					alt={profileName}
+					size={56}
+					status={online.online ? 'online' : null}
+				/>
+				<div class="min-w-0 flex-1">
+					<p class="truncate text-lg font-semibold text-ink">{profileName}</p>
+					<p class="text-sm text-ink-secondary">
+						{#if plate}<span class="font-mono-data">{plate}</span>{:else}Courier{/if} ·
+						<span class={online.online ? 'font-semibold text-success' : 'text-ink-tertiary'}>
+							{online.online ? 'Online' : 'Offline'}
+						</span>
+					</p>
+				</div>
+				<a
+					href="/settings/profile"
+					class="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink hover:bg-wash"
+				>
+					Edit
+				</a>
+			</div>
+		</section>
 
-	<div class="flex flex-1 flex-col gap-5 px-4 pb-6 pt-2">
+		<section>
+			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">Account</h2>
+			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
+				<a href="/settings/profile" class="settings-row">
+					<span class="settings-icon" aria-hidden="true">
+						<IconAccount class="h-[22px] w-[22px]" />
+					</span>
+					<span class="settings-label">Name & password</span>
+					<span class="settings-chevron" aria-hidden="true">
+						<IconChevronRight class="h-5 w-5" />
+					</span>
+				</a>
+				<!-- Read-only rows: these are facts about the account, and the one
+				     place they can be changed is the row above. -->
+				<div class="settings-row">
+					<span class="settings-icon" aria-hidden="true">
+						<IconPhone class="h-[22px] w-[22px]" />
+					</span>
+					<span class="settings-label">Phone</span>
+					<span class="settings-value">{profilePhone}</span>
+				</div>
+				<div class="settings-row">
+					<span class="settings-icon" aria-hidden="true">
+						<IconMail class="h-[22px] w-[22px]" />
+					</span>
+					<span class="settings-label">Email</span>
+					<span class="settings-value">{profileEmail}</span>
+				</div>
+				<a href="/settings/profile" class="settings-row settings-row-last">
+					<span class="settings-icon" aria-hidden="true">
+						<IconPlate class="h-[22px] w-[22px]" />
+					</span>
+					<span class="settings-label">Number plate</span>
+					<span class="settings-value {plate ? 'font-mono-data' : ''}">
+						{plate ?? 'Not set'}
+					</span>
+					<span class="settings-chevron" aria-hidden="true">
+						<IconChevronRight class="h-5 w-5" />
+					</span>
+				</a>
+			</div>
+		</section>
+
 		<section>
 			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">
 				General
@@ -138,7 +232,7 @@
 		</section>
 
 		<div class="mt-auto pt-2">
-			<Button variant="neutral" fullWidth onclick={signOut}>Sign out</Button>
+			<Button variant="outline" fullWidth onclick={signOut}>Sign out</Button>
 		</div>
 	</div>
 </div>
@@ -185,6 +279,16 @@
 	.settings-value {
 		font-size: 0.8125rem;
 		color: var(--color-text-tertiary);
+		/* An account row's value can be a long email; it gives way to the label
+		   rather than pushing into it. */
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.settings-label {
+		min-width: 0;
 	}
 
 	.settings-chevron {

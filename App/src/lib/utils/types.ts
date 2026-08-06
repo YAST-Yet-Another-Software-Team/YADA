@@ -130,6 +130,8 @@ export type RiderLocationEvent = {
 export type CourierRequest = {
   id: string;
   businessName: string;
+  /** The counter to ring about this parcel — the sender, from their account. */
+  businessPhone: string | null;
   pickupAddress: string;
   dropoffAddress: string;
   pickupLat: number | null;
@@ -138,6 +140,22 @@ export type CourierRequest = {
   dropoffLng: number | null;
   notes: string | null;
   requestedAt: string;
+};
+
+/**
+ * An offer as it rings on a courier's phone: the request, plus the three
+ * numbers the decision is actually made on.
+ *
+ * All three are computed server-side. The distance is the one the dispatcher
+ * ranked this courier by, so the rider sees the same figure that chose them,
+ * and the countdown is the remainder of the 60-second dispatch window — sent as
+ * a duration rather than a deadline so a skewed phone clock can't expire an
+ * offer early or leave a dead one on screen.
+ */
+export type CourierOffer = CourierRequest & {
+  distanceToPickupKm: number;
+  tripDistanceKm: number | null;
+  expiresInSeconds: number;
 };
 
 /**
@@ -155,6 +173,8 @@ export type CourierSummary = {
   image: string | null;
   phone: string | null;
   vehicleType: string | null;
+  /** The plate on the bike, so a counter can match rider to trip. */
+  plateNumber: string | null;
   rating: number | null;
   /** How many ratings stand behind the average. 4.9★ over 200 trips ≠ one 5★. */
   ratingCount: number;

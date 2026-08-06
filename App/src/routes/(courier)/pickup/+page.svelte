@@ -11,6 +11,9 @@
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import IconCheck from '~icons/mdi/check';
   import IconArrowRight from '~icons/mdi/arrow-right';
+  import IconNavigation from '~icons/mdi/navigation-variant-outline';
+  import IconPhone from '~icons/mdi/phone';
+  import { directionsHref } from '../offers';
   import { startCourierLocationReporter } from '../location-reporter';
 
   let {
@@ -21,6 +24,7 @@
         id: string;
         status: TripStatus;
         businessName: string;
+        businessPhone: string | null;
         pickupAddress: string;
         dropoffAddress: string;
         pickupLat: number | null;
@@ -66,6 +70,9 @@
    * the parcel over is the one who knows it happened.
    */
   const collected = $derived(data.trip.status === 'picked_up');
+
+  /** The order number, as it reads on the business's screen and the wireframe. */
+  const shortId = $derived(`#${data.trip.id.slice(0, 8).toUpperCase()}`);
   const metresToPickup = $derived(riderPoint ? metresBetween(riderPoint, pickupPoint) : null);
   const atPickup = $derived(
     Boolean(riderPoint && isWithinRange(riderPoint, pickupPoint, PICKUP_PROXIMITY_KM))
@@ -211,7 +218,10 @@
 
     <div>
       <p class="font-semibold text-ink">{data.trip.businessName}</p>
-      <p class="text-sm text-ink-secondary">{data.trip.pickupAddress}</p>
+      <p class="text-sm text-ink-secondary">
+        {data.trip.pickupAddress}
+        <span class="font-mono-data text-ink-tertiary">· {shortId}</span>
+      </p>
     </div>
 
     {#if data.trip.notes}
@@ -239,12 +249,37 @@
     {/if}
 
     <div class="flex items-center gap-3">
-      <Button variant="neutral" size="sm" onclick={() => goto('/home')}>Back home</Button>
+      <!-- Navigate and call, the two things a rider on the road actually needs
+           from this screen. Both hand off to the phone: turn-by-turn belongs to
+           the map app, and the number is the counter holding the parcel. -->
+      <a
+        href={directionsHref(pickupPoint)}
+        target="_blank"
+        rel="noopener"
+        class="inline-flex items-center gap-2 rounded-md border-md border-primary px-3.5 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle"
+      >
+        <IconNavigation class="h-4 w-4 shrink-0" aria-hidden="true" />
+        Navigate
+      </a>
+
+      {#if data.trip.businessPhone}
+        <a
+          href="tel:{data.trip.businessPhone}"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
+          aria-label="Call {data.trip.businessName}"
+        >
+          <IconPhone class="h-[18px] w-[18px]" aria-hidden="true" />
+        </a>
+      {/if}
+
       <div class="flex-1"></div>
+
       {#if collected}
         <Button variant="primary" size="sm" disabled={starting} onclick={startDelivery}>
           {starting ? 'Starting…' : 'Start delivery'}
         </Button>
+      {:else}
+        <Button variant="neutral" size="sm" onclick={() => goto('/home')}>Back home</Button>
       {/if}
     </div>
   </div>

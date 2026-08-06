@@ -4,7 +4,7 @@ import { DISPATCH_TIMEOUT_SECONDS } from '$lib/shared/dispatch';
 import { haversineKm } from '$lib/shared/geo/service-area';
 import { ACTIVE_TRIP_STATUSES, CLOSED_TRIP_STATUSES } from '$lib/shared/trip-status';
 import { initials } from '$lib/shared/text';
-import type { CourierRequest, CourierTrip, LatLng } from '$lib/utils/types';
+import type { CourierOffer, CourierRequest, CourierTrip, LatLng } from '$lib/utils/types';
 
 import { db } from '../db';
 import { courierProfiles, deliveryRequests, tripDeclines, users } from '../db/schema';
@@ -42,7 +42,8 @@ const tripColumns = {
   acceptedAt: deliveryRequests.acceptedAt,
   completedAt: deliveryRequests.completedAt,
   notes: deliveryRequests.notes,
-  businessName: users.name
+  businessName: users.name,
+  businessPhone: users.phoneNumber
 };
 
 function tripQuery() {
@@ -73,6 +74,7 @@ function toCourierRequest(row: TripRow): CourierRequest {
   return {
     id: row.id,
     businessName: row.businessName,
+    businessPhone: row.businessPhone,
     pickupAddress: row.pickupAddress,
     dropoffAddress: row.dropoffAddress,
     pickupLat: asNumber(row.pickupLatitude),
@@ -168,9 +170,12 @@ export const COURIER_VEHICLE_TYPE = 'Motorbike';
  */
 export async function saveCourierProfile(
   userId: string,
-  input: { vehicleType?: string } = {}
+  input: { vehicleType?: string; plateNumber?: string | null } = {}
 ) {
   const vehicleType = input.vehicleType ?? COURIER_VEHICLE_TYPE;
+  // Absent means "leave it alone" — sign-up doesn't ask for a plate, and the
+  // settings form that does must not be able to wipe it by omission.
+  const plate = input.plateNumber === undefined ? undefined : normalisePlate(input.plateNumber);
 
   const [existing] = await db
     .select({ id: courierProfiles.id })
@@ -181,12 +186,47 @@ export async function saveCourierProfile(
   if (existing) {
     await db
       .update(courierProfiles)
-      .set({ vehicleType, updatedAt: new Date() })
+      .set({
+        vehicleType,
+        ...(plate === undefined ? {} : { plateNumber: plate }),
+        updatedAt: new Date()
+      })
       .where(eq(courierProfiles.id, existing.id));
     return;
   }
 
-  await db.insert(courierProfiles).values({ userId, vehicleType });
+  await db.insert(courierProfiles).values({
+    userId,
+    vehicleType,
+    plateNumber: plate ?? null
+  });
+}
+
+/**
+ * A plate as it should be stored: upper case, single-spaced, or null when the
+ * rider clears the field. Ghanaian plates read `GT 4521-20`, and riders type
+ * them however they like.
+ */
+export function normalisePlate(value: string | null | undefined) {
+  const trimmed = value?.trim().replace(/\s+/g, ' ').toUpperCase() ?? '';
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/** The courier's own profile, for the screens that let them edit it. */
+export async function getCourierProfile(userId: string) {
+  const [row] = await db
+    .select({
+      vehicleType: courierProfiles.vehicleType,
+      plateNumber: courierProfiles.plateNumber
+    })
+    .from(courierProfiles)
+    .where(eq(courierProfiles.userId, userId))
+    .limit(1);
+
+  return {
+    vehicleType: row?.vehicleType ?? COURIER_VEHICLE_TYPE,
+    plateNumber: row?.plateNumber ?? null
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -307,11 +347,33 @@ async function ringingRequestRows(userId: string, activeTripRow: TripRow | null)
       const elapsedSeconds = (now - row.dispatchStartedAt.getTime()) / 1000;
       if (elapsedSeconds < opensAt || elapsedSeconds > DISPATCH_TIMEOUT_SECONDS) return null;
 
-      return { row, score: courierMatchScore({ distanceKm, rating, ratingCount }) };
+      return {
+        row,
+        score: courierMatchScore({ distanceKm, rating, ratingCount }),
+        // Carried out with the row rather than recomputed on the client: this is
+        // the distance the dispatcher ranked this courier by, and the client has
+        // no way to know it — a busy rider is ringed from where their current
+        // trip *ends*, not from where they are.
+        distanceToPickupKm: round(distanceKm, 1),
+        expiresInSeconds: Math.max(0, Math.round(DISPATCH_TIMEOUT_SECONDS - elapsedSeconds))
+      };
     })
     .filter((candidate) => candidate != null)
-    .sort((a, b) => b.score - a.score)
-    .map((candidate) => candidate.row);
+    .sort((a, b) => b.score - a.score);
+}
+
+/** An offer as its screen needs it: the request plus what the ring decided. */
+function toCourierOffer(candidate: {
+  row: TripRow;
+  distanceToPickupKm: number;
+  expiresInSeconds: number;
+}): CourierOffer {
+  return {
+    ...toCourierRequest(candidate.row),
+    distanceToPickupKm: candidate.distanceToPickupKm,
+    tripDistanceKm: asNumber(candidate.row.estimatedDistanceKm),
+    expiresInSeconds: candidate.expiresInSeconds
+  };
 }
 
 export async function getCourierHomeData(userId: string, courierName: string) {
@@ -334,7 +396,7 @@ export async function getCourierHomeData(userId: string, courierName: string) {
   return {
     profile: courierProfileOf(profileRow?.name ?? courierName),
     activeTrip: activeTripRow ? toCourierTrip(activeTripRow) : null,
-    pendingRequests: pendingRows.map(toCourierRequest),
+    pendingRequests: pendingRows.map(toCourierOffer),
     summary: summarize(closedRows.map(toCourierTrip), activeTripRow ? 1 : 0)
   };
 }
@@ -355,7 +417,7 @@ export async function getCourierOrdersData(userId: string) {
 
   return {
     activeTrip: activeTripRow ? toCourierTrip(activeTripRow) : null,
-    pendingRequests: pendingRows.map(toCourierRequest)
+    pendingRequests: pendingRows.map(toCourierOffer)
   };
 }
 

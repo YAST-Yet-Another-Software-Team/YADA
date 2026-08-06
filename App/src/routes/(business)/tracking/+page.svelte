@@ -726,7 +726,12 @@
 				<p class="text-sm text-ink-secondary">{statusLabel}</p>
 				{#if trip?.courier}
 					<p class="flex items-center gap-1 text-xs text-ink-tertiary">
-						<span>{trip.courier.vehicleType ?? 'Rider'}</span>
+						<!-- The plate, not the vehicle type: every YADA courier rides a
+						     motorbike, so "Motorbike" told the counter nothing they could
+						     check. The plate is what pulls up outside. -->
+						<span class={trip.courier.plateNumber ? 'font-mono-data' : ''}>
+							{trip.courier.plateNumber ?? trip.courier.vehicleType ?? 'Rider'}
+						</span>
 						{#if trip.courier.rating}
 							<span aria-hidden="true">·</span>
 							<IconStar class="h-3.5 w-3.5 shrink-0 text-warning" aria-hidden="true" />

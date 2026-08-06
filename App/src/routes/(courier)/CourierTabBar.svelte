@@ -3,11 +3,9 @@
 
 	import { page } from '$app/state';
 	import { activeTabIndex, COURIER_TABS, isTabActive, type CourierTab } from './tabs';
-	import { getCourierOnline } from './courier-online.svelte';
 	import IconHome from '~icons/mdi/home-outline';
 	import IconOrders from '~icons/mdi/package-variant-closed';
 	import IconTrips from '~icons/mdi/clock-outline';
-	import IconProfile from '~icons/mdi/account-outline';
 	import IconSettings from '~icons/mdi/cog-outline';
 
 	// `tabs.ts` stays a plain data module — the layout imports it too, and it has
@@ -17,22 +15,16 @@
 		home: IconHome,
 		orders: IconOrders,
 		trips: IconTrips,
-		profile: IconProfile,
 		settings: IconSettings
 	};
 
 	const tabs = COURIER_TABS;
-	// The online dot used to ride on the header avatar. It follows the profile
-	// down here, because it's the one piece of status a courier checks at a
-	// glance and it shouldn't be lost in the move.
-	const online = getCourierOnline();
 
 	const path = $derived(page.url.pathname);
 	const activeIndex = $derived(activeTabIndex(path));
 </script>
 
-<!-- A snippet rather than inline markup: `{@const}` needs a block to live in,
-     and the profile tab wraps its glyph in the online-dot badge. -->
+<!-- A snippet rather than inline markup: `{@const}` needs a block to live in. -->
 {#snippet tabGlyph(icon: CourierTab['icon'])}
 	{@const Icon = TAB_ICONS[icon]}
 	<Icon class="h-5 w-5" aria-hidden="true" />
@@ -68,19 +60,7 @@
 							? '-translate-y-px'
 							: ''}"
 					>
-						{#if tab.icon === 'profile'}
-							<span class="relative inline-flex">
-								{@render tabGlyph(tab.icon)}
-								{#if online.online}
-									<span
-										class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-surface bg-success"
-										aria-hidden="true"
-									></span>
-								{/if}
-							</span>
-						{:else}
-							{@render tabGlyph(tab.icon)}
-						{/if}
+						{@render tabGlyph(tab.icon)}
 					</span>
 				</span>
 				<span class="transition-opacity {active ? 'opacity-100' : 'opacity-90'}">{tab.label}</span>
