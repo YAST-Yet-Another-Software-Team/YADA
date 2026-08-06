@@ -1,10 +1,3 @@
-# Database Entity Relationship Diagram (ERD)
-
-This document provides a visual representation of the current YADA database schema as defined in [App/src/lib/server/db/schema.ts](App/src/lib/server/db/schema.ts).
-
-## Entity Relationship Diagram
-
-```mermaid
 erDiagram
     USERS {
         text id PK
@@ -125,47 +118,17 @@ erDiagram
         timestamp created_at
     }
 
-    %% Relationships
-    USERS ||--o| BUSINESS_PROFILES : "owns"
-    USERS ||--o| COURIER_PROFILES : "owns"
-    USERS ||--o{ SESSIONS : "auth sessions"
-    USERS ||--o{ ACCOUNTS : "oauth accounts"
-    USERS ||--o{ VERIFICATIONS : "verification records"
-    USERS ||--o{ DELIVERY_REQUESTS : "creates as business"
-    USERS ||--o{ DELIVERY_REQUESTS : "assigned as courier"
-    USERS ||--o{ TRIP_RATINGS : "rates"
-    USERS ||--o{ TRIP_RATINGS : "is rated"
-    USERS ||--o{ TRIP_DECLINES : "declines"
-    USERS ||--o{ TRIP_EVENTS : "acts in"
-    DELIVERY_REQUESTS ||--o{ TRIP_RATINGS : "receives ratings"
-    DELIVERY_REQUESTS ||--o{ TRIP_DECLINES : "tracks declines"
-    DELIVERY_REQUESTS ||--o{ TRIP_EVENTS : "logs events"
-```
-
-## Enum Definitions
-
-### 1. `user_role`
-
-Determines the role and access privileges of a user:
-
-* `business`: The coordinator posting requests.
-* `courier`: The dispatch driver fulfilling the requests.
-
-### 2. `trip_status`
-
-Manages the finite state machine for delivery lifecycles:
-
-* `requested`: Request posted by the business; looking for couriers.
-* `accepted`: Accepted by a courier.
-* `courier_arriving`: Courier is en route to pickup.
-* `arrived`: Courier has arrived at the pickup location.
-* `picked_up`: Business confirmed the handoff.
-* `in_progress`: Courier is heading to the drop-off.
-* `completed`: Delivery successfully dropped off.
-* `cancelled`: Cancelled by either party.
-
-## Notes
-
-* Better Auth uses the `users`, `sessions`, `accounts`, and `verifications` tables.
-* The business and courier workspaces both link back to `users`.
-* The trip lifecycle is centered on `delivery_requests`, with supporting history in `trip_events`.
+    USERS ||--o| BUSINESS_PROFILES : owns
+    USERS ||--o| COURIER_PROFILES : owns
+    USERS ||--o{ SESSIONS : auth sessions
+    USERS ||--o{ ACCOUNTS : oauth accounts
+    USERS ||--o{ VERIFICATIONS : verification records
+    USERS ||--o{ DELIVERY_REQUESTS : creates as business
+    USERS ||--o{ DELIVERY_REQUESTS : assigned as courier
+    USERS ||--o{ TRIP_RATINGS : rates
+    USERS ||--o{ TRIP_RATINGS : is rated
+    USERS ||--o{ TRIP_DECLINES : declines
+    USERS ||--o{ TRIP_EVENTS : acts in
+    DELIVERY_REQUESTS ||--o{ TRIP_RATINGS : receives ratings
+    DELIVERY_REQUESTS ||--o{ TRIP_DECLINES : tracks declines
+    DELIVERY_REQUESTS ||--o{ TRIP_EVENTS : logs events
