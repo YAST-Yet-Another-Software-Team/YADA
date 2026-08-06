@@ -95,6 +95,7 @@
         border-radius: 18px;
         box-shadow: var(--shadow);
         padding: 16px;
+        -webkit-backdrop-filter: blur(10px);
         backdrop-filter: blur(10px);
       }
 
@@ -212,6 +213,50 @@
         .diagram-toolbar {
           flex-direction: column;
           align-items: start;
+        }
+      }
+
+      @media print {
+        @page {
+          size: A0 landscape;
+          margin: 8mm;
+        }
+
+        body {
+          background: #ffffff;
+        }
+
+        .page {
+          max-width: none;
+          padding: 0;
+        }
+
+        .hero,
+        .note-grid {
+          display: none;
+        }
+
+        .diagram-shell {
+          margin-top: 0;
+          box-shadow: none;
+          border-radius: 0;
+          overflow: visible;
+          break-inside: avoid;
+        }
+
+        .diagram-toolbar {
+          border-bottom: 0;
+          padding: 0 0 12px;
+        }
+
+        .mermaid-wrap {
+          padding: 0;
+          overflow: visible;
+        }
+
+        .mermaid {
+          min-width: 0;
+          width: 100%;
         }
       }
     </style>
