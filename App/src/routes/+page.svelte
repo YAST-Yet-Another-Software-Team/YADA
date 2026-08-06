@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/components/Button.svelte';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import { getSession } from '$auth/session.svelte';
 	import IconCheck from '~icons/mdi/check-bold';
 
@@ -87,6 +88,11 @@
 			</a>
 
 			<div class="flex items-center gap-2 sm:gap-3">
+				<!-- The saved theme applies to every page, including this one, so the
+				     way out of it has to exist somewhere a signed-out visitor can
+				     reach. This is that place. -->
+				<ThemeToggle compact />
+
 				{#if signedIn}
 					<a href={workspaceHref}>
 						<Button variant="primary" size="sm">{workspaceLabel}</Button>

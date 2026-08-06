@@ -45,16 +45,34 @@
   --color-wash-strong: light-dark(var(--neutral-200), var(--neutral-700));
 }
 
-/* The in-app theme picker (courier settings → Theme) writes one of these onto
-   <html>; "system" removes the attribute and falls back to the :root rule
-   above. Because the only thing being set is `color-scheme`, no token is
-   restated — the `light-dark()` pairs re-resolve on their own. */
+/* The in-app theme picker (courier settings → Theme, and the ThemeToggle in the
+   landing header / business profile menu) writes one of these onto <html>;
+   "system" removes the attribute and falls back to the :root rule above.
+   Because the only thing being set is `color-scheme`, no token is restated —
+   the `light-dark()` pairs re-resolve on their own.
+
+   `only` is load-bearing, not decoration. Chrome's "Auto Dark Mode for Web
+   Contents" (chrome://flags/#enable-force-dark, and the default on some Android
+   builds) leaves a page alone while it advertises `light dark`, but reads a
+   bare `light` as "this page has no dark mode" and starts algorithmically
+   darkening it. The result is the worst of both: `light-dark()` resolves its
+   *dark* half for backgrounds and text while borders keep the light value, so
+   picking "Light" under a dark OS produced a dark page with white borders.
+   `only` is the opt-out — it tells the UA the page means this scheme and does
+   not want help. Both overrides carry it, because both are an explicit choice
+   the browser has no business second-guessing.
+
+   Each override is declared twice on purpose: an engine that doesn't parse
+   `only` drops that whole declaration, and without the plain one before it the
+   rule would be empty and the picker would silently stop working there. */
 :root[data-theme='light'] {
   color-scheme: light;
+  color-scheme: only light;
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
+  color-scheme: only dark;
 }
 
 html,

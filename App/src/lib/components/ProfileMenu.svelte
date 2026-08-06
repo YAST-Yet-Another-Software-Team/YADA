@@ -2,6 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import { getSession } from '$auth/session.svelte';
 	import { initials } from '$lib/shared/text';
 
@@ -66,6 +67,13 @@
 				<dd class="text-ink">{user?.role ?? 'business'}</dd>
 			</div>
 		</dl>
+		<!-- The business workspace has no settings page, so this is the only place
+		     the theme can be changed from — and the choice is global, so without
+		     it a preference set on the courier side would be stuck here. -->
+		<div class="mb-4 border-t border-border pt-3">
+			<p class="text-eyebrow mb-2 text-ink-tertiary">Appearance</p>
+			<ThemeToggle />
+		</div>
 		<div class="border-t border-border pt-3">
 			<Button variant="outline" size="sm" fullWidth onclick={signOut}>Sign out</Button>
 		</div>
