@@ -203,6 +203,20 @@ export async function saveCourierProfile(
 }
 
 /**
+ * Clock a courier on or off.
+ *
+ * Two callers: the availability toggle on Home, and signing out — which is
+ * clocking off whether or not the rider thought of it that way. Dispatch reads
+ * this flag before it reads a position, so it is what stops the ringing.
+ */
+export async function setCourierAvailability(userId: string, online: boolean) {
+  await db
+    .update(courierProfiles)
+    .set({ active: online, updatedAt: new Date() })
+    .where(eq(courierProfiles.userId, userId));
+}
+
+/**
  * A plate as it should be stored: upper case, single-spaced, or null when the
  * rider clears the field. Ghanaian plates read `GT 4521-20`, and riders type
  * them however they like.

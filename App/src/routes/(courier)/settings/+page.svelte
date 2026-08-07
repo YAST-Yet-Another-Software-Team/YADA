@@ -57,9 +57,13 @@
 		else languageLabel = 'English';
 	});
 
-	function signOut() {
+	/**
+	 * Clearing the stored flag is all this has left to do: the server action
+	 * marks the courier inactive and ends the session. Without it the next
+	 * account signed in on this phone would inherit "online" from localStorage.
+	 */
+	function forgetShift() {
 		online.goOffline();
-		void session.signOut('/');
 	}
 </script>
 
@@ -231,9 +235,12 @@
 			</div>
 		</section>
 
-		<div class="mt-auto pt-2">
-			<Button variant="outline" fullWidth onclick={signOut}>Sign out</Button>
-		</div>
+		<!-- A real form post, not a fetch: the server action clocks the rider off,
+		     deletes the session row and clears the cookie on a navigation the
+		     browser has to apply, then lands on /auth. -->
+		<form method="POST" action="/auth?/signout" class="mt-auto pt-2" onsubmit={forgetShift}>
+			<Button type="submit" variant="outline" fullWidth>Sign out</Button>
+		</form>
 	</div>
 </div>
 

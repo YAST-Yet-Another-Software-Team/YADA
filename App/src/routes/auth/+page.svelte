@@ -260,17 +260,13 @@
         </div>
 
         <div class="relative z-10 mt-16">
-          <p class="text-eyebrow font-mono text-primary-on/70">
-            YADA for teams
-          </p>
           <h1
             class="mt-4 max-w-xs text-4xl font-bold leading-tight tracking-tight text-primary-on"
           >
-            Every delivery,<br />on time.
+            Find riders,<br />with ease.
           </h1>
-          <p class="mt-4 max-w-xs text-sm leading-relaxed text-primary-on/80">
-            Sign in to manage orders, track couriers, and keep customers in the
-            loop.
+          <p class="mt-4 max-w-xs text-md leading-relaxed text-primary-on/80">
+            Sign in to find couriers and track all deliveries.
           </p>
         </div>
 

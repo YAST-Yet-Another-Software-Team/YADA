@@ -23,12 +23,6 @@
 		}
 	}
 
-	function signOut(e: MouseEvent) {
-		e.stopPropagation();
-		onclose?.();
-		void session.signOut('/');
-	}
-
 	onMount(() => {
 		document.addEventListener('click', onDocClick);
 	});
@@ -74,8 +68,11 @@
 			<p class="text-eyebrow mb-2 text-ink-tertiary">Appearance</p>
 			<ThemeToggle />
 		</div>
-		<div class="border-t border-border pt-3">
-			<Button variant="outline" size="sm" fullWidth onclick={signOut}>Sign out</Button>
-		</div>
+		<!-- A real form post, not a fetch: the server action deletes the session
+		     row and clears the cookie on a navigation the browser has to apply,
+		     and lands on /auth. See the `signout` action. -->
+		<form method="POST" action="/auth?/signout" class="border-t border-border pt-3">
+			<Button type="submit" variant="outline" size="sm" fullWidth>Sign out</Button>
+		</form>
 	</div>
 {/if}

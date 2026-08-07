@@ -1,11 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { apiError } from '$lib/server/api-guard';
-import { db } from '$lib/server/db';
-import { courierProfiles } from '$lib/server/db/schema';
+import { setCourierAvailability } from '$lib/server/data/courier';
 
 const bodySchema = z.object({ online: z.boolean() });
 
@@ -28,10 +26,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return apiError(400, 'invalid_request', 'Send { online: boolean }.');
 	}
 
-	await db
-		.update(courierProfiles)
-		.set({ active: parsed.data.online, updatedAt: new Date() })
-		.where(eq(courierProfiles.userId, user.id));
+	await setCourierAvailability(user.id, parsed.data.online);
 
 	return json({ ok: true, online: parsed.data.online });
 };
