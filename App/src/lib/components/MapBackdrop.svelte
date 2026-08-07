@@ -13,6 +13,13 @@
     role?: MapMarkerRole;
     accent?: boolean;
     stale?: boolean;
+    /**
+     * Rings expanding out of this marker — "something is happening here, and
+     * you are waiting on it". The one state that earns it is a business whose
+     * request is still ringing riders; a marker that pulses for no reason is
+     * just motion in the corner of a rider's eye.
+     */
+    pulse?: boolean;
   };
 
   /**
@@ -50,7 +57,7 @@
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
   import type { LatLng } from '$lib/utils/types';
-  import { MAP_COLORS, MAP_ROLE_COLORS } from '$lib/styles/map-colors';
+  import { MAP_COLORS, MAP_ROLE_COLORS, MAP_SURFACE } from '$lib/styles/map-colors';
 
   let {
     routeLabel = false,
@@ -87,6 +94,17 @@
   let renderedIcons: Record<string, unknown>[] = [];
   let lastCenteredKey = '';
   const maps = getMapsConfig();
+
+  /**
+   * The knockout colour for marker rings and glyphs.
+   *
+   * Under the Google build this followed the app theme, because the basemap did
+   * too — `colorScheme` handed a dark app dark cartography, and a white ring
+   * against it was glare. The OSM style is a single URL with a single palette
+   * and stays light whichever theme the app is in, so the ring that separates a
+   * marker from the streets under it stays light with it.
+   */
+  const MARKER_KNOCKOUT = MAP_SURFACE.light;
 
   function markerColor(marker: MapMarker) {
     if (marker.role) return MAP_ROLE_COLORS[marker.role];
@@ -125,13 +143,14 @@
     const color = markerColor(marker);
     const isPin = marker.role === 'search' || marker.role === 'dropoff' || marker.role === 'pickup';
     const element = document.createElement('div');
+    let content: HTMLElement = element;
 
     if (isPin) {
       element.innerHTML = `
         <svg width="26" height="34" viewBox="0 0 26 34" aria-hidden="true">
           <path d="M13 33C13 33 25 20.5 25 13A12 12 0 1 0 1 13c0 7.5 12 20 12 20Z"
-                fill="${color}" stroke="${MAP_COLORS.surface}" stroke-width="2"/>
-          <circle cx="13" cy="13" r="4.5" fill="${MAP_COLORS.surface}"/>
+                fill="${color}" stroke="${MARKER_KNOCKOUT}" stroke-width="2"/>
+          <circle cx="13" cy="13" r="4.5" fill="${MARKER_KNOCKOUT}"/>
         </svg>`;
       element.style.transform = 'translateY(-6px)';
     } else {
@@ -142,7 +161,7 @@
       element.style.height = `${diameter}px`;
       element.style.borderRadius = '50%';
       element.style.background = color;
-      element.style.border = `2px solid ${MAP_COLORS.surface}`;
+      element.style.border = `2px solid ${MARKER_KNOCKOUT}`;
       element.style.boxSizing = 'content-box';
 
       if (icon) {
@@ -150,7 +169,7 @@
         element.style.alignItems = 'center';
         element.style.justifyContent = 'center';
         // The icons draw with `currentColor`, so one colour on the host is enough.
-        element.style.color = MAP_COLORS.surface;
+        element.style.color = MARKER_KNOCKOUT;
 
         renderedIcons.push(
           mount(icon, {
@@ -159,13 +178,56 @@
           })
         );
       }
+
+      if (marker.pulse) {
+        content = pulseHost(element, diameter, color);
+      }
     }
 
     // Staleness is expressed on the element, as it was before.
-    element.style.opacity = marker.stale ? '0.45' : '1';
-    if (marker.label) element.title = marker.label;
+    content.style.opacity = marker.stale ? '0.45' : '1';
+    if (marker.label) content.title = marker.label;
 
-    return element;
+    return content;
+  }
+
+  /**
+   * Wrap a disc in expanding rings.
+   *
+   * Marker content is built imperatively, outside the template, so component
+   * CSS can't reach it — the rings are animated through the Web Animations API
+   * instead of a keyframes rule. Two of them, half a cycle apart, so the pulse
+   * reads as continuous rather than as a blink. Only discs get this: the one
+   * marker that earns rings is the business still ringing riders, and a pin is
+   * a place rather than a party waiting on something.
+   */
+  function pulseHost(element: HTMLElement, diameter: number, color: string) {
+    const host = document.createElement('div');
+    host.style.position = 'relative';
+    host.style.display = 'flex';
+    host.style.alignItems = 'center';
+    host.style.justifyContent = 'center';
+
+    for (const delay of [0, 1200]) {
+      const ring = document.createElement('div');
+      ring.style.position = 'absolute';
+      ring.style.width = `${diameter}px`;
+      ring.style.height = `${diameter}px`;
+      ring.style.borderRadius = '50%';
+      ring.style.border = `2px solid ${color}`;
+      ring.style.pointerEvents = 'none';
+      ring.animate(
+        [
+          { transform: 'scale(1)', opacity: 0.75 },
+          { transform: 'scale(3.4)', opacity: 0 }
+        ],
+        { duration: 2400, iterations: Infinity, delay, easing: 'ease-out' }
+      );
+      host.appendChild(ring);
+    }
+
+    host.appendChild(element);
+    return host;
   }
 
   function syncMarkers() {
@@ -230,11 +292,23 @@
     try {
       // Dynamic: maplibre-gl reads `window` at module scope, so a static import
       // would break SSR for every page that shows a map.
-      const maplibre = await import('maplibre-gl');
+      //
+      // The worker URL is handed over explicitly. Left alone, MapLibre finds its
+      // tile-parsing worker with `new URL('./maplibre-gl-worker.mjs',
+      // import.meta.url)` — a template literal no bundler can trace, so the file
+      // is never emitted and the built chunk asks for a worker that sits nowhere
+      // near it. `?worker&url` makes Vite bundle it properly (it imports the
+      // 480kB shared chunk, so copying the file alone is not enough) and hand
+      // back the URL of what it emitted.
+      const [maplibre, workerUrl] = await Promise.all([
+        import('maplibre-gl'),
+        import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url')
+      ]);
       await import('maplibre-gl/dist/maplibre-gl.css');
 
       if (!mapElement) return;
 
+      maplibre.setWorkerUrl(workerUrl.default);
       MarkerCtor = maplibre.Marker;
 
       map = new maplibre.Map({
@@ -330,7 +404,7 @@
   });
 </script>
 
-<div class="absolute inset-0 overflow-hidden bg-neutral-100">
+<div class="absolute inset-0 overflow-hidden bg-surface-sunken">
   <div
     bind:this={mapElement}
     class="absolute inset-0 transition-opacity duration-300"
@@ -339,10 +413,10 @@
 
   {#if mapState !== 'ready'}
     <div
-      class="absolute inset-0 overflow-hidden bg-neutral-100"
-      style="background-image: linear-gradient(var(--neutral-200) 1px, transparent 1px), linear-gradient(90deg, var(--neutral-200) 1px, transparent 1px); background-size: 28px 28px;"
+      class="absolute inset-0 overflow-hidden bg-surface-sunken"
+      style="background-image: linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px); background-size: 28px 28px;"
     >
-      <div class="font-mono-data absolute left-4 top-4 text-xs tracking-wide text-neutral-400">
+      <div class="font-mono-data absolute left-4 top-4 text-xs tracking-wide text-ink-tertiary">
         {#if !maps.enabled}
           MAP PLACEHOLDER — set MAP_STYLE_URL
         {:else if mapState === 'loading'}

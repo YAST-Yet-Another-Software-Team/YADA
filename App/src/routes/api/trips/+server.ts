@@ -191,6 +191,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				: null,
 			pickupAddress: trip.pickupAddress,
 			dropoffAddress: trip.dropoffAddress,
+			// When the parcel actually landed, for the completion screen. ISO
+			// rather than a formatted string: the client knows the viewer's locale
+			// and timezone, and the server does not.
+			completedAt: trip.completedAt ? trip.completedAt.toISOString() : null,
 			pickupLat,
 			pickupLng,
 			dropoffLat,

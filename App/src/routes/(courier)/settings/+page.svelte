@@ -1,11 +1,44 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { getSession } from '$auth/session.svelte';
+	import { initials } from '$lib/shared/text';
+	import IconAccount from '~icons/mdi/account-outline';
+	import IconPhone from '~icons/mdi/phone-outline';
+	import IconMail from '~icons/mdi/email-outline';
+	import IconPlate from '~icons/mdi/card-text-outline';
+	import IconBell from '~icons/mdi/bell-outline';
+	import IconTheme from '~icons/mdi/theme-light-dark';
+	import IconTranslate from '~icons/mdi/translate';
+	import IconShieldCheck from '~icons/mdi/shield-check-outline';
+	import IconDocument from '~icons/mdi/file-document-outline';
+	import IconFeedback from '~icons/mdi/message-outline';
+	import IconInfo from '~icons/mdi/information-outline';
+	import IconChevronRight from '~icons/mdi/chevron-right';
 	import { getCourierOnline } from '../courier-online.svelte';
+
+	let {
+		data
+	}: { data: { courierProfile: { vehicleType: string; plateNumber: string | null } } } = $props();
 
 	const session = getSession();
 	const online = getCourierOnline();
+
+	// The account, which used to be a tab of its own. It is the same handful of
+	// fields the settings rows below are made of, so it reads as the first
+	// section of this screen rather than a second destination in the tab bar.
+	const user = $derived(session.user);
+	const avatarInitials = $derived(initials(user?.name, 'C'));
+	const profileName = $derived(user?.name || 'Courier');
+	const profileEmail = $derived(user?.email || 'No email on file');
+	const profilePhone = $derived(user?.phone || 'No phone on file');
+	/**
+	 * The bike, as anyone else identifies it. The vehicle *type* is the same for
+	 * every courier on YADA, so the plate is the only part of it worth a row —
+	 * and the only part a business can check when a rider pulls up.
+	 */
+	const plate = $derived(data.courierProfile.plateNumber);
 
 	const THEME_KEY = 'yada.courierTheme';
 	const LANG_KEY = 'yada.courierLanguage';
@@ -24,22 +57,95 @@
 		else languageLabel = 'English';
 	});
 
-	function signOut() {
+	/**
+	 * Clearing the stored flag is all this has left to do: the server action
+	 * marks the courier inactive and ends the session. Without it the next
+	 * account signed in on this phone would inherit "online" from localStorage.
+	 */
+	function forgetShift() {
 		online.goOffline();
-		void session.signOut('/');
 	}
 </script>
 
 <svelte:head>
-	<title>App Settings | YADA Courier</title>
+	<title>Profile & Settings | YADA Courier</title>
 </svelte:head>
 
-<div class="flex flex-1 flex-col bg-neutral-100">
-	<header class="px-4 pb-2 pt-4 text-center">
-		<h1 class="text-lg font-bold text-ink">App Settings</h1>
-	</header>
+<!-- The screen names itself in the layout's title bar. -->
+<div class="flex flex-1 flex-col bg-surface-sunken">
+	<div class="flex flex-1 flex-col gap-5 px-4 pb-6 pt-4">
+		<!-- Who you are, first: name, shift state, and the way in to change either
+		     the details or the password. -->
+		<section class="rounded-lg bg-surface p-4 shadow-sm">
+			<div class="flex items-center gap-3">
+				<Avatar
+					initials={avatarInitials}
+					src={user?.image ?? null}
+					alt={profileName}
+					size={56}
+					status={online.online ? 'online' : null}
+				/>
+				<div class="min-w-0 flex-1">
+					<p class="truncate text-lg font-semibold text-ink">{profileName}</p>
+					<p class="text-sm text-ink-secondary">
+						{#if plate}<span class="font-mono-data">{plate}</span>{:else}Courier{/if} ·
+						<span class={online.online ? 'font-semibold text-success' : 'text-ink-tertiary'}>
+							{online.online ? 'Online' : 'Offline'}
+						</span>
+					</p>
+				</div>
+				<a
+					href="/settings/profile"
+					class="shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink hover:bg-wash"
+				>
+					Edit
+				</a>
+			</div>
+		</section>
 
-	<div class="flex flex-1 flex-col gap-5 px-4 pb-6 pt-2">
+		<section>
+			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">Account</h2>
+			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
+				<a href="/settings/profile" class="settings-row">
+					<span class="settings-icon" aria-hidden="true">
+						<IconAccount class="h-[22px] w-[22px]" />
+					</span>
+					<span class="settings-label">Name & password</span>
+					<span class="settings-chevron" aria-hidden="true">
+						<IconChevronRight class="h-5 w-5" />
+					</span>
+				</a>
+				<!-- Read-only rows: these are facts about the account, and the one
+				     place they can be changed is the row above. -->
+				<div class="settings-row">
+					<span class="settings-icon" aria-hidden="true">
+						<IconPhone class="h-[22px] w-[22px]" />
+					</span>
+					<span class="settings-label">Phone</span>
+					<span class="settings-value">{profilePhone}</span>
+				</div>
+				<div class="settings-row">
+					<span class="settings-icon" aria-hidden="true">
+						<IconMail class="h-[22px] w-[22px]" />
+					</span>
+					<span class="settings-label">Email</span>
+					<span class="settings-value">{profileEmail}</span>
+				</div>
+				<a href="/settings/profile" class="settings-row settings-row-last">
+					<span class="settings-icon" aria-hidden="true">
+						<IconPlate class="h-[22px] w-[22px]" />
+					</span>
+					<span class="settings-label">Number plate</span>
+					<span class="settings-value {plate ? 'font-mono-data' : ''}">
+						{plate ?? 'Not set'}
+					</span>
+					<span class="settings-chevron" aria-hidden="true">
+						<IconChevronRight class="h-5 w-5" />
+					</span>
+				</a>
+			</div>
+		</section>
+
 		<section>
 			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">
 				General
@@ -47,53 +153,31 @@
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 				<a href="/settings/notifications" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10 21a2 2 0 0 0 4 0" /><circle
-								cx="18"
-								cy="6"
-								r="2.5"
-							/></svg
-						>
+						<IconBell class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Notification Settings</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 				<a href="/settings/theme" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><circle cx="12" cy="12" r="9" /><path d="M12 3v18" /><path
-								d="M12 3a9 9 0 0 1 0 18"
-								fill="currentColor"
-								opacity="0.2"
-							/></svg
-						>
+						<IconTheme class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Theme</span>
 					<span class="settings-value">{themeLabel}</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 				<a href="/settings/languages" class="settings-row settings-row-last">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" /><path
-								d="M9 9h.01M13 9h2M9 13h6"
-							/></svg
-						>
+						<IconTranslate class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Preferred Languages</span>
 					<span class="settings-value">{languageLabel}</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 			</div>
@@ -106,30 +190,20 @@
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 				<a href="/settings/privacy" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><path d="M12 3 4 7v5c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V7l-8-4Z" /><path d="m9 12 2 2 4-4" /></svg
-						>
+						<IconShieldCheck class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Privacy Policy</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 				<a href="/settings/terms" class="settings-row settings-row-last">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><path d="M8 3h7l5 5v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" /><path
-								d="M15 3v5h5M9 13h6M9 17h6"
-							/></svg
-						>
+						<IconDocument class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Terms of Service</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 			</div>
@@ -142,36 +216,31 @@
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 				<a href="/settings/feedback" class="settings-row">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><path d="M21 11a8 8 0 0 1-8 8H7l-4 3V9a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z" /></svg
-						>
+						<IconFeedback class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Feedback</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 				<a href="/settings/about" class="settings-row settings-row-last">
 					<span class="settings-icon" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75"
-							><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg
-						>
+						<IconInfo class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">About Us</span>
 					<span class="settings-chevron" aria-hidden="true">
-						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"
-							><path d="m9 18 6-6-6-6" /></svg
-						>
+						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
 			</div>
 		</section>
 
-		<div class="mt-auto pt-2">
-			<Button variant="neutral" fullWidth onclick={signOut}>Sign out</Button>
-		</div>
+		<!-- A real form post, not a fetch: the server action clocks the rider off,
+		     deletes the session row and clears the cookie on a navigation the
+		     browser has to apply, then lands on /auth. -->
+		<form method="POST" action="/auth?/signout" class="mt-auto pt-2" onsubmit={forgetShift}>
+			<Button type="submit" variant="outline" fullWidth>Sign out</Button>
+		</form>
 	</div>
 </div>
 
@@ -217,6 +286,16 @@
 	.settings-value {
 		font-size: 0.8125rem;
 		color: var(--color-text-tertiary);
+		/* An account row's value can be a long email; it gives way to the label
+		   rather than pushing into it. */
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.settings-label {
+		min-width: 0;
 	}
 
 	.settings-chevron {

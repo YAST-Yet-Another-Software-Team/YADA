@@ -58,6 +58,7 @@ export async function getCourierSummary(courierId: string): Promise<CourierSumma
       image: users.image,
       phone: users.phoneNumber,
       vehicleType: courierProfiles.vehicleType,
+      plateNumber: courierProfiles.plateNumber,
       rating: courierProfiles.rating,
       ratingCount: courierProfiles.ratingCount
     })
@@ -75,6 +76,7 @@ export async function getCourierSummary(courierId: string): Promise<CourierSumma
     image: row.image,
     phone: row.phone,
     vehicleType: row.vehicleType,
+    plateNumber: row.plateNumber,
     // An average over nothing is display noise, not a score — null until the
     // first rating actually exists.
     rating: row.rating != null && (row.ratingCount ?? 0) > 0 ? Number(row.rating) : null,

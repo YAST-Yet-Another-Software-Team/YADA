@@ -4,7 +4,6 @@
   import MapBackdrop from '$lib/components/MapBackdrop.svelte';
   import Alert from '$lib/components/Alert.svelte';
   import Button from '$lib/components/Button.svelte';
-  import IconButton from '$lib/components/IconButton.svelte';
   import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
   import {
     DELIVERY_PROXIMITY_KM,
@@ -14,6 +13,11 @@
   import type { LatLng } from '$lib/utils/types';
   import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
+  import IconArrowRight from '~icons/mdi/arrow-right';
+  import IconPhone from '~icons/mdi/phone';
+  import IconMessage from '~icons/mdi/message-text-outline';
+  import IconNavigation from '~icons/mdi/navigation-variant-outline';
+  import { directionsHref } from '../offers';
   import { startCourierLocationReporter } from '../location-reporter';
 
   let {
@@ -23,6 +27,7 @@
       trip: {
         id: string;
         businessName: string;
+        businessPhone: string | null;
         pickupAddress: string;
         dropoffAddress: string;
         pickupLat: number | null;
@@ -184,7 +189,8 @@
 
   <div class="z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg">
     <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1 text-sm font-semibold text-primary">
-      → Delivering · {etaText}
+      <IconArrowRight class="h-4 w-4 shrink-0" aria-hidden="true" />
+      Delivering · {etaText}
     </span>
 
     <div>
@@ -193,7 +199,7 @@
     </div>
 
     {#if data.trip.notes}
-      <p class="rounded-lg bg-neutral-50 px-3 py-2 text-sm text-ink-secondary">{data.trip.notes}</p>
+      <p class="rounded-lg bg-bg px-3 py-2 text-sm text-ink-secondary">{data.trip.notes}</p>
     {/if}
 
     {#if actionError}
@@ -201,18 +207,28 @@
     {/if}
 
     <div class="flex items-center gap-3">
-      <IconButton ariaLabel="Call customer" variant="outline">
-        <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2">
-          <path
-            d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.5-1.1a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2Z"
-          />
-        </svg>
-      </IconButton>
-      <IconButton ariaLabel="Message customer" variant="outline">
-        <svg viewBox="0 0 24 24" class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-        </svg>
-      </IconButton>
+      <!-- Real links now. These were two buttons wired to nothing: there is no
+           customer account in YADA, so the person to reach about a parcel in
+           transit is the counter that sent it, and their number comes off the
+           trip. Navigation hands off to the phone's map app. -->
+      <a
+        href={directionsHref(dropoffPoint)}
+        target="_blank"
+        rel="noopener"
+        class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
+        aria-label="Navigate to {data.trip.dropoffAddress}"
+      >
+        <IconNavigation class="h-[18px] w-[18px]" aria-hidden="true" />
+      </a>
+      {#if data.trip.businessPhone}
+        <a
+          href="tel:{data.trip.businessPhone}"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full border-md border-primary text-primary transition-colors hover:bg-primary-subtle"
+          aria-label="Call {data.trip.businessName}"
+        >
+          <IconPhone class="h-[18px] w-[18px]" aria-hidden="true" />
+        </a>
+      {/if}
       <div class="flex-1"></div>
       {#if atDropoff}
         <Button variant="primary" size="sm" disabled={completing} onclick={markDelivered}>

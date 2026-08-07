@@ -53,7 +53,7 @@
     outline:
       'bg-transparent text-primary border-md border-primary hover:bg-primary-subtle active:bg-primary-subtle',
     neutral:
-      'bg-transparent text-ink border-transparent hover:bg-neutral-100 active:bg-neutral-200'
+      'bg-transparent text-ink border-transparent hover:bg-wash active:bg-wash-strong'
   };
 </script>
 

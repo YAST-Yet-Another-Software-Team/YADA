@@ -7,6 +7,8 @@
   import Alert from "$lib/components/Alert.svelte";
   import Button from "$lib/components/Button.svelte";
   import Input from "$lib/components/Input.svelte";
+  import IconAccount from "~icons/mdi/account-outline";
+  import IconGoogle from "~icons/devicon/google";
   import {
     ProfilePhotoError,
     readProfilePhoto,
@@ -201,24 +203,8 @@
     >
       <!-- Mobile-only compact brand band -->
       <section
-        class="relative flex shrink-0 items-center justify-between overflow-hidden bg-primary px-5 py-4 lg:hidden"
+        class="relative flex w-full items-center justify-end shrink-0 overflow-hidden bg-primary px-5 py-4 lg:hidden"
       >
-        <div
-          class="pointer-events-none absolute -right-3 -top-3 grid grid-cols-4 gap-1.5 opacity-30"
-        >
-          {#each miniDotGrid as _}
-            <span class="h-1 w-1 rounded-full bg-primary-on"></span>
-          {/each}
-        </div>
-
-        <a
-          href="/"
-          class="relative z-10 inline-flex rounded-lg bg-surface p-1.5 shadow-sm"
-          aria-label="YADA home"
-        >
-          <img src="/logo.svg" alt="" class="h-8 w-auto" />
-        </a>
-
         <div class="relative z-10 flex items-center gap-3">
           <div
             class="relative h-px w-12 border-t-2 border-dashed border-primary-on/40"
@@ -274,17 +260,13 @@
         </div>
 
         <div class="relative z-10 mt-16">
-          <p class="text-eyebrow font-mono text-primary-on/70">
-            YADA for teams
-          </p>
           <h1
             class="mt-4 max-w-xs text-4xl font-bold leading-tight tracking-tight text-primary-on"
           >
-            Every delivery,<br />on time.
+            Find riders,<br />with ease.
           </h1>
-          <p class="mt-4 max-w-xs text-sm leading-relaxed text-primary-on/80">
-            Sign in to manage orders, track couriers, and keep customers in the
-            loop.
+          <p class="mt-4 max-w-xs text-md leading-relaxed text-primary-on/80">
+            Sign in to find couriers and track all deliveries.
           </p>
         </div>
 
@@ -430,7 +412,7 @@
                         class="h-1 flex-1 rounded-full transition-colors {index <=
                         step
                           ? 'bg-primary'
-                          : 'bg-neutral-200'}"
+                          : 'bg-border'}"
                       ></span>
                     {/each}
                   </div>
@@ -525,23 +507,15 @@
                               class="h-full w-full object-cover"
                             />
                           {:else}
-                            <svg
-                              viewBox="0 0 24 24"
-                              class="h-8 w-8 text-ink-disabled"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="1.5"
+                            <IconAccount
+                              class="h-9 w-9 text-ink-disabled"
                               aria-hidden="true"
-                            >
-                              <circle cx="12" cy="8" r="4" /><path
-                                d="M4 21a8 8 0 0 1 16 0"
-                              />
-                            </svg>
+                            />
                           {/if}
                         </div>
 
                         <label
-                          class="cursor-pointer rounded-md border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-neutral-50"
+                          class="cursor-pointer rounded-md border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-wash"
                         >
                           <input
                             type="file"
@@ -682,31 +656,9 @@
                 <button
                   type="submit"
                   disabled={!data.googleEnabled || googlePending}
-                  class="inline-flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-4 py-3 text-base font-semibold text-ink transition-colors hover:bg-neutral-50 focus-visible:outline focus-visible:outline-3 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
+                  class="inline-flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-4 py-3 text-base font-semibold text-ink transition-colors hover:bg-wash focus-visible:outline focus-visible:outline-3 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <!-- Google's four-colour mark, inline so it needs no fetch. -->
-                  <svg
-                    class="h-5 w-5 shrink-0"
-                    viewBox="0 0 48 48"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fill="#4285F4"
-                      d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17Z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46Z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7Z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07Z"
-                    />
-                  </svg>
+                  <IconGoogle class="h-5 w-5 shrink-0" aria-hidden="true" />
                   {googlePending
                     ? "Opening Google…"
                     : mode === "sign-up"

@@ -1,17 +1,34 @@
 <script lang="ts">
+	import type { Component } from 'svelte';
+
 	import { page } from '$app/state';
-	import { activeTabIndex, COURIER_TABS, isTabActive } from './tabs';
-	import { getCourierOnline } from './courier-online.svelte';
+	import { activeTabIndex, COURIER_TABS, isTabActive, type CourierTab } from './tabs';
+	import IconHome from '~icons/mdi/home-outline';
+	import IconOrders from '~icons/mdi/package-variant-closed';
+	import IconTrips from '~icons/mdi/clock-outline';
+	import IconSettings from '~icons/mdi/cog-outline';
+
+	// `tabs.ts` stays a plain data module — the layout imports it too, and it has
+	// no business pulling in Svelte components. The name-to-glyph mapping lives
+	// here, where the glyphs are actually drawn.
+	const TAB_ICONS: Record<CourierTab['icon'], Component> = {
+		home: IconHome,
+		orders: IconOrders,
+		trips: IconTrips,
+		settings: IconSettings
+	};
 
 	const tabs = COURIER_TABS;
-	// The online dot used to ride on the header avatar. It follows the profile
-	// down here, because it's the one piece of status a courier checks at a
-	// glance and it shouldn't be lost in the move.
-	const online = getCourierOnline();
 
 	const path = $derived(page.url.pathname);
 	const activeIndex = $derived(activeTabIndex(path));
 </script>
+
+<!-- A snippet rather than inline markup: `{@const}` needs a block to live in. -->
+{#snippet tabGlyph(icon: CourierTab['icon'])}
+	{@const Icon = TAB_ICONS[icon]}
+	<Icon class="h-5 w-5" aria-hidden="true" />
+{/snippet}
 
 <nav
 	class="z-20 shrink-0 border-t border-border bg-surface px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1.5 shadow-nav"
@@ -43,74 +60,7 @@
 							? '-translate-y-px'
 							: ''}"
 					>
-						{#if tab.icon === 'home'}
-							<svg
-								viewBox="0 0 24 24"
-								class="h-5 w-5"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								><path d="m3 10 9-7 9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></svg
-							>
-						{:else if tab.icon === 'orders'}
-							<svg
-								viewBox="0 0 24 24"
-								class="h-5 w-5"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								><path d="M6 2h12l2 7H4L6 2Z" /><path
-									d="M4 9v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"
-								/><path d="M10 14h4" /></svg
-							>
-						{:else if tab.icon === 'trips'}
-							<svg
-								viewBox="0 0 24 24"
-								class="h-5 w-5"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg
-							>
-						{:else if tab.icon === 'profile'}
-							<span class="relative inline-flex">
-								<svg
-									viewBox="0 0 24 24"
-									class="h-5 w-5"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg
-								>
-								{#if online.online}
-									<span
-										class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-surface bg-success"
-										aria-hidden="true"
-									></span>
-								{/if}
-							</span>
-						{:else}
-							<svg
-								viewBox="0 0 24 24"
-								class="h-5 w-5"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								><circle cx="12" cy="12" r="3" /><path
-									d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-								/></svg
-							>
-						{/if}
+						{@render tabGlyph(tab.icon)}
 					</span>
 				</span>
 				<span class="transition-opacity {active ? 'opacity-100' : 'opacity-90'}">{tab.label}</span>

@@ -129,6 +129,13 @@ const config: Config = {
       colors: {
         bg: withAlpha('--color-bg'),
         overlay: withAlpha('--color-overlay'),
+        // App chrome, defined in src/lib/styles/app.css rather than the Design
+        // System because they describe this app's shell, not the brand.
+        shell: withAlpha('--color-shell'),
+        wash: {
+          DEFAULT: withAlpha('--color-wash'),
+          strong: withAlpha('--color-wash-strong')
+        },
         surface: {
           DEFAULT: withAlpha('--color-surface'),
           raised: withAlpha('--color-surface-raised'),

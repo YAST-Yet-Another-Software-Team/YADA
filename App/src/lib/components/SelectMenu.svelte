@@ -15,6 +15,8 @@
    * ARIA roles, and a menu that reads like the rest of the app.
    */
   import { onDestroy, onMount, tick } from 'svelte';
+  import IconChevronDown from '~icons/mdi/chevron-down';
+  import IconCheck from '~icons/mdi/check-bold';
 
   type Option = { value: string; label: string };
 
@@ -135,20 +137,12 @@
       {#if label}<span class="text-ink-secondary">{label}:</span>{/if}
       {selectedLabel}
     </span>
-    <svg
-      viewBox="0 0 24 24"
+    <IconChevronDown
       class="h-4 w-4 shrink-0 text-ink-tertiary transition-transform duration-200 {open
         ? 'rotate-180'
         : ''}"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
       aria-hidden="true"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
+    />
   </button>
 
   {#if open}
@@ -179,18 +173,10 @@
           onmouseenter={() => (highlighted = index)}
           onclick={() => choose(index)}
         >
-          <svg
-            viewBox="0 0 24 24"
+          <IconCheck
             class="h-4 w-4 shrink-0 {isSelected ? 'opacity-100' : 'opacity-0'}"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
             aria-hidden="true"
-          >
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
+          />
           {option.label}
         </li>
       {/each}

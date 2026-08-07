@@ -5,7 +5,7 @@ import { z } from "zod";
 import { env } from "$env/dynamic/private";
 
 import { MAX_PHOTO_DATA_URL_LENGTH } from "$lib/client/images/profile-photo";
-import { saveCourierProfile } from "$lib/server/data/courier";
+import { saveCourierProfile, setCourierAvailability } from "$lib/server/data/courier";
 
 import { auth, toAuthRole } from "./auth.server";
 import { authErrorMessage } from "./errors";
@@ -360,6 +360,43 @@ export const actions = {
    * Google needs the intended role carried across the redirect — or a "which are
    * you?" prompt on first landing — before the button is offered on their side.
    */
+  /**
+   * Sign out, on the server.
+   *
+   * Deliberately an action rather than the client `session.signOut()` it
+   * replaces. Two things have to be true when someone signs out, and only this
+   * side can guarantee either: the session row is deleted, so a cookie that
+   * survives the round trip authenticates nothing; and the cookie deletion
+   * rides on a navigation the browser has to apply, rather than on a fetch that
+   * a closing tab or a dropped connection can abandon halfway. The old path
+   * cleared local state in a `finally` and redirected regardless — so a failed
+   * request left a live session behind and a UI that claimed otherwise, which
+   * is exactly how you get signed back in on the next visit.
+   *
+   * The redirect goes to /auth rather than the landing page: signing out is
+   * nearly always a prelude to signing in as someone else.
+   */
+  signout: async ({ request, locals }) => {
+    // Clocking off is part of signing off. This used to be a fire-and-forget
+    // fetch from the button, racing the navigation that followed it — a courier
+    // whose request lost that race stayed `active` in the table, and dispatch
+    // kept ringing a phone nobody was holding.
+    if (locals.user?.role === "courier") {
+      await setCourierAvailability(locals.user.id, false);
+    }
+
+    try {
+      await auth.api.signOut({ headers: request.headers });
+    } catch (error) {
+      // A session that was already gone is a signed-out user, which is the
+      // outcome being asked for. Anything else is worth knowing about, but not
+      // worth stranding someone on a page they asked to leave.
+      console.error("Sign-out failed.", error);
+    }
+
+    redirect(303, "/auth");
+  },
+
   google: async ({ request, url }) => {
     if (!googleConfigured()) {
       return fail(400, {

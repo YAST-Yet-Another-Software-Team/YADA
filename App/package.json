@@ -24,7 +24,6 @@
     "test": "npm run test:e2e"
   },
   "dependencies": {
-    "@auth0/auth0-spa-js": "^2.24.0",
     "@better-auth/drizzle-adapter": "^1.6.25",
     "@better-auth/infra": "^0.3.7",
     "@neondatabase/serverless": "^1.1.0",
@@ -41,6 +40,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@iconify-json/devicon": "^1.2.62",
     "@iconify-json/mdi": "^1.2.3",
     "@iconify-json/solar": "^1.2.5",
     "@playwright/test": "^1.60.0",

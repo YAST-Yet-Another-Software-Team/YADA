@@ -7,6 +7,9 @@
   import Button from "$lib/components/Button.svelte";
   import Card from "$lib/components/Card.svelte";
   import StatusPill from "$lib/components/StatusPill.svelte";
+  import IconPlus from "~icons/mdi/plus";
+  import IconChevronRight from "~icons/mdi/chevron-right";
+  import IconPackage from "~icons/mdi/package-variant-closed";
   import type { DashboardTripRecord } from "$lib/utils/types";
   import { DashboardViewPreference } from "./dashboard-view.svelte";
 
@@ -67,6 +70,16 @@
     panelError = "";
   }
 
+  /**
+   * On a phone a request opens the screen built for it rather than a panel over
+   * this one: the tracking map is the whole point of tapping the row, and a
+   * side sheet on a 390px screen is that screen with less room and a worse way
+   * back. The desktop table keeps the panel, where it sits beside the list.
+   */
+  function openTrip(trip: DashboardTripRecord) {
+    goto(`/tracking?trip=${encodeURIComponent(trip.rawId)}`);
+  }
+
   function closePanel() {
     selected = null;
     panelError = "";
@@ -110,10 +123,13 @@
   <title>Dashboard | YADA</title>
 </svelte:head>
 
-<div class="relative flex flex-col gap-6 p-4 pb-24 lg:p-0 lg:pb-0">
-  <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
+<div class="relative flex flex-1 flex-col gap-5 lg:gap-6">
+  <div class="grid grid-cols-2 gap-3 px-4 pt-4 lg:grid-cols-3 lg:p-0">
     <div class="rounded-lg border border-border bg-surface p-4 shadow-xs">
-      <p class="text-eyebrow text-ink-tertiary">Active deliveries</p>
+      <p class="text-eyebrow text-ink-tertiary">
+        <span class="lg:hidden">Active</span>
+        <span class="hidden lg:inline">Active deliveries</span>
+      </p>
       <p class="font-mono-data mt-2 text-2xl font-bold text-ink">
         {data.dashboard.activeTrips.length}
       </p>
@@ -127,7 +143,10 @@
       </p>
     </div>
     <div class="rounded-lg border border-border bg-surface p-4 shadow-xs">
-      <p class="text-eyebrow text-ink-tertiary">Delivered today</p>
+      <p class="text-eyebrow text-ink-tertiary">
+        <span class="lg:hidden">Today</span>
+        <span class="hidden lg:inline">Delivered today</span>
+      </p>
       <p class="font-mono-data mt-2 text-2xl font-bold text-ink">
         {data.dashboard.historyTrips.filter((t) => t.status === "delivered")
           .length}
@@ -135,29 +154,56 @@
     </div>
   </div>
 
-  <section class="flex flex-col gap-3 lg:hidden">
+  <section class="flex flex-1 flex-col gap-3 px-4 lg:hidden">
     <h2 class="text-base font-semibold text-ink">Active requests</h2>
-    {#each data.dashboard.activeTrips as trip (trip.id)}
-      <button
-        type="button"
-        class="w-full text-left"
-        onclick={() => selectTrip(trip)}
+
+    {#if data.dashboard.activeTrips.length === 0}
+      <!-- The empty dashboard is the first thing a new business sees, so it
+           says what to do next rather than leaving a gap under the heading. -->
+      <div
+        class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-6 py-10 text-center"
       >
-        <Card>
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <p class="text-sm font-semibold text-ink">
-                #{trip.id.replace("YD-", "")} · {trip.destination}
-              </p>
-              {#if trip.rider}
-                <p class="text-sm text-ink-secondary">{trip.rider}</p>
-              {/if}
+        <IconPackage class="h-8 w-8 text-ink-tertiary" aria-hidden="true" />
+        <p class="text-sm font-semibold text-ink">No deliveries running</p>
+        <p class="text-sm text-ink-secondary">
+          Request a rider and it will show up here until it's delivered.
+        </p>
+      </div>
+    {:else}
+      {#each data.dashboard.activeTrips as trip (trip.id)}
+        <button
+          type="button"
+          class="w-full rounded-lg text-left transition active:scale-[0.99]"
+          onclick={() => openTrip(trip)}
+        >
+          <Card>
+            <div class="flex items-center gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="font-mono-data text-xs text-ink-tertiary">
+                  #{trip.id.replace("YD-", "")}
+                </p>
+                <p class="truncate text-sm font-semibold text-ink">
+                  {trip.destination}
+                </p>
+                <p class="truncate text-sm text-ink-secondary">
+                  {trip.rider ?? "Looking for a rider"}
+                  {#if trip.eta}
+                    <span class="font-mono-data text-primary">· {trip.eta}</span>
+                  {/if}
+                </p>
+              </div>
+              <div class="flex shrink-0 items-center gap-1">
+                <StatusPill status={trip.status} />
+                <IconChevronRight
+                  class="h-5 w-5 text-ink-tertiary"
+                  aria-hidden="true"
+                />
+              </div>
             </div>
-            <StatusPill status={trip.status} />
-          </div>
-        </Card>
-      </button>
-    {/each}
+          </Card>
+        </button>
+      {/each}
+    {/if}
   </section>
 
   <section class="hidden flex-col gap-4 lg:flex">
@@ -191,9 +237,10 @@
         </div>
 
         <div class="hidden lg:block">
-          <Button variant="primary" size="sm" onclick={newRequest}
-            >+ New request</Button
-          >
+          <Button variant="primary" size="sm" onclick={newRequest}>
+            <IconPlus class="h-4 w-4" aria-hidden="true" />
+            New request
+          </Button>
         </div>
       </div>
     </div>
@@ -212,12 +259,16 @@
     {/if}
   </section>
 
+  <!-- Sticky rather than fixed: it sits in the column, so it can't overlap the
+       last card and the list doesn't need a phantom pad at the bottom to clear
+       it. The safe-area inset keeps it above a home indicator. -->
   <div
-    class="fixed bottom-0 left-0 right-0 border-t border-border bg-surface p-4 lg:hidden"
+    class="sticky bottom-0 z-10 border-t border-border bg-surface px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 shadow-nav lg:hidden"
   >
-    <Button variant="primary" size="lg" fullWidth onclick={newRequest}
-      >+ New request</Button
-    >
+    <Button variant="primary" size="lg" fullWidth onclick={newRequest}>
+      <IconPlus class="h-5 w-5" aria-hidden="true" />
+      New request
+    </Button>
   </div>
 </div>
 
@@ -247,7 +298,7 @@
         </div>
         <button
           type="button"
-          class="rounded-md px-2 py-1 text-sm font-semibold text-ink-secondary hover:bg-neutral-100"
+          class="rounded-md px-2 py-1 text-sm font-semibold text-ink-secondary hover:bg-wash"
           onclick={closePanel}
         >
           Close
@@ -274,6 +325,9 @@
                     lng: data.dashboard.businessProfile.lng,
                     label: data.dashboard.businessProfile.businessName,
                     role: "business" as const,
+                    // Same signal as the tracking map: the counter radiates
+                    // while its request is still looking for a rider.
+                    pulse: selected.status === "searching",
                   },
                 ]
               : []),

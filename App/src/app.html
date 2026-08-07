@@ -7,6 +7,18 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Runs before first paint so an explicit light/dark choice is already on
+         <html> when the stylesheet resolves its `light-dark()` tokens; deferring
+         this to a component would flash the wrong theme on every load. Kept in
+         sync by hand with src/lib/client/theme.ts — see the note there. -->
+    <script>
+      try {
+        var t = localStorage.getItem('yada.courierTheme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {
+        /* storage unavailable — fall through to the OS setting */
+      }
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

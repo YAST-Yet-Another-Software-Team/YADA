@@ -153,26 +153,12 @@ export class Session {
     });
   }
 
-  /**
-   * Clear the session locally and leave, whatever the server says.
-   *
-   * The request is best-effort: if it rejects the cookie may survive, but the
-   * UI must not keep showing a signed-in state — so the reset and the redirect
-   * run in a `finally`.
-   */
-  async signOut(returnTo = '/') {
-    try {
-      await fetch('/api/auth/sign-out', { method: 'POST' });
-    } catch {
-      // Best-effort; fall through to clearing local state.
-    } finally {
-      this.#user = null;
-
-      if (typeof window !== 'undefined') {
-        window.location.href = returnTo;
-      }
-    }
-  }
+  // No signOut() here on purpose. It used to clear local state in a `finally`
+  // and redirect whatever the server said, so a request that never landed left
+  // a live session behind under a UI claiming otherwise — and the next visit
+  // signed the user straight back in. Signing out is the `signout` action in
+  // ./+page.server: it deletes the session row, so a surviving cookie
+  // authenticates nothing, and the buttons post a form to it.
 
   async updateProfile(fields: { name?: string; phone?: string }) {
     return this.#track(async () => {
