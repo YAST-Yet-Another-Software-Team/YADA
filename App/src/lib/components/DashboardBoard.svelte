@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { DashboardTripRecord, TripStage } from '$lib/utils/types';
 
-	/** The board's columns, left to right. Only this component reads them. */
 	const boardColumns: Array<{ key: TripStage; title: string }> = [
 		{ key: 'searching', title: 'Finding rider' },
 		{ key: 'assigned', title: 'Assigned' },
@@ -25,21 +24,23 @@
 	}
 </script>
 
-<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-	{#each boardColumns as column}
-		{@const cards = columnTrips(column.key)}
-		<section class="flex min-h-[220px] flex-col rounded-lg border border-border bg-surface-sunken p-3">
-			<h3 class="mb-3 text-eyebrow text-ink-tertiary">
-				{column.title} ({cards.length})
-			</h3>
-			<div class="flex flex-1 flex-col gap-2">
+<div class="overflow-x-auto border-t-2 border-border-strong bg-surface-sunken">
+	<div class="grid min-w-[720px] grid-cols-4">
+		{#each boardColumns as column}
+			{@const cards = columnTrips(column.key)}
+			<section
+				class="flex min-h-[240px] flex-col gap-2.5 border-r border-dashed border-border p-3 last:border-r-0"
+			>
+				<h3 class="text-eyebrow text-ink-tertiary">
+					{column.title} ({cards.length})
+				</h3>
 				{#each cards as trip (trip.id)}
 					<button
 						type="button"
-						class="rounded-md border bg-surface p-3 text-left text-sm shadow-xs transition hover:border-primary {trip.status ===
+						class="rounded-md border bg-surface px-3 py-2.5 text-left text-sm transition hover:border-primary {trip.status ===
 						'en_route'
 							? 'border-primary'
-							: 'border-border'} {column.key === 'delivered' ? 'opacity-60' : ''}"
+							: 'border-border-strong'} {column.key === 'delivered' ? 'opacity-50' : ''}"
 						onclick={() => {
 							if (column.key !== 'delivered') onselect?.(trip);
 						}}
@@ -59,7 +60,7 @@
 						{/if}
 					</button>
 				{/each}
-			</div>
-		</section>
-	{/each}
+			</section>
+		{/each}
+	</div>
 </div>
