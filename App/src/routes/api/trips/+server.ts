@@ -23,6 +23,8 @@ type CreateTripBody = {
 	dropoffAddress?: string;
 	dropoffLat?: number;
 	dropoffLng?: number;
+	orderName?: string;
+	orderPrice?: number | string;
 	notes?: string;
 	estimatedDistanceKm?: number;
 	estimatedDurationMinutes?: number;
@@ -31,6 +33,34 @@ type CreateTripBody = {
 /** `numeric(10, 6)` columns — the scale the schema stores coordinates at. */
 function toCoordinateColumn(value: number) {
 	return value.toFixed(6);
+}
+
+/** Long enough for "2× large pancakes + syrup", short enough to read on a row. */
+const MAX_ORDER_NAME = 120;
+
+/**
+ * The ceiling on a single order's declared value, in cedis.
+ *
+ * Not a business rule about what YADA will carry — it is the guard that keeps a
+ * fat-fingered amount out of a `numeric(10, 2)` column, which tops out at eight
+ * digits before the point.
+ */
+const MAX_ORDER_PRICE = 1_000_000;
+
+/**
+ * The order's value, as the column stores it.
+ *
+ * Accepts a number or the string a form sends, and refuses anything that isn't
+ * a finite, non-negative amount. Rounded to the two decimal places the column
+ * keeps, here rather than in the database, so what is stored is what the API
+ * agreed to rather than a silent truncation.
+ */
+function toPriceColumn(value: unknown) {
+	const amount = typeof value === 'string' ? Number(value.trim()) : Number(value);
+
+	if (!Number.isFinite(amount) || amount < 0 || amount > MAX_ORDER_PRICE) return null;
+
+	return amount.toFixed(2);
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -57,6 +87,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return apiError(400, 'invalid_request', geoErrorMessage('invalid_request'));
 		}
 
+		// The order record. Checked here and not only on the form, because the
+		// columns are NOT NULL and a request without them is one nobody can audit
+		// afterwards — which is the whole reason they exist.
+		const orderName = body.orderName?.trim();
+		if (!orderName) {
+			return apiError(400, 'invalid_request', 'Say what is being sent.');
+		}
+
+		if (orderName.length > MAX_ORDER_NAME) {
+			return apiError(400, 'invalid_request', 'That order name is too long.');
+		}
+
+		const orderPrice = toPriceColumn(body.orderPrice);
+		if (orderPrice === null) {
+			return apiError(400, 'invalid_request', 'Enter what the order is worth, in cedis.');
+		}
+
 		// Neither end is zone-checked. A delivery that starts or finishes outside
 		// KNUST/Ayeduase is still a delivery someone wants; whether a courier
 		// takes it is the courier's call, which is what the offer ring is for.
@@ -72,6 +119,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				pickupLongitude: toCoordinateColumn(business.lng),
 				dropoffLatitude: toCoordinateColumn(dropoffLat),
 				dropoffLongitude: toCoordinateColumn(dropoffLng),
+				orderName,
+				orderPrice,
 				notes: body.notes ?? null,
 				estimatedDistanceKm:
 					body.estimatedDistanceKm != null ? String(body.estimatedDistanceKm) : null,
@@ -165,6 +214,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const dropoffLat = trip.dropoffLatitude != null ? Number(trip.dropoffLatitude) : null;
 	const dropoffLng = trip.dropoffLongitude != null ? Number(trip.dropoffLongitude) : null;
 
+	// The order record is the sender's own, and the rider has no business
+	// knowing what the parcel is worth — they are carrying it either way, and a
+	// value on their screen is a reason to be robbed for it. Both fields stay on
+	// the business's side of this response.
+	const isBusiness = user.id === trip.businessId;
+
 	return json({
 		ok: true,
 		trip: {
@@ -174,6 +229,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			assignedCourierId: trip.assignedCourierId,
 			courier,
 			myRating,
+			orderName: isBusiness ? trip.orderName : null,
+			orderPrice: isBusiness ? Number(trip.orderPrice) : null,
+			/**
+			 * A rider took this and then dropped it before reaching the counter, so
+			 * it is out ringing again. Inferred rather than stored: `accepted_at`
+			 * survives the release and the next acceptance overwrites it, so a
+			 * searching trip that has one is a trip that lost a rider.
+			 */
+			releasedByCourier: isBusiness && trip.status === 'requested' && trip.acceptedAt !== null,
 			// Elapsed rather than the timestamp, so the tracking screen's ring
 			// display doesn't inherit the browser's clock skew.
 			dispatchElapsedSeconds:

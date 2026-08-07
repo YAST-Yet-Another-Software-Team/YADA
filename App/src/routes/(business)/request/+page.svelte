@@ -2,6 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import Input from '$lib/components/Input.svelte';
 	import LocationPickerMap from '$lib/components/LocationPickerMap.svelte';
 	import { computeDrivingRoute } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
@@ -39,8 +40,25 @@
 	let setupError = $state('');
 	let savingAddress = $state(false);
 
+	/**
+	 * The order record. Asked for here rather than left to a note, because a
+	 * delivery that cannot say what was in it is a delivery nobody can audit
+	 * afterwards — and the columns behind these two are NOT NULL for the same
+	 * reason. The price is what the *order* is worth, not a fee for the ride.
+	 */
+	let orderName = $state('');
+	let orderPrice = $state('');
+
+	const priceAmount = $derived(Number(orderPrice.trim()));
+	const priceValid = $derived(
+		orderPrice.trim().length > 0 && Number.isFinite(priceAmount) && priceAmount >= 0
+	);
+
 	const canSubmit = $derived(
-		Boolean(pickupPoint && dropoffPoint && dropoffAddress.trim()) && !submitting
+		Boolean(pickupPoint && dropoffPoint && dropoffAddress.trim()) &&
+			orderName.trim().length > 0 &&
+			priceValid &&
+			!submitting
 	);
 
 	/**
@@ -94,6 +112,8 @@
 					dropoffAddress,
 					dropoffLat: dropoffPoint.lat,
 					dropoffLng: dropoffPoint.lng,
+					orderName: orderName.trim(),
+					orderPrice: priceAmount,
 					estimatedDistanceKm: estimate?.distanceKm,
 					estimatedDurationMinutes: estimate?.durationMinutes
 				})
@@ -271,6 +291,34 @@
 								</div>
 							</div>
 						</div>
+					</section>
+
+					<!-- The order itself. Above the estimate because it is part of the
+					     request rather than a consequence of it, and required before
+					     "Find a rider" will do anything. -->
+					<section class="space-y-2 border-t border-border pt-3">
+						<p class="text-eyebrow text-ink-tertiary">Order</p>
+
+						<Input
+							label="Order Name"
+							type="text"
+							placeholder="Pancakes × 4"
+							maxlength={120}
+							required
+							bind:value={orderName}
+						/>
+
+						<Input
+							label="Price (GH₵)"
+							type="text"
+							inputmode="decimal"
+							placeholder="55.00"
+							required
+							bind:value={orderPrice}
+						/>
+						<p class="text-xs leading-relaxed text-ink-secondary">
+							The rider is not shown the order details.
+						</p>
 					</section>
 
 					{#if estimate}

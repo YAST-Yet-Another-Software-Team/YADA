@@ -214,6 +214,9 @@ export type DashboardTripRecord = {
   status: TripStage;
   completedAt: string | null;
   notes: string | null;
+  /** What was sent, and what it was worth — the audit half of a delivery. */
+  orderName: string;
+  orderPrice: number;
   /** The stars this business gave, or null while the trip is unrated. */
   myRating?: number | null;
   pickupLat?: number | null;

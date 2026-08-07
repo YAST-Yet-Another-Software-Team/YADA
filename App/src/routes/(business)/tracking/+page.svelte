@@ -29,7 +29,8 @@
 	import IconStar from '~icons/mdi/star';
 	import IconCheck from '~icons/mdi/check';
 	import { DISPATCH_TIMEOUT_SECONDS, ringForElapsed, ringLabel } from '$lib/shared/dispatch';
-	import { isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
+	import { isCancellableByBusiness, isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
+	import { formatCedis } from '$lib/shared/text';
 	import type { CourierSummary, RiderLocationEvent, TripStatus } from '$lib/utils/types';
 
 	type ActiveTrip = {
@@ -45,6 +46,10 @@
 		completedAt?: string | null;
 		assignedCourierId?: string | null;
 		courier?: CourierSummary | null;
+		orderName?: string | null;
+		orderPrice?: number | null;
+		/** A rider took this and let it go again before reaching the counter. */
+		releasedByCourier?: boolean;
 	};
 
 	const POLL_MS = 4000;
@@ -118,8 +123,8 @@
 	 */
 	const searching = $derived(!trip || trip.status === 'requested' || !trip.assignedCourierId);
 	const closed = $derived(trip?.status === 'completed' || trip?.status === 'cancelled');
-	/** Mirrors the rule `POST /api/trips/cancel` enforces. */
-	const canCancel = $derived(trip?.status === 'requested');
+	/** Mirrors the rule `POST /api/trips/cancel` enforces: until the rider arrives. */
+	const canCancel = $derived(trip != null && isCancellableByBusiness(trip.status));
 
 	/** The 60-second search ran out with nobody accepting; only a re-ring restarts it. */
 	const dispatchExpired = $derived(
@@ -204,7 +209,10 @@
 				estimatedDurationMinutes: payload.trip.estimatedDurationMinutes,
 				completedAt: payload.trip.completedAt ?? null,
 				assignedCourierId: payload.trip.assignedCourierId ?? null,
-				courier: payload.trip.courier ?? null
+				courier: payload.trip.courier ?? null,
+				orderName: payload.trip.orderName ?? null,
+				orderPrice: payload.trip.orderPrice ?? null,
+				releasedByCourier: payload.trip.releasedByCourier === true
 			};
 			myRating = payload.trip.myRating ?? null;
 			dispatchElapsedBase = payload.trip.dispatchElapsedSeconds ?? null;
@@ -675,6 +683,14 @@
 				<StatusPill status="searching" />
 				<div>
 					<p class="text-lg font-semibold text-ink lg:text-base">Finding a rider near you</p>
+					<!-- Small on purpose. A rider dropping out before the counter is
+					     ordinary, and the request is already back out to everyone else
+					     — this says why the search restarted, not that anything broke. -->
+					{#if trip?.releasedByCourier && !dispatchExpired}
+						<p class="mt-1 text-sm text-ink-secondary">
+							The last rider dropped this job — we're ringing others.
+						</p>
+					{/if}
 					<p class="mt-1 text-sm text-ink-secondary">
 						{#if dispatchExpired}
 							No rider accepted in time. Ring again, or cancel the request.
@@ -770,6 +786,21 @@
 			</p>
 		</div>
 
+		<!-- What is in the parcel, on the sender's screen only: the rider is
+		     carrying it either way, and a value on their phone is a reason to be
+		     robbed for it. The API leaves both fields out of their copy. -->
+		{#if trip?.orderName}
+			<div class="border-t border-border pt-3">
+				<p class="text-eyebrow text-ink-tertiary">Order</p>
+				<p class="mt-1 flex items-baseline justify-between gap-3 text-sm">
+					<span class="min-w-0 truncate text-ink">{trip.orderName}</span>
+					<span class="font-mono-data shrink-0 text-ink-secondary">
+						{formatCedis(trip.orderPrice)}
+					</span>
+				</p>
+			</div>
+		{/if}
+
 		{#if !searching && !closed && trip?.courier?.phone}
 			<!-- Real links, not decoration: the number belongs to the rider actually
 			     carrying this parcel. -->
@@ -786,6 +817,16 @@
 		{/if}
 
 		<div class="mt-auto flex flex-col gap-2 lg:pt-4">
+			{#if canCancel}
+				<!-- Still callable off: the rider has accepted but hasn't reached the
+				     counter, so nobody is standing at the shop for this yet. The
+				     button disappears the moment they arrive — from there it is a
+				     conversation, not a control. -->
+				<Button variant="outline" size="sm" disabled={cancelling} onclick={cancelRequest}>
+					{cancelling ? 'Cancelling…' : 'Cancel delivery'}
+				</Button>
+			{/if}
+
 			{#if awaitingPickup}
 				<!-- The pickup phase ends here, on the counter it happens at. -->
 				{#if riderAtCounter}

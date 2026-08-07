@@ -10,6 +10,8 @@
   import IconPlus from "~icons/mdi/plus";
   import IconChevronRight from "~icons/mdi/chevron-right";
   import IconPackage from "~icons/mdi/package-variant-closed";
+  import { isCancellableStage } from "$lib/shared/trip-status";
+  import { formatCedis } from "$lib/shared/text";
   import type { DashboardTripRecord } from "$lib/utils/types";
   import { DashboardViewPreference } from "./dashboard-view.svelte";
 
@@ -38,11 +40,14 @@
   let panelError = $state("");
 
   /**
-   * Withdrawing is only offered while nobody has taken the job — the same rule
-   * `POST /api/trips/cancel` enforces, and the same one the tracking screen
-   * applies. Once a rider has accepted, this panel is a view, not a control.
+   * Withdrawing stays available until the rider reaches the counter — the same
+   * rule `POST /api/trips/cancel` enforces, and the same one the tracking
+   * screen applies. Once they have arrived, this panel is a view, not a
+   * control: someone is standing at the shop for this delivery.
    */
-  const canCancelSelected = $derived(selected?.status === "searching");
+  const canCancelSelected = $derived(
+    selected !== null && isCancellableStage(selected.status),
+  );
 
   // Adopted from storage after mount — $effect never runs on the server,
   // where localStorage doesn't exist.
@@ -382,6 +387,13 @@
         <p class="text-ink-secondary">
           <span class="font-semibold text-ink">Pickup:</span>
           {selected.pickup ?? data.dashboard.businessProfile?.address ?? "—"}
+        </p>
+        <!-- The order record. Business-side only: the rider's screens never
+             carry what the parcel is worth. -->
+        <p class="text-ink-secondary">
+          <span class="font-semibold text-ink">Order:</span>
+          {selected.orderName}
+          <span class="font-mono-data">· {formatCedis(selected.orderPrice)}</span>
         </p>
 
         <div class="flex items-center gap-2 pt-2">

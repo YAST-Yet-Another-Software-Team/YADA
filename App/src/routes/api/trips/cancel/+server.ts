@@ -6,17 +6,22 @@ import { apiError } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
 import { deliveryRequests } from '$lib/server/db/schema';
 import { recordStatusChange } from '$lib/server/data/trip-events';
+import { isCancellableByBusiness } from '$lib/shared/trip-status';
 import { isUuid } from '$lib/shared/uuid';
 
 /**
  * Withdraw a delivery request.
  *
- * Only while it is still `requested`. Once a courier has accepted, someone is
- * riding towards the pickup on the strength of it, and calling that off is a
- * different problem — one with a courier to notify and possibly a parcel already
- * collected — rather than a wider version of this button. The rule is enforced
- * here and not only in the UI, because the dashboard, the tracking screen and
- * anything later that wants a cancel button all reach this same endpoint.
+ * The window closes when the rider reaches the counter, not when they accept.
+ * Until then a business that changes its mind — the customer rang back, the
+ * kitchen ran out — is calling off a journey, and the rider learns of it the
+ * next time their screen refreshes. From `courier_arriving` on, someone is
+ * standing at the shop for this, and the way out of that is a conversation, not
+ * a button.
+ *
+ * The rule is enforced here and not only in the UI, because the dashboard, the
+ * tracking screen and anything later that wants a cancel button all reach this
+ * same endpoint.
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const user = locals.user;
@@ -41,13 +46,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return apiError(404, 'no_results', 'Trip not found.');
 	}
 
-	if (trip.status !== 'requested') {
+	if (!isCancellableByBusiness(trip.status)) {
 		return apiError(
 			409,
 			'conflict',
 			trip.status === 'cancelled'
 				? 'This request was already cancelled.'
-				: 'A rider has already accepted this request, so it can no longer be cancelled.'
+				: trip.status === 'completed'
+					? 'This delivery is already finished.'
+					: 'The rider has reached your counter — speak to them rather than cancelling here.'
 		);
 	}
 

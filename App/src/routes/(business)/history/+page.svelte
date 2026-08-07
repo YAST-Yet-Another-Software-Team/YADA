@@ -6,6 +6,7 @@
 	import RatingStars from '$lib/components/RatingStars.svelte';
 	import SelectMenu from '$lib/components/SelectMenu.svelte';
 	import StatusPill from '$lib/components/StatusPill.svelte';
+	import { formatCedis } from '$lib/shared/text';
 	import type { DashboardTripRecord } from '$lib/utils/types';
 
 	let {
@@ -36,6 +37,7 @@
 				!q ||
 				trip.id.toLowerCase().includes(q) ||
 				trip.destination.toLowerCase().includes(q) ||
+				trip.orderName.toLowerCase().includes(q) ||
 				(trip.rider?.toLowerCase().includes(q) ?? false);
 			return statusOk && searchOk;
 		})
@@ -161,8 +163,12 @@
 						<div class="flex items-center justify-between gap-3">
 							<div>
 								<p class="font-mono-data text-sm text-ink-tertiary">#{order.id}</p>
-								<p class="text-sm font-semibold text-ink">{order.destination}</p>
-								<p class="text-sm text-ink-secondary">{order.completedAt}</p>
+								<p class="text-sm font-semibold text-ink">{order.orderName}</p>
+								<p class="text-sm text-ink-secondary">{order.destination}</p>
+								<p class="text-sm text-ink-secondary">
+									{order.completedAt}
+									<span class="font-mono-data">· {formatCedis(order.orderPrice)}</span>
+								</p>
 							</div>
 							<StatusPill status={order.status} />
 						</div>
@@ -173,10 +179,12 @@
 	</div>
 
 	<div class="hidden overflow-x-auto rounded-lg border border-border bg-surface lg:block">
-		<table class="w-full min-w-[720px] text-left text-sm">
+		<table class="w-full min-w-[880px] text-left text-sm">
 			<thead class="border-b border-border bg-surface-sunken text-ink-secondary">
 				<tr>
 					<th class="px-4 py-3 font-semibold">Order</th>
+					<th class="px-4 py-3 font-semibold">Item</th>
+					<th class="px-4 py-3 font-semibold">Value</th>
 					<th class="px-4 py-3 font-semibold">Rider</th>
 					<th class="px-4 py-3 font-semibold">Destination</th>
 					<th class="px-4 py-3 font-semibold">Completed</th>
@@ -193,6 +201,8 @@
 						role="button"
 					>
 						<td class="font-mono-data px-4 py-3">#{trip.id.replace('YD-', '')}</td>
+						<td class="px-4 py-3">{trip.orderName}</td>
+						<td class="font-mono-data px-4 py-3">{formatCedis(trip.orderPrice)}</td>
 						<td class="px-4 py-3">{trip.rider ?? '—'}</td>
 						<td class="px-4 py-3">{trip.destination}</td>
 						<td class="px-4 py-3 text-ink-secondary">{trip.completedAt}</td>
@@ -232,6 +242,16 @@
 			<div class="mb-4"><StatusPill status={selected.status} /></div>
 
 			<dl class="space-y-4 text-sm">
+				<!-- The order record. First in the list because it is what makes this
+				     panel an audit trail rather than a route log. -->
+				<div>
+					<dt class="text-eyebrow text-ink-tertiary">Order</dt>
+					<dd class="mt-1 text-ink">{selected.orderName}</dd>
+				</div>
+				<div>
+					<dt class="text-eyebrow text-ink-tertiary">Value</dt>
+					<dd class="font-mono-data mt-1 text-ink">{formatCedis(selected.orderPrice)}</dd>
+				</div>
 				<div>
 					<dt class="text-eyebrow text-ink-tertiary">
 						Destination

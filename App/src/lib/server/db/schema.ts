@@ -153,6 +153,16 @@ export const deliveryRequests = pgTable('delivery_requests', {
   dropoffLongitude: numeric('dropoff_longitude', { precision: 10, scale: 6 }),
   pickupPlaceId: text('pickup_place_id'),
   dropoffPlaceId: text('dropoff_place_id'),
+  // What is actually being sent, and what it is worth. Captured before the
+  // request can be raised — a delivery record that cannot say what was in the
+  // parcel is not an audit record. Both are NOT NULL for that reason: there is
+  // no such thing as a YADA delivery of nothing.
+  //
+  // The price is the *order's* value in cedis, not a delivery fee: YADA does
+  // not price the ride. It is here so a disputed handover has a number attached
+  // to it, and it is deliberately never sent to the courier app.
+  orderName: text('order_name').notNull(),
+  orderPrice: numeric('order_price', { precision: 10, scale: 2 }).notNull(),
   notes: text('notes'),
   estimatedDistanceKm: numeric('estimated_distance_km', { precision: 8, scale: 2 }),
   estimatedDurationMinutes: numeric('estimated_duration_minutes', { precision: 8, scale: 2 }),
