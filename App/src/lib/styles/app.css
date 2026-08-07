@@ -132,6 +132,58 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------------------------------------------------------------------------
+   Cross-page transitions
+
+   Driven by `onNavigate` in the root layout, which is what actually starts a
+   view transition; these rules only say what it should look like. They have to
+   live here rather than in a component `<style>` because `::view-transition-*`
+   are pseudo-elements of the document root, which Svelte's scoping can never
+   match.
+
+   The default UA pairing is a plain cross-fade of the whole page. Overriding
+   only `root` keeps that, and adds a small vertical drift so the two pages read
+   as one moving forward rather than two dissolving into each other.
+   --------------------------------------------------------------------------- */
+::view-transition-old(root) {
+  animation: page-exit var(--duration-fast) var(--ease-in) both;
+}
+
+::view-transition-new(root) {
+  animation: page-enter var(--duration-normal) var(--ease-out) both;
+}
+
+/* A shared element: one name, one element per page, and the browser tweens the
+   two rather than fading them. The landing header's logo lands as the auth
+   card's. Only ever put this on a *single* element per page — two at once and
+   the browser skips the whole transition. */
+.vt-brand-logo {
+  view-transition-name: brand-logo;
+}
+
+@keyframes page-exit {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* The navigation itself is already skipped for reduced motion in the layout;
+   this is the belt to that braces, for a transition started anywhere else. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
 @keyframes yada-pulse {
   0%,
   100% {

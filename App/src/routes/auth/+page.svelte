@@ -279,7 +279,12 @@
           <!-- floating parcel icon, top-right -->
           <div
             class="absolute right-10 top-10 float-shape"
-            in:fly={motion({ y: -18, duration: 600, delay: 160, easing: cubicOut })}
+            in:fly={motion({
+              y: -18,
+              duration: 600,
+              delay: 160,
+              easing: cubicOut,
+            })}
           >
             <div
               class="relative h-14 w-14 rounded-lg border-2 border-primary-on/70"
@@ -385,12 +390,14 @@
       >
         <div class="mx-auto w-full max-w-sm">
           <div class="flex flex-col items-center text-center">
-            <img
-              src="/logo.svg"
-              alt="logo-yada"
-              class="rise h-14 w-auto"
-              style="--rise-delay: 40ms"
-            />
+            <!-- The landing header's logo morphs into this one; see
+                 `.vt-brand-logo` in app.css. No `.rise` on it, unlike its
+                 neighbours: a view transition photographs the incoming page the
+                 moment it is swapped in, and an element that is still at the
+                 transparent end of its own animation gets photographed
+                 transparent — the logo would blink out mid-morph. It is the
+                 anchor of the card, so arriving in place suits it anyway. -->
+            <img src="/logo.svg" alt="logo-yada" class="vt-brand-logo h-14 w-auto" />
             <h2
               class="rise mt-3 text-xl font-semibold tracking-tight text-ink lg:mt-5 lg:text-2xl"
               style="--rise-delay: 110ms"
@@ -603,8 +610,8 @@
                             >Profile photo</span
                           >
                           <p class="text-xs leading-relaxed text-ink-secondary">
-                            Businesses see this when you accept their delivery, so
-                            they know who is at the counter.
+                            Businesses see this when you accept their delivery,
+                            so they know who is at the counter.
                           </p>
 
                           <div class="flex items-center gap-4">
@@ -677,7 +684,9 @@
                               type="submit"
                               disabled={submitting}
                             >
-                              {submitting ? "Creating account…" : "Create account"}
+                              {submitting
+                                ? "Creating account…"
+                                : "Create account"}
                             </Button>
                           {:else}
                             <Button
@@ -824,10 +833,9 @@
 </div>
 
 <style>
-  /* The form column's entrance. It is CSS rather than a Svelte transition on
-     purpose: a transition would mean gating the form behind a hydration flag,
-     and this page is built to submit with scripting off. `both` holds the
-     from-state through the delay, so nothing flashes before its turn. */
+  @view-transition {
+    navigation: auto;
+  }
   .rise {
     animation: rise 0.55s var(--ease-out) both;
     animation-delay: var(--rise-delay, 0ms);
