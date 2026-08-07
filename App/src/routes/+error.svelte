@@ -188,8 +188,11 @@
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
-<div class="flex min-h-svh flex-col bg-surface-sunken">
-	<header class="border-b border-border bg-surface">
+<!-- No card, no border, no shadow: the icon and its sentence sit on the page
+     itself. An error is a dead end, and boxing it up only draws a frame around
+     the fact — the way out is the row of buttons underneath. -->
+<div class="flex min-h-svh flex-col bg-surface">
+	<header class="shrink-0">
 		<div class="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6">
 			<a href="/" class="inline-flex shrink-0 items-center" aria-label="YADA home">
 				<img src="/logo.svg" alt="" class="h-8 w-auto" />
@@ -197,54 +200,43 @@
 		</div>
 	</header>
 
-	<main class="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
-		<div
-			class="w-full max-w-md rounded-xl border border-border bg-surface p-6 text-center shadow-sm sm:p-8"
-		>
-			<span
-				class="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary-subtle text-primary"
-				aria-hidden="true"
-			>
-				<shape.icon class="h-7 w-7" />
-			</span>
+	<main class="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
+		<shape.icon class="h-24 w-24 text-ink-tertiary sm:h-28 sm:w-28" aria-hidden="true" />
 
-			<p class="text-eyebrow mt-5 font-mono text-ink-tertiary">Error {status}</p>
-			<h1 class="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{shape.title}</h1>
-			<p class="mt-3 text-sm leading-relaxed text-ink-secondary">{shape.body}</p>
+		<p class="text-eyebrow mt-8 font-mono text-ink-tertiary">Error {status}</p>
+		<h1 class="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{shape.title}</h1>
+		<p class="mt-3 max-w-md text-sm leading-relaxed text-ink-secondary">{shape.body}</p>
 
-			{#if detail}
-				<p
-					class="font-mono-data mt-4 break-words rounded-md bg-surface-sunken px-3 py-2 text-left text-xs text-ink-tertiary"
-				>
-					{detail}
-				</p>
+		{#if detail}
+			<p class="font-mono-data mt-4 max-w-md break-words text-xs text-ink-tertiary">
+				{detail}
+			</p>
+		{/if}
+
+		<!-- Wraps rather than stretching: with nothing to fill, a full-width button
+		     on a desktop error page is a stripe across the screen. -->
+		<div class="mt-9 flex flex-wrap items-center justify-center gap-3">
+			{#if shape.signIn}
+				<a href="/auth">
+					<Button variant="primary">Sign in</Button>
+				</a>
+			{:else if shape.retry}
+				<Button variant="primary" disabled={retrying} onclick={retry}>
+					{retrying ? 'Retrying…' : 'Try again'}
+				</Button>
+			{:else}
+				<a href={homeHref}>
+					<Button variant="primary">{homeLabel}</Button>
+				</a>
 			{/if}
 
-			<div class="mt-7 flex flex-col gap-3">
-				{#if shape.signIn}
-					<a href="/auth">
-						<Button variant="primary" fullWidth>Sign in</Button>
-					</a>
-				{:else if shape.retry}
-					<Button variant="primary" fullWidth disabled={retrying} onclick={retry}>
-						{retrying ? 'Retrying…' : 'Try again'}
-					</Button>
-				{:else}
-					<a href={homeHref}>
-						<Button variant="primary" fullWidth>{homeLabel}</Button>
-					</a>
-				{/if}
+			<Button variant="outline" onclick={goBack}>Go back</Button>
 
-				<div class="flex flex-col gap-2 sm:flex-row sm:gap-3">
-					<Button variant="outline" fullWidth onclick={goBack}>Go back</Button>
-
-					{#if shape.signIn || shape.retry}
-						<a href={homeHref} class="w-full">
-							<Button variant="neutral" fullWidth>{homeLabel}</Button>
-						</a>
-					{/if}
-				</div>
-			</div>
+			{#if shape.signIn || shape.retry}
+				<a href={homeHref}>
+					<Button variant="neutral">{homeLabel}</Button>
+				</a>
+			{/if}
 		</div>
 	</main>
 </div>
