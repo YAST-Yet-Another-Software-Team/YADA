@@ -4,8 +4,10 @@ import { z } from "zod";
 
 import { env } from "$env/dynamic/private";
 
-import { MAX_PHOTO_DATA_URL_LENGTH } from "$lib/client/images/profile-photo";
 import { saveCourierProfile, setCourierAvailability } from "$lib/server/data/courier";
+// The photo rules are shared with PUT /api/account/photo, which writes the same
+// column; see $lib/server/validation/photo.
+import { photoDataUrl as photo } from "$lib/server/validation/photo";
 
 import { auth, toAuthRole } from "./auth.server";
 import { authErrorMessage } from "./errors";
@@ -58,21 +60,6 @@ const password = z
   .min(
     MIN_PASSWORD_LENGTH,
     `Your password is too short — use at least ${MIN_PASSWORD_LENGTH} characters.`,
-  );
-
-/**
- * The courier's photo, as the data URL `$lib/client/images/profile-photo`
- * produces. The scheme is restricted because this string ends up in an
- * `<img src>`: `data:image/...` cannot carry script, `data:text/html` can.
- */
-const photo = z
-  .string()
-  .regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/, {
-    message: "We couldn't accept that photo. Choose a different one.",
-  })
-  .max(
-    MAX_PHOTO_DATA_URL_LENGTH,
-    "That photo is too large. Choose a smaller one.",
   );
 
 const signInSchema = z.object({

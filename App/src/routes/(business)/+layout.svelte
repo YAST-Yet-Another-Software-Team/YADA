@@ -73,13 +73,21 @@
 
   /**
    * A phone screen reached *from* somewhere goes back rather than sideways —
-   * /request is a step out of the dashboard, not a peer of it, so it gets an
-   * arrow where the other screens get the menu.
+   * /request and /profile are steps out of the dashboard, not peers of it, so
+   * they get an arrow where the other screens get the menu.
    */
-  const mobileBack = $derived(path === "/request" ? "/dashboard" : null);
+  const mobileBack = $derived(
+    path === "/request" || path === "/profile" ? "/dashboard" : null,
+  );
+
+  /**
+   * Screens outside the tab strip still have to name themselves in the bar —
+   * without this the account page would sit under a heading of "YADA".
+   */
+  const asideTitles: Record<string, string> = { "/profile": "Account" };
 
   const mobileTitle = $derived(
-    links.find((link) => isActive(link.match))?.title ?? "YADA",
+    asideTitles[path] ?? links.find((link) => isActive(link.match))?.title ?? "YADA",
   );
 
   function toggleProfile(e: MouseEvent) {
@@ -123,7 +131,7 @@
         {mobileTitle}
       </h1>
 
-      <div class="relative pr-2" data-profile-menu style:display={page.url.pathname === "/request"? 'none' : 'block'}>
+      <div class="relative pr-2" data-profile-menu style:display={page.url.pathname === "/request" || page.url.pathname === "/profile"? 'none' : 'block'}>
         <button
           type="button"
           class="rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-focus"
@@ -131,7 +139,12 @@
           aria-expanded={profileOpen}
           onclick={toggleProfile}
         >
-          <Avatar initials={avatarInitials} size={32} />
+          <Avatar
+            initials={avatarInitials}
+            src={session.user?.image ?? null}
+            alt=""
+            size={32}
+          />
         </button>
         <ProfileMenu open={profileOpen} onclose={() => (profileOpen = false)} />
       </div>
@@ -181,8 +194,14 @@
           aria-label="Open business profile"
           aria-expanded={profileOpen}
           onclick={toggleProfile}
+          style:display={page.url.pathname === "/profile"? 'none' : 'block'}
         >
-          <Avatar initials={avatarInitials} size={34} />
+          <Avatar
+            initials={avatarInitials}
+            src={session.user?.image ?? null}
+            alt=""
+            size={34}
+          />
         </button>
         <ProfileMenu open={profileOpen} onclose={() => (profileOpen = false)} />
       </div>

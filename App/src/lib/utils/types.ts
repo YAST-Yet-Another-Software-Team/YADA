@@ -61,7 +61,6 @@ export type GeoErrorCode =
   | 'quota'
   | 'denied'
   | 'no_results'
-  | 'out_of_zone'
   | 'unavailable'
   | 'invalid_request';
 

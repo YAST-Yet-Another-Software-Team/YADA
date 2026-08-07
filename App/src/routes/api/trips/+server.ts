@@ -8,7 +8,7 @@ import { getCourierFix } from '$lib/server/data/courier-location';
 import { ratingByRaterForTrip } from '$lib/server/data/ratings';
 import { db } from '$lib/server/db';
 import { deliveryRequests, tripEvents } from '$lib/server/db/schema';
-import { assertInZone, containsPoint } from '$lib/shared/geo/service-area';
+import { containsPoint } from '$lib/shared/geo/service-area';
 import { GeoError, geoErrorMessage } from '$lib/shared/geo/errors';
 import { isUuid } from '$lib/shared/uuid';
 import { env } from '$env/dynamic/private';
@@ -57,8 +57,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return apiError(400, 'invalid_request', geoErrorMessage('invalid_request'));
 		}
 
-		assertInZone({ lat: business.lat, lng: business.lng });
-		assertInZone({ lat: dropoffLat, lng: dropoffLng });
+		// Neither end is zone-checked. A delivery that starts or finishes outside
+		// KNUST/Ayeduase is still a delivery someone wants; whether a courier
+		// takes it is the courier's call, which is what the offer ring is for.
 
 		const [trip] = await db
 			.insert(deliveryRequests)

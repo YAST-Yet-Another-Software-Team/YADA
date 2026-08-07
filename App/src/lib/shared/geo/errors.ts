@@ -18,8 +18,6 @@ export function geoErrorMessage(code: GeoErrorCode): string {
       return 'Location access was denied.';
     case 'no_results':
       return 'No matching address found.';
-    case 'out_of_zone':
-      return 'Outside YADA delivery area (KNUST/Ayeduase).';
     case 'unavailable':
       return 'Maps service is temporarily unavailable.';
     case 'invalid_request':
