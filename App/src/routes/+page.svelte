@@ -2,8 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { prefersReducedMotion } from 'svelte/motion';
-	import type { Action } from 'svelte/action';
+	import { inview, motion, typeDuration, typewriter } from '$lib/client/motion';
 	import Button from '$lib/components/Button.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import { getSession } from '$auth/session.svelte';
@@ -40,69 +39,14 @@
 	const HEADLINE = ['Find Riders,', 'with ease.'];
 	const TYPE_SPEED = 2.4;
 
-	/** Milliseconds `typewriter` will take for a given string, so the rest of the
-	 *  hero can be scheduled off the end of the headline instead of a guess. */
-	const typeDuration = (text: string) => text.length / (TYPE_SPEED * 0.01);
-
-	const FIRST_LINE_END = 150 + typeDuration(HEADLINE[0]);
-	const HEADLINE_END = FIRST_LINE_END + typeDuration(HEADLINE[1]);
+	// The rest of the hero is scheduled off the end of the typing rather than
+	// off a guess, so retiming the headline retimes everything under it.
+	const FIRST_LINE_END = 150 + typeDuration(HEADLINE[0], TYPE_SPEED);
+	const HEADLINE_END = FIRST_LINE_END + typeDuration(HEADLINE[1], TYPE_SPEED);
 
 	onMount(() => {
 		mounted = true;
 	});
-
-	/**
-	 * Every transition on this page goes through here. Someone who has asked for
-	 * reduced motion still gets the content — instantly, with no travel — and
-	 * the choreography collapses to a single frame rather than being disabled
-	 * branch by branch at each call site.
-	 */
-	function motion<T extends Record<string, unknown>>(params: T): T {
-		return prefersReducedMotion.current ? { ...params, duration: 0, delay: 0 } : params;
-	}
-
-	/**
-	 * Types a text node out one character at a time. Adapted from the Svelte
-	 * tutorial's custom transition: `tick` is what makes it a real transition
-	 * rather than a timer, so it stays in step with reduced motion and with
-	 * anything that interrupts it.
-	 */
-	function typewriter(node: Element, { speed = 1, delay = 0 }: { speed?: number; delay?: number }) {
-		const text = node.textContent ?? '';
-
-		return {
-			delay,
-			duration: prefersReducedMotion.current ? 0 : text.length / (speed * 0.01),
-			tick: (t: number) => {
-				node.textContent = text.slice(0, Math.trunc(text.length * t));
-			}
-		};
-	}
-
-	/**
-	 * Fires once, the first time the node is scrolled into view. Sections use it
-	 * to start their own stagger, so a card never flies in above the fold where
-	 * nobody saw it happen.
-	 */
-	const inview: Action<HTMLElement, () => void> = (node, onenter) => {
-		// No observer (or a headless environment): reveal rather than hide.
-		if (typeof IntersectionObserver === 'undefined') {
-			onenter();
-			return;
-		}
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (!entries.some((entry) => entry.isIntersecting)) return;
-				onenter();
-				observer.disconnect();
-			},
-			{ threshold: 0.12, rootMargin: '0px 0px -8% 0px' }
-		);
-
-		observer.observe(node);
-		return { destroy: () => observer.disconnect() };
-	};
 
 	/* ----------------------------------------------------------------- copy */
 
