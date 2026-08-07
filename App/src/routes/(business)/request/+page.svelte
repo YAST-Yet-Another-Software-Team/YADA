@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
+	import { onDestroy, onMount } from 'svelte';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Input from '$lib/components/Input.svelte';
@@ -7,6 +8,7 @@
 	import { computeDrivingRoute } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
+	import { NEARBY_MINUTES } from '$lib/shared/geo/nearby';
 	import IconCircle from '~icons/mdi/record-circle-outline';
 	import IconPin from '~icons/mdi/map-marker';
 	import type { LatLng } from '$lib/utils/types';
@@ -181,6 +183,63 @@
 				]
 			: []
 	);
+
+	/* ------------------------------------------------------- riders nearby */
+
+	/**
+	 * The online riders around the shop, drawn on the map before anything is
+	 * requested — the same reassurance every ride-hailing app opens with. They
+	 * are anonymous by construction: `GET /api/couriers/nearby` sends positions
+	 * and an opaque ref, never a name, so this can show supply without showing
+	 * people.
+	 */
+	type NearbyCourier = { ref: string; lat: number; lng: number; minutesAway: number };
+
+	let nearby = $state<NearbyCourier[]>([]);
+	let nearbyLoaded = $state(false);
+	let nearbyTimer: ReturnType<typeof setInterval> | undefined;
+
+	/** Often enough to feel live, rarely enough to be a background tab's guest. */
+	const NEARBY_POLL_MS = 10_000;
+
+	async function refreshNearby() {
+		try {
+			const response = await fetch('/api/couriers/nearby');
+			const payload = await response.json().catch(() => null);
+			if (!response.ok || !payload?.ok) return;
+
+			nearby = payload.couriers ?? [];
+		} catch {
+			// A dropped poll is not worth a message: the markers simply hold their
+			// last position until the next one lands.
+		} finally {
+			nearbyLoaded = true;
+		}
+	}
+
+	const nearbyMarkers = $derived(
+		nearby.map((courier) => ({
+			id: `rider-${courier.ref}`,
+			lat: courier.lat,
+			lng: courier.lng,
+			// The title a hover reveals. A time, not a distance: "4 min away" is
+			// what the business is deciding on.
+			label: `Rider · about ${courier.minutesAway} min away`,
+			role: 'rider' as const
+		}))
+	);
+
+	/** Riders under the pin, so the destination marker still reads on top. */
+	const mapMarkers = $derived([...nearbyMarkers, ...pickupMarker]);
+
+	onMount(() => {
+		void refreshNearby();
+		nearbyTimer = setInterval(() => void refreshNearby(), NEARBY_POLL_MS);
+	});
+
+	onDestroy(() => {
+		if (nearbyTimer) clearInterval(nearbyTimer);
+	});
 </script>
 
 <svelte:head>
@@ -204,7 +263,7 @@
 					bind:resolving={resolvingDropoff}
 					markerLabel="Delivery address"
 					markerRole="dropoff"
-					extraMarkers={pickupMarker}
+					extraMarkers={mapMarkers}
 					initialCenter={pickupPoint}
 					searchPlaceholder="Where is this going?"
 				/>
@@ -292,6 +351,32 @@
 							</div>
 						</div>
 					</section>
+
+					<!-- Supply, before the ask. The map already shows the riders as
+					     dots; this is the sentence that makes them mean something —
+					     and when it reads zero it is the most useful thing on the
+					     screen, because the request would sit unanswered. -->
+					{#if nearbyLoaded}
+						<section class="flex items-center gap-2 border-t border-border pt-3">
+							<span
+								class="inline-flex h-2 w-2 shrink-0 rounded-full {nearby.length > 0
+									? 'animate-yada-pulse bg-info'
+									: 'bg-ink-disabled'}"
+								aria-hidden="true"
+							></span>
+							<p class="text-sm text-ink-secondary">
+								{#if nearby.length === 0}
+									No riders online near you right now — you can still send the request.
+								{:else}
+									<span class="font-semibold text-ink">
+										{nearby.length}
+										{nearby.length === 1 ? 'rider' : 'riders'}
+									</span>
+									within about {NEARBY_MINUTES} min
+								{/if}
+							</p>
+						</section>
+					{/if}
 
 					<!-- The order itself. Above the estimate because it is part of the
 					     request rather than a consequence of it, and required before

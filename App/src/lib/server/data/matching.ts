@@ -1,6 +1,7 @@
 import { and, eq, gt, isNotNull } from 'drizzle-orm';
 
 import { MAX_MATCH_RADIUS_KM, RING_STEPS } from '$lib/shared/dispatch';
+import { minutesAway } from '$lib/shared/geo/nearby';
 import { haversineKm } from '$lib/shared/geo/service-area';
 import type { LatLng } from '$lib/utils/types';
 
@@ -126,6 +127,68 @@ export function offerWindow(input: {
   if (!ring) return null;
 
   return ring.startsAtSeconds + stagger;
+}
+
+/**
+ * Where the online riders are, for the business's own map.
+ *
+ * Same population the dispatcher ranks — active, with a fix recent enough to be
+ * believed — but this is a *view*, not a shortlist, so it carries no identity:
+ * no name, no rating, no id that means anything off this response. A business
+ * watching riders move around their shop is being shown supply, not people.
+ *
+ * The position is rounded to four decimals (~11 m) before it leaves the server.
+ * At the zoom this is drawn at that is invisible, and it keeps the endpoint
+ * from being a metre-accurate tracker of individuals nobody has hired.
+ */
+export type NearbyCourier = {
+	/** Opaque and stable within a session, so a marker can be keyed and moved. */
+	ref: string;
+	lat: number;
+	lng: number;
+	minutesAway: number;
+};
+
+export async function nearbyCouriers(
+	pickup: LatLng,
+	options: { radiusKm: number; limit?: number; ref: (courierId: string) => string }
+): Promise<NearbyCourier[]> {
+	const freshAfter = new Date(Date.now() - MATCH_LOCATION_FRESH_MS);
+
+	const rows = await db
+		.select({
+			courierId: courierProfiles.userId,
+			lat: courierProfiles.currentLatitude,
+			lng: courierProfiles.currentLongitude
+		})
+		.from(courierProfiles)
+		.where(
+			and(
+				eq(courierProfiles.active, true),
+				isNotNull(courierProfiles.currentLatitude),
+				isNotNull(courierProfiles.currentLongitude),
+				gt(courierProfiles.lastLocationAt, freshAfter)
+			)
+		);
+
+	return rows
+		.map((row) => {
+			const point = { lat: Number(row.lat), lng: Number(row.lng) };
+
+			return {
+				ref: options.ref(row.courierId),
+				lat: Number(point.lat.toFixed(4)),
+				lng: Number(point.lng.toFixed(4)),
+				distanceKm: haversineKm(pickup, point)
+			};
+		})
+		.filter((courier) => courier.distanceKm <= options.radiusKm)
+		.sort((a, b) => a.distanceKm - b.distanceKm)
+		.slice(0, options.limit ?? 25)
+		.map(({ distanceKm, ...courier }) => ({
+			...courier,
+			minutesAway: minutesAway(distanceKm)
+		}));
 }
 
 export type RankedCourier = {
