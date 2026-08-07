@@ -56,6 +56,8 @@
   let email = $state(form?.email ?? "");
   // svelte-ignore state_referenced_locally
   let phone = $state(form?.phone ?? "");
+  // svelte-ignore state_referenced_locally
+  let plate = $state(form?.plate ?? "");
   let password = $state("");
 
   let submitting = $state(false);
@@ -605,6 +607,23 @@
                         hidden={multiStep && step !== 1}
                         aria-hidden={multiStep && step !== 1}
                       >
+                        <div class="flex flex-col gap-1.5">
+                          <Input
+                            label="Number plate"
+                            type="text"
+                            name="plate"
+                            placeholder="GT 4521-20"
+                            autocapitalize="characters"
+                            maxlength={16}
+                            required
+                            bind:value={plate}
+                          />
+                          <p class="text-xs leading-relaxed text-ink-secondary">
+                            Businesses see this while they wait, so they know
+                            which bike is yours.
+                          </p>
+                        </div>
+
                         <div class="flex flex-col gap-2">
                           <span class="text-sm font-semibold text-ink"
                             >Profile photo</span
@@ -777,7 +796,15 @@
               </div>
 
               <form method="POST" action="?/google" use:enhance={submitGoogle}>
-                <input type="hidden" name="role" value={role} />
+                <!-- Only meaningful in sign-up mode: that is the only place the
+                     Business/Courier toggle is on screen. Blank from the
+                     sign-in tab, where nobody chose, and the action treats that
+                     as "ask later" rather than assuming business. -->
+                <input
+                  type="hidden"
+                  name="role"
+                  value={mode === "sign-up" ? role : ""}
+                />
                 <button
                   type="submit"
                   disabled={!data.googleEnabled || googlePending}

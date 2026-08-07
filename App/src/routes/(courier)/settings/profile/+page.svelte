@@ -1,12 +1,16 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Alert from '$lib/components/Alert.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Input from '$lib/components/Input.svelte';
 	import Tabs from '$lib/components/Tabs.svelte';
 	import SettingsSubpage from '$lib/components/SettingsSubpage.svelte';
 	import { getSession } from '$auth/session.svelte';
 	import { messageOf } from '$auth/errors';
+	import { ProfilePhotoError, readProfilePhoto } from '$lib/client/images/profile-photo';
+	import { initials } from '$lib/shared/text';
+	import IconCamera from '~icons/mdi/camera-outline';
 
 	let {
 		data
@@ -38,6 +42,48 @@
 	let error = $state('');
 	let saved = $state(false);
 	let ready = $state(currentUser !== null);
+
+	// The photo saves the moment one is chosen rather than behind the button
+	// below: the picture is its own confirmation, and it is the one field here
+	// that a business sees before the rider arrives.
+	const avatarInitials = $derived(initials(session.user?.name, 'C'));
+	let photoError = $state('');
+	let photoBusy = $state(false);
+
+	async function handlePhoto(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+
+		photoBusy = true;
+		photoError = '';
+
+		try {
+			await session.updatePhoto(await readProfilePhoto(file));
+		} catch (err) {
+			photoError =
+				err instanceof ProfilePhotoError
+					? err.message
+					: messageOf(err, "We couldn't save that photo. Try a different one.");
+		} finally {
+			photoBusy = false;
+			// Let the same file be chosen again after a failure.
+			input.value = '';
+		}
+	}
+
+	async function removePhoto() {
+		photoBusy = true;
+		photoError = '';
+
+		try {
+			await session.updatePhoto(null);
+		} catch (err) {
+			photoError = messageOf(err, 'Unable to remove your photo.');
+		} finally {
+			photoBusy = false;
+		}
+	}
 
 	const savedPlate = $derived(data.courierProfile.plateNumber ?? '');
 
@@ -135,6 +181,48 @@
 					void saveProfile();
 				}}
 			>
+				<!-- Its own card because it saves on its own, the moment a file is
+				     chosen — the button below covers the fields, not this. -->
+				<div class="rounded-lg bg-surface p-4 shadow-sm">
+					<div class="flex items-center gap-4">
+						<Avatar
+							initials={avatarInitials}
+							src={session.user?.image ?? null}
+							alt=""
+							size={72}
+						/>
+
+						<div class="flex min-w-0 flex-col gap-2">
+							<span class="text-sm font-semibold text-ink">Profile photo</span>
+							<div class="flex flex-wrap items-center gap-2">
+								<label
+									class="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-surface px-3.5 py-2 text-sm font-semibold text-ink transition-colors hover:bg-wash"
+								>
+									<input
+										type="file"
+										accept="image/*"
+										class="sr-only"
+										disabled={photoBusy}
+										onchange={handlePhoto}
+									/>
+									<IconCamera class="h-4 w-4" aria-hidden="true" />
+									{photoBusy ? 'Saving…' : session.user?.image ? 'Change' : 'Add a photo'}
+								</label>
+
+								{#if session.user?.image}
+									<Button variant="outline" size="sm" disabled={photoBusy} onclick={removePhoto}>
+										Remove
+									</Button>
+								{/if}
+							</div>
+						</div>
+					</div>
+
+					{#if photoError}
+						<p class="mt-3 text-xs font-medium text-danger">{photoError}</p>
+					{/if}
+				</div>
+
 				<div class="space-y-3 rounded-lg bg-surface p-4 shadow-sm">
 					<Input label="Full name" type="text" placeholder="Your name" bind:value={name} />
 					<Input label="Phone number" type="tel" placeholder="024 000 0000" bind:value={phone} />

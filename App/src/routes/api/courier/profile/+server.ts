@@ -4,21 +4,17 @@ import { z } from 'zod';
 
 import { apiError } from '$lib/server/api-guard';
 import { getCourierProfile, saveCourierProfile } from '$lib/server/data/courier';
+import { plateNumber } from '$lib/server/validation/plate';
 
 /**
  * The parts of a courier's profile that live on `courier_profiles` rather than
  * the account — today, the plate.
  *
  * Name, phone and password belong to Better Auth and are changed through it;
- * this endpoint exists because the plate has nowhere else to go.
+ * this endpoint exists because the plate has nowhere else to go. The rules are
+ * shared with sign-up and the finish-setup screen, which write the same column.
  */
-const bodySchema = z.object({
-  // An empty string is how a form says "I cleared this", and is stored as null.
-  plateNumber: z
-    .string()
-    .max(16, 'That plate is too long.')
-    .regex(/^[A-Za-z0-9 -]*$/, 'A plate is letters, numbers, spaces and dashes.')
-});
+const bodySchema = z.object({ plateNumber });
 
 export const PUT: RequestHandler = async ({ request, locals }) => {
   const user = locals.user;
