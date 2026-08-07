@@ -1,6 +1,7 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { dash } from '@better-auth/infra';
 import { betterAuth } from 'better-auth';
+import { getOAuthState } from 'better-auth/api';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
 import { env } from '$env/dynamic/private';
@@ -87,11 +88,35 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        // `role` is stripped from the request body by `input: false`, so the
-        // sign-up form's choice is re-applied here — clamped to a real role.
-        // Social sign-ups carry no role and default to business.
+        /**
+         * `role` is stripped from the request body by `input: false`, so the
+         * sign-up form's choice is re-applied here — clamped to a real role.
+         *
+         * Two paths reach this hook and they carry the role differently:
+         *
+         *   - email sign-up posts it in the body, which `context.body` holds;
+         *   - a Google sign-up arrives on the OAuth *callback*, which is a GET.
+         *     There is no body at all, so this used to clamp every social
+         *     sign-up to `business` — a courier who signed up with Google was
+         *     silently filed as a shop. The role instead rides in the signed
+         *     `state` parameter (`additionalData` on `signInSocial`, set by the
+         *     `google` action), and `getOAuthState()` reads it back here.
+         *
+         * A role that reaches neither is left to `toAuthRole`'s default; the
+         * /welcome screen asks, because a guess is what caused the bug.
+         */
         before: async (user, context) => {
-          const requestedRole = (context?.body as { role?: unknown } | undefined)?.role;
+          let requestedRole = (context?.body as { role?: unknown } | undefined)?.role;
+
+          if (requestedRole === undefined) {
+            // Absent outside an OAuth request, and throwing here would fail the
+            // sign-up rather than the lookup.
+            try {
+              requestedRole = (await getOAuthState())?.role;
+            } catch {
+              requestedRole = undefined;
+            }
+          }
 
           return { data: { ...user, role: toAuthRole(requestedRole) } };
         }

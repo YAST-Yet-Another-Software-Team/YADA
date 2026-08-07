@@ -4,10 +4,13 @@ import { z } from "zod";
 
 import { env } from "$env/dynamic/private";
 
+import { accountCompletion } from "$lib/server/data/account";
 import { saveCourierProfile, setCourierAvailability } from "$lib/server/data/courier";
 // The photo rules are shared with PUT /api/account/photo, which writes the same
 // column; see $lib/server/validation/photo.
 import { photoDataUrl as photo } from "$lib/server/validation/photo";
+import { phoneNumber } from "$lib/server/validation/phone";
+import { plateNumber } from "$lib/server/validation/plate";
 
 import { auth, toAuthRole } from "./auth.server";
 import { authErrorMessage } from "./errors";
@@ -39,21 +42,9 @@ const MIN_PASSWORD_LENGTH = 8;
 
 const email = z.email("Enter a valid email address.");
 
-/**
- * A Ghanaian mobile number, normalised to E.164.
- *
- * `users.phone_number` is unique, so "0244123456" and "+233244123456" would
- * otherwise be two accounts for one phone. Accepting the spellings people
- * actually type and storing one of them is the point of parsing rather than
- * merely checking.
- */
-const phone = z
-  .string()
-  .transform((value) => value.replace(/[^\d+]/g, ""))
-  .refine((value) => /^(0\d{9}|\+?233\d{9})$/.test(value), {
-    message: "Enter a 10-digit phone number, like 024 123 4567.",
-  })
-  .transform((value) => `+233${value.replace(/^(\+?233|0)/, "")}`);
+// Phone and plate are shared with /welcome, which finishes off an account that
+// came in through Google; see $lib/server/validation.
+const phone = phoneNumber;
 
 const password = z
   .string()
@@ -79,6 +70,8 @@ const signUpSchema = z
     password,
     /** Empty string from a form field with nothing in it; absent for a business. */
     image: z.string().optional(),
+    /** Same: the plate is a courier's field, and only step two renders it. */
+    plate: z.string().optional(),
   })
   .superRefine((value, ctx) => {
     // Role-dependent, so it can't be a `.min()` on the field: a business is
@@ -95,6 +88,30 @@ const signUpSchema = z
     }
 
     if (value.role !== "courier") return;
+
+    // Checked before the photo because it is rendered above it on the same
+    // step, and the form shows the first complaint.
+    //
+    // Asked for at sign-up rather than left to settings: the plate is how a
+    // business at the counter tells which bike is the one it is waiting for,
+    // and a rider who never opens settings would never have one.
+    const plate = value.plate?.trim() ?? "";
+    if (!plate) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["plate"],
+        message: "Add your number plate so businesses can spot your bike.",
+      });
+    } else {
+      const parsedPlate = plateNumber.safeParse(plate);
+      if (!parsedPlate.success) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["plate"],
+          message: parsedPlate.error.issues[0].message,
+        });
+      }
+    }
 
     // SRS 3.1: a courier registers with a profile photograph, and SRS 3.3 shows
     // it to the business on acceptance. So it is part of the account, not a
@@ -128,6 +145,7 @@ const STEP_FOR_FIELD: Record<string, number> = {
   email: 0,
   phone: 0,
   password: 0,
+  plate: 1,
   image: 1,
 };
 
@@ -159,6 +177,7 @@ type Fields = {
   email?: string;
   name?: string;
   phone?: string;
+  plate?: string;
   role?: string;
   step?: number;
 };
@@ -190,7 +209,11 @@ function messageFor(error: unknown, fallback: string) {
 
 export async function load({ locals }) {
   if (locals.user) {
-    redirect(303, homeFor(locals.user.role));
+    // A signed-in visitor who never finished setting up goes back to finishing
+    // it rather than into a workspace that would only bounce them here again.
+    const { complete } = await accountCompletion(locals.user);
+
+    redirect(303, complete ? homeFor(locals.user.role) : "/welcome");
   }
 
   // The Google button renders either way — it is part of the page's shape, and
@@ -261,6 +284,7 @@ export const actions = {
       email: String(data.get("email") ?? "").trim(),
       name: String(data.get("name") ?? "").trim(),
       phone: String(data.get("phone") ?? "").trim(),
+      plate: String(data.get("plate") ?? "").trim(),
       role,
     };
 
@@ -271,6 +295,7 @@ export const actions = {
       phone: data.get("phone") ?? "",
       password: data.get("password") ?? "",
       image: String(data.get("image") ?? "").trim() || undefined,
+      plate: String(data.get("plate") ?? "").trim() || undefined,
     });
 
     if (!parsed.success) {
@@ -286,7 +311,7 @@ export const actions = {
 
     // `phone` comes back normalised to +233…, which is what makes the unique
     // constraint on that column mean one number per account.
-    const { name, email, phone, password, image } = parsed.data;
+    const { name, email, phone, password, image, plate } = parsed.data;
 
     let createdUserId: string;
 
@@ -328,25 +353,14 @@ export const actions = {
     // A business has no row to write yet — its dispatch address is set on
     // /request, on the map it gets pinned on.
     if (role === "courier") {
-      await saveCourierProfile(createdUserId);
+      // The plate is normalised on the way in by `saveCourierProfile`, so what
+      // lands in the column is what the settings form would have written.
+      await saveCourierProfile(createdUserId, { plateNumber: plate ?? null });
     }
 
     redirect(303, homeFor(role));
   },
 
-  /**
-   * Start the Google flow.
-   *
-   * A form action rather than a client call, so the button is an ordinary
-   * submit: `signInSocial` hands back the provider's authorize URL and this
-   * redirects to it, which works the same with JavaScript off.
-   *
-   * Known gap for when the credentials land: a social sign-up has no role on it,
-   * and `user.create.before` in ./auth.server clamps a missing role to
-   * `business`. So this creates business accounts. A courier arriving through
-   * Google needs the intended role carried across the redirect — or a "which are
-   * you?" prompt on first landing — before the button is offered on their side.
-   */
   /**
    * Sign out, on the server.
    *
@@ -384,6 +398,13 @@ export const actions = {
     redirect(303, "/auth");
   },
 
+  /**
+   * Start the Google flow.
+   *
+   * A form action rather than a client call, so the button is an ordinary
+   * submit: `signInSocial` hands back the provider's authorize URL and this
+   * redirects to it, which works the same with JavaScript off.
+   */
   google: async ({ request, url }) => {
     if (!googleConfigured()) {
       return fail(400, {
@@ -391,6 +412,14 @@ export const actions = {
           "Google sign-in is not configured yet — use your email and password for now.",
       });
     }
+
+    // The role toggle only exists in sign-up mode, so the field arrives empty
+    // from the sign-in tab. That blank is meaningful and must not be clamped:
+    // `toAuthRole("")` is `business`, which would be this action inventing an
+    // answer nobody gave. Unset means /welcome asks.
+    const data = await request.formData();
+    const chosen = String(data.get("role") ?? "");
+    const role = chosen === "business" || chosen === "courier" ? chosen : null;
 
     let authorizeUrl: string | undefined;
 
@@ -400,6 +429,16 @@ export const actions = {
           provider: "google",
           callbackURL: `${url.origin}/dashboard`,
           errorCallbackURL: `${url.origin}/auth`,
+          // First-time registrations only — Better Auth uses `newUserURL` in
+          // place of `callbackURL` when `isRegister`, so a returning Google
+          // user still lands straight in their workspace.
+          newUserCallbackURL: `${url.origin}/welcome`,
+          // Survives the round trip: Better Auth signs it into the `state`
+          // parameter and restores it before the user row is created, which is
+          // where `user.create.before` in ./auth.server reads it back. It is the
+          // only way a role can reach that hook on the OAuth path — the callback
+          // is a GET, so the hook's `context.body` is undefined.
+          ...(role ? { additionalData: { role } } : {}),
         },
         headers: request.headers,
       }));
