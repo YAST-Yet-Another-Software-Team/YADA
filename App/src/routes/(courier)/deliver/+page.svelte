@@ -153,7 +153,7 @@
     <MapBackdrop
       routeLabel
       center={riderPoint ?? KUMASI_CENTER}
-      followId="rider"
+      fitIds={['rider', 'dropoff']}
       {locationUnavailable}
       polylinePath={routePath}
       markers={[

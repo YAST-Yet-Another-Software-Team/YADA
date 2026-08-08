@@ -397,7 +397,7 @@
         </p>
 
         <div class="flex items-center gap-2 pt-2">
-          <Button variant="outline" size="sm" onclick={trackSelected}
+          <Button variant="primary" size="sm" onclick={trackSelected}
             >Open tracking</Button
           >
           <div class="flex-1"></div>

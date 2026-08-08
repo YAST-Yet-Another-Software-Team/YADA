@@ -498,6 +498,24 @@
 			: []
 	);
 
+	/**
+	 * Where the parcel goes after it leaves the counter, as a straight dashed
+	 * line rather than a route.
+	 *
+	 * Shown only while the rider is still on their way in: it is context for the
+	 * leg being watched — "and then it goes there" — not a journey anyone is on.
+	 * Costs no Routes call, which is the other reason it is a straight line and
+	 * not roads.
+	 */
+	const hintPath = $derived(
+		awaitingPickup && trip
+			? [
+					{ lat: trip.pickupLat, lng: trip.pickupLng },
+					{ lat: trip.dropoffLat, lng: trip.dropoffLng }
+				]
+			: []
+	);
+
 	const statusLabel = $derived(trip ? STATUS_LABELS[trip.status] : 'Loading…');
 
 	/** Delivery time in the viewer's own clock, for the completion screen. */
@@ -628,15 +646,16 @@
 		</div>
 
 		<!-- Focus follows the job. While the request is open the destination is the
-		     only thing to look at; the moment a rider takes it the map centres on
-		     them — `followId` pans and closes in on each new fix — because from
-		     then until the handover, where that rider is *is* the status. The line
-		     under them is their run to the counter, and stops when they get there. -->
+		     only thing to look at; the moment a rider takes it the map frames the
+		     rider *and* this counter together, because what the sender is watching
+		     is the gap between the two closing. The solid line under the rider is
+		     their run here; the dashed one is where the parcel goes afterwards. -->
 		<MapBackdrop
 			center={riderPoint ?? (trip ? { lat: trip.dropoffLat, lng: trip.dropoffLng } : KUMASI_CENTER)}
 			{markers}
 			polylinePath={routePath}
-			followId={searching ? null : 'rider'}
+			{hintPath}
+			fitIds={searching ? [] : ['rider', 'pickup']}
 			locationUnavailable={!searching && riderStale}
 		>
 			{#if searching && !closed}

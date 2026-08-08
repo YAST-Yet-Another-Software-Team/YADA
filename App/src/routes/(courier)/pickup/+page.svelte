@@ -211,9 +211,10 @@
     <MapBackdrop
       routeLabel
       center={riderPoint ?? KUMASI_CENTER}
-      followId="rider"
+      fitIds={['rider', 'pickup']}
       {locationUnavailable}
       polylinePath={routePath}
+      hintPath={dropoffPoint ? [pickupPoint, dropoffPoint] : []}
       markers={[
         {
           id: 'pickup',
