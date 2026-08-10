@@ -32,6 +32,15 @@
     rider: RacingHelmetIcon,
     business: ShopIcon
   };
+
+  /**
+   * Glyph size in pixels, per role. A touch larger than the disc these
+   * replaced, because a bare shape has no ring around it to catch the eye.
+   */
+  const ROLE_ICON_PX: Partial<Record<MapMarkerRole, number>> = {
+    rider: 26,
+    business: 24
+  };
 </script>
 
 <script lang="ts">
@@ -168,6 +177,10 @@
   let stopThemeWatch: (() => void) | null = null;
 
   function markerColor(marker: MapMarker) {
+    // The glyph roles are red whatever they are: the shape says which party
+    // you're looking at, so the colour is free to do the one job a minimap
+    // icon's colour has — be findable in a glance across the whole map.
+    if (marker.role && ROLE_ICONS[marker.role]) return MAP_COLORS.primary;
     if (marker.role) return MAP_ROLE_COLORS[marker.role];
     return marker.accent ? MAP_COLORS.primary : MAP_COLORS.secondary;
   }
@@ -498,14 +511,6 @@
   });
 
   /**
-   * A disc for roles that aren't a dropped pin — riders and businesses. The
-   * role colour fills the disc and the glyph is knocked out of it in the
-   * surface colour, so the marker still reads as its role at a glance from the
-   * colour alone, the way it did when these were plain dots. The knockout
-   * follows the theme: white against Google's light basemap, near-black against
-   * its dark one, so the ring reads as separation either way instead of glare.
-   */
-  /**
    * Everything about a marker that decides what it *looks* like.
    *
    * Position is deliberately absent: a moving rider is the common case, and
@@ -523,31 +528,47 @@
     ].join('|');
   }
 
-  function discContent(marker: MapMarker, color: string, icons: Record<string, unknown>[]) {
+  /**
+   * Content for the roles that aren't a dropped pin.
+   *
+   * Riders and businesses used to be a filled disc with the glyph knocked out
+   * of it, which reads as a *place* — the same badge a pin is. They are drawn
+   * as the bare glyph instead: red, and outlined a hairline in the surface
+   * colour, which is the whole trick behind a racing-game minimap icon. The
+   * outline is what separates the shape from whatever it is sitting on, and it
+   * follows the theme — white over Google's light cartography, near-black over
+   * its dark one — so it reads as separation either way rather than as glare.
+   *
+   * Markers with no role at all keep the plain dot; there is no shape to
+   * outline, so the ring is still doing the separating.
+   */
+  function markerContent(marker: MapMarker, color: string, icons: Record<string, unknown>[]) {
     const icon = marker.role ? ROLE_ICONS[marker.role] : undefined;
-    const diameter = (marker.role === 'rider' ? 12 : 10) * 2;
     const element = document.createElement('div');
-
-    element.style.width = `${diameter}px`;
-    element.style.height = `${diameter}px`;
-    element.style.borderRadius = '50%';
-    element.style.background = color;
-    element.style.border = `2px solid ${MAP_SURFACE[theme]}`;
-    element.style.boxSizing = 'content-box';
+    let size: number;
 
     if (icon) {
+      size = (marker.role && ROLE_ICON_PX[marker.role]) || 24;
+
       element.style.display = 'flex';
       element.style.alignItems = 'center';
       element.style.justifyContent = 'center';
-      // The icons draw with `currentColor`, so one colour on the host is enough.
-      element.style.color = MAP_SURFACE[theme];
 
-      icons.push(
-        mount(icon, {
-          target: element,
-          props: { width: diameter * 0.68, height: diameter * 0.68 }
-        })
-      );
+      element.style.color = color;
+      element.style.stroke = MAP_SURFACE[theme];
+      element.style.setProperty('stroke-width', '2');
+      element.style.setProperty('paint-order', 'stroke');
+
+      icons.push(mount(icon, { target: element, props: { width: size, height: size } }));
+    } else {
+      size = 30;
+
+      element.style.width = `${size}px`;
+      element.style.height = `${size}px`;
+      element.style.borderRadius = '50%';
+      element.style.background = color;
+      element.style.border = `2px solid ${MAP_SURFACE[theme]}`;
+      element.style.boxSizing = 'content-box';
     }
 
     if (!marker.pulse) return element;
@@ -565,8 +586,8 @@
     for (const delay of [0, 1200]) {
       const ring = document.createElement('div');
       ring.style.position = 'absolute';
-      ring.style.width = `${diameter}px`;
-      ring.style.height = `${diameter}px`;
+      ring.style.width = `${size}px`;
+      ring.style.height = `${size}px`;
       ring.style.borderRadius = '50%';
       ring.style.border = `2px solid ${color}`;
       ring.style.pointerEvents = 'none';
@@ -598,7 +619,7 @@
           glyphColor: MAP_SURFACE[theme],
           scale: 1.2
         })
-      : discContent(marker, color, icons);
+      : markerContent(marker, color, icons);
 
     // AdvancedMarkerElement has no opacity option — it takes a DOM element,
     // so staleness is expressed on the element itself.
