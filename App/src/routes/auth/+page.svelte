@@ -36,6 +36,11 @@
         : "sign-in",
   );
 
+  // Set by /reset-password on its way here. The new password is already saved
+  // by this point; without a word, the redirect would look like the reset form
+  // had simply dumped them back at sign-in.
+  const resetDone = $derived(page.url.searchParams.get("reset") === "done");
+
   // Role is a radio inside the form: `bind:group` picks which fields render,
   // and the same input carries the value to the action.
   let role = $state<Role>(
@@ -485,6 +490,10 @@
             >
               {#if form?.message}
                 <Alert>{form.message}</Alert>
+              {:else if resetDone && mode === "sign-in"}
+                <Alert variant="success">
+                  Your password is saved. Sign in with it.
+                </Alert>
               {/if}
 
               <!-- The mode toggle is a link to the same route, so the <form>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { page } from '$app/state';
+	import VerifyEmailBanner from '$lib/components/VerifyEmailBanner.svelte';
 	import CourierTabBar from './CourierTabBar.svelte';
 	import { createCourierOnline } from './courier-online.svelte';
 	import { headerTitleFor, isFocusedTrip, isHome } from './tabs';
@@ -41,6 +42,10 @@
 				<h1 class="min-w-0 truncate text-lg font-semibold text-ink">{headerTitle}</h1>
 			</header>
 		{/if}
+
+		<!-- `shrink-0`, above the scroller: inside it the banner would scroll away
+		     from a rider who is about to tap Go online and be refused. -->
+		<VerifyEmailBanner />
 
 		<div class="flex min-h-0 flex-1 flex-col {home ? 'overflow-hidden' : 'overflow-y-auto'}">
 			{@render children()}

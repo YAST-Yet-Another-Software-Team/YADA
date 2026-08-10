@@ -24,6 +24,7 @@ type RawUser = {
   image?: string | null;
   phoneNumber?: string | null;
   role?: unknown;
+  emailVerified?: boolean | null;
 } | null;
 
 /** Better Auth is inconsistent about wrapping: some routes return `{ user }`,
@@ -38,7 +39,8 @@ function mapUser(user: RawUser): AuthUser | null {
         email: user.email ?? null,
         phone: user.phoneNumber ?? null,
         role: toRole(user.role),
-        image: user.image ?? null
+        image: user.image ?? null,
+        emailVerified: user.emailVerified === true
       }
     : null;
 }

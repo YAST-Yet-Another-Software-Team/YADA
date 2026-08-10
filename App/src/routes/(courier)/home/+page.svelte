@@ -309,6 +309,10 @@
 		>
 		{#if actionError}
 			<Alert>{actionError}</Alert>
+		{:else if online.error}
+			<!-- The shift toggle was refused — an unconfirmed email, most likely.
+			     The pill has already flipped back; this says why. -->
+			<Alert>{online.error}</Alert>
 		{/if}
 
 		{#if liveOffer}
