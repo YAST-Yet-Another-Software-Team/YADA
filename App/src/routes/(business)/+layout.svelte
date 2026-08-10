@@ -4,6 +4,7 @@
   import { page } from "$app/state";
   import ProfileMenu from "$lib/components/ProfileMenu.svelte";
   import Avatar from "$lib/components/Avatar.svelte";
+  import VerifyEmailBanner from "$lib/components/VerifyEmailBanner.svelte";
   import { getSession } from "$auth/session.svelte";
   import { initials } from "$lib/shared/text";
   import IconMenu from "~icons/mdi/menu";
@@ -207,6 +208,10 @@
       </div>
     </div>
   </header>
+
+  <!-- Above `main` rather than inside it, so it sits under both the phone and
+       the desktop header and is not cropped by a full-bleed map. -->
+  <VerifyEmailBanner />
 
   {#if fullBleed}
     <main class="flex min-h-0 w-full flex-1 flex-col">

@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { and, eq, isNull } from 'drizzle-orm';
 
-import { apiError } from '$lib/server/api-guard';
+import { apiError, emailUnverified } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
 import { deliveryRequests, tripDeclines } from '$lib/server/db/schema';
 import { recordStatusChange } from '$lib/server/data/trip-events';
@@ -12,6 +12,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const user = locals.user;
 	if (!user) return apiError(401, 'denied', 'Sign in required.');
 	if (user.role !== 'courier') return apiError(403, 'denied', 'Courier account required.');
+	// Belt and braces behind the availability gate: this endpoint is reachable
+	// on its own and never re-reads the online flag, so an unverified courier
+	// who was rung by a stale screen could otherwise still take the job.
+	if (!user.emailVerified) return emailUnverified('accepting a delivery');
 
 	const body = await request.json();
 	const tripId = body?.tripId;

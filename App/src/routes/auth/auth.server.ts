@@ -10,6 +10,8 @@ import type { AuthRole } from '$lib/utils/types';
 
 import { db } from '$lib/server/db';
 import * as schema from '$lib/server/db/schema';
+import { resetPasswordTemplate, sendEmail, verifyEmailTemplate } from '$lib/server/email';
+import { runInBackground } from '$lib/server/platform';
 
 const authUrl = env.BETTER_AUTH_URL ?? 'http://localhost:5173';
 const trustedOrigins = [
@@ -21,6 +23,20 @@ const trustedOrigins = [
 ];
 
 const AUTH_ROLES = ['business', 'courier'] as const satisfies readonly AuthRole[];
+
+/**
+ * Where a confirmation link lands once Better Auth has accepted the token.
+ *
+ * Relative, so it is resolved against `baseURL` and can't be broken by the
+ * browser using 127.0.0.1 where BETTER_AUTH_URL says localhost. The
+ * `verified=1` marker is load-bearing: Better Auth adds nothing to the URL on
+ * success, so it is the only thing telling /verify-email that a confirmation
+ * actually happened rather than someone typing the address.
+ *
+ * Sign-up and the resend action must pass the same value, which is why it
+ * lives here rather than in either of them.
+ */
+export const VERIFY_EMAIL_CALLBACK = '/verify-email?verified=1';
 
 /**
  * Narrow an untrusted `role` to the role union.
@@ -50,6 +66,94 @@ export const auth = betterAuth({
   trustedOrigins,
 
   emailAndPassword: {
+    enabled: true,
+
+    resetPasswordTokenExpiresIn: 60 * 60,
+
+    /**
+     * Reset is *enabled by the presence of this function* — Better Auth throws
+     * RESET_PASSWORD_DISABLED without it, which is what the "Forgot password?"
+     * form used to hit on every submit.
+     *
+     * `url` arrives complete: Better Auth builds it from `baseURL`, which
+     * already carries the /api/auth base path. It points at an interstitial
+     * that validates the token and then redirects to the `redirectTo` given by
+     * the caller — see the `reset` action in ./+page.server.
+     */
+    sendResetPassword: async ({ user, url }) => {
+      const { subject, html, text } = resetPasswordTemplate({ name: user.name, url });
+
+      await sendEmail({
+        to: { email: user.email, name: user.name },
+        subject,
+        html,
+        text
+      });
+    }
+  },
+
+  /**
+   * Confirmation is deliberately a *soft* gate: `requireEmailVerification` is
+   * not set, so sign-up still signs the account in and drops it in its
+   * workspace exactly as before. An unverified account sees a banner, and is
+   * refused the one action per role that matters — sending a delivery, or
+   * going online. Hard-gating sign-in would strand the courier flow, which
+   * signs up and redirects in one move.
+   *
+   * Google accounts arrive with `emailVerified` already true from the
+   * provider, so none of this ever fires for them.
+   */
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    // A day rather than an hour: people open mail late, and a dead link is a
+    // support conversation.
+    expiresIn: 60 * 60 * 24,
+
+    sendVerificationEmail: async ({ user, url }) => {
+      const { subject, html, text } = verifyEmailTemplate({ name: user.name, url });
+
+      await sendEmail({
+        to: { email: user.email, name: user.name },
+        subject,
+        html,
+        text
+      });
+    }
+  },
+
+  advanced: {
+    /**
+     * Without this, Better Auth *awaits* the callbacks above — which would put
+     * a round trip to the mail provider in front of every sign-up response.
+     * `waitUntil` is how Workers is told to keep the isolate alive for work
+     * that outlives the response; off Workers the promise simply floats.
+     */
+    backgroundTasks: {
+      handler: (promise) => {
+        let event = null;
+
+        try {
+          event = getRequestEvent();
+        } catch {
+          // Called outside a request. Nothing to defer to.
+        }
+
+        runInBackground(event, promise);
+      }
+    }
+  },
+
+  /**
+   * The default is `NODE_ENV === "production"`, which is not reliably set
+   * under workerd — so it is stated. Storage stays in memory: the database
+   * backend needs a `rateLimit` model this schema does not have.
+   *
+   * This covers Better Auth's own HTTP endpoints only. The form actions call
+   * `auth.api.*` in process and never reach the router that enforces it, which
+   * is what $lib/server/email/throttle exists to cover.
+   */
+  rateLimit: {
     enabled: true
   },
 

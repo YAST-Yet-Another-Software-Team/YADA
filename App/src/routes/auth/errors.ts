@@ -32,9 +32,13 @@ export class AuthError extends Error {
  * Copy per Better Auth error code.
  *
  * Only codes reachable from this app's flows — email sign-in, sign-up, profile
- * update, password change, password reset — are listed. `EMAIL_NOT_VERIFIED`
- * can't fire while `emailVerification` is unconfigured, but it is kept so
- * turning verification on doesn't silently reintroduce a mystery failure.
+ * update, password change, password reset, email confirmation — are listed.
+ *
+ * `EMAIL_NOT_VERIFIED` is one Better Auth raises when `requireEmailVerification`
+ * is on. It is deliberately off here: confirmation is a soft gate that blocks
+ * two actions rather than sign-in (see $lib/server/api-guard). The copy stays
+ * so that turning the hard gate on is a config change and not a mystery
+ * failure.
  */
 const MESSAGE_BY_CODE: Record<string, string> = {
   // Sign in
@@ -60,16 +64,27 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   SESSION_EXPIRED: 'Your session expired. Sign in again to continue.',
   SESSION_NOT_FRESH: 'Sign in again to confirm this change.',
 
-  // Password reset — see AUTH_PROGRESS.md #4; the flow is not wired up yet.
-  RESET_PASSWORD_DISABLED:
-    "Password reset isn't available yet. Contact support to get back into your account.",
-  INVALID_TOKEN: 'That reset link is invalid. Request a new one.',
-  TOKEN_EXPIRED: 'That reset link has expired. Request a new one.',
+  // Password reset and email confirmation. Both hand out one-shot tokens, so
+  // INVALID_TOKEN and TOKEN_EXPIRED are shared and worded to fit either — a
+  // reset link that has already been spent reports as invalid, not expired.
+  //
+  // RESET_PASSWORD_DISABLED means `sendResetPassword` is missing from the auth
+  // config. That is a deployment fault rather than a missing feature now, so
+  // the copy says "temporarily" instead of sending people to support.
+  RESET_PASSWORD_DISABLED: 'Password reset is temporarily unavailable. Try again shortly.',
+  VERIFICATION_EMAIL_NOT_ENABLED:
+    'Email confirmation is temporarily unavailable. Try again shortly.',
+  INVALID_TOKEN: 'That link is invalid. Request a new one.',
+  TOKEN_EXPIRED: 'That link has expired. Request a new one.',
+  EMAIL_ALREADY_VERIFIED: "That email is already confirmed. You're all set.",
+  EMAIL_MISMATCH:
+    'That link was sent to a different account. Sign in as that one, or request a new link.',
 
   // Request shape / origin
   VALIDATION_ERROR: 'Check the details you entered and try again.',
   MISSING_FIELD: 'Fill in every field and try again.',
   INVALID_ORIGIN: 'Your browser blocked that request. Reload the page and try again.',
+  INVALID_CALLBACK_URL: 'That link is malformed. Request a new one.',
   CROSS_SITE_NAVIGATION_LOGIN_BLOCKED:
     'Your browser blocked that request. Reload the page and try again.'
 };

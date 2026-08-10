@@ -1,25 +1,14 @@
 import { auth, toAuthRole } from '$auth/auth.server';
 import { building } from '$app/environment';
-import type { Handle, RequestEvent } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit';
 
 import { withRequestDatabase } from '$lib/server/db';
+import { waitUntilFor } from '$lib/server/platform';
 
 const AUTH_BASE = '/api/auth';
 
 function isAuthRequest(pathname: string) {
   return pathname === AUTH_BASE || pathname.startsWith(`${AUTH_BASE}/`);
-}
-
-/**
- * The Workers `ExecutionContext.waitUntil`, when there is one.
- *
- * Under adapter-node — dev, and the Socket.IO build — `platform` is undefined,
- * and `withRequestDatabase` has nothing to defer there anyway.
- */
-function waitUntilFor(event: RequestEvent) {
-  const context = event.platform?.context;
-
-  return context ? context.waitUntil.bind(context) : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -57,7 +46,8 @@ export const handle: Handle = async ({ event, resolve }) =>
           email: session.user.email ?? null,
           phone: typeof fields.phoneNumber === 'string' ? fields.phoneNumber : null,
           role: toAuthRole(fields.role),
-          image: session.user.image ?? null
+          image: session.user.image ?? null,
+          emailVerified: session.user.emailVerified === true
         };
       } else {
         event.locals.session = null;

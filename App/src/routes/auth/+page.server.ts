@@ -1,19 +1,19 @@
 import { fail, redirect } from "@sveltejs/kit";
-import { APIError } from "better-auth/api";
 import { z } from "zod";
 
 import { env } from "$env/dynamic/private";
 
+import { messageForApiError } from "$lib/server/auth-error";
 import { accountCompletion } from "$lib/server/data/account";
 import { saveCourierProfile, setCourierAvailability } from "$lib/server/data/courier";
+import { allowSend, sendKey } from "$lib/server/email/throttle";
 // The photo rules are shared with PUT /api/account/photo, which writes the same
 // column; see $lib/server/validation/photo.
 import { photoDataUrl as photo } from "$lib/server/validation/photo";
 import { phoneNumber } from "$lib/server/validation/phone";
 import { plateNumber } from "$lib/server/validation/plate";
 
-import { auth, toAuthRole } from "./auth.server";
-import { authErrorMessage } from "./errors";
+import { auth, toAuthRole, VERIFY_EMAIL_CALLBACK } from "./auth.server";
 import type { Actions } from "./$types";
 
 /**
@@ -196,16 +196,7 @@ function googleConfigured() {
  * no schema above covers them. Anything that isn't an `APIError` is a bug, not
  * a rejected credential, and is re-thrown.
  */
-function messageFor(error: unknown, fallback: string) {
-  if (!(error instanceof APIError)) return null;
-
-  const body = error.body as { code?: string } | undefined;
-  return authErrorMessage(
-    body?.code ?? null,
-    error.statusCode ?? null,
-    fallback,
-  );
-}
+const messageFor = messageForApiError;
 
 export async function load({ locals }) {
   if (locals.user) {
@@ -330,6 +321,10 @@ export const actions = {
           phoneNumber: phone,
           // `image` is a Better Auth user field, so it needs no hook of its own.
           ...(role === "courier" && image ? { image } : {}),
+          // Where the confirmation link lands once the token checks out. Left
+          // unset this defaults to "/", dropping a freshly-confirmed user on
+          // the marketing page; see the constant in ./auth.server.
+          callbackURL: VERIFY_EMAIL_CALLBACK,
         } as unknown as NonNullable<
           Parameters<typeof auth.api.signUpEmail>[0]
         >["body"],
@@ -460,7 +455,7 @@ export const actions = {
     redirect(303, authorizeUrl);
   },
 
-  reset: async ({ request, url }) => {
+  reset: async ({ request }) => {
     const data = await request.formData();
     const typed = String(data.get("email") ?? "").trim();
 
@@ -474,16 +469,26 @@ export const actions = {
 
     const { email } = parsed.data;
 
-    try {
-      await auth.api.requestPasswordReset({
-        body: { email, redirectTo: `${url.origin}/reset-password` },
-        headers: request.headers,
-      });
-    } catch (error) {
-      const message = messageFor(error, "Unable to send a reset link.");
-      if (message === null) throw error;
+    // One link per address per minute. Better Auth has this rule too, but it
+    // lives in its HTTP router and `auth.api.*` runs in process — see
+    // $lib/server/email/throttle. A throttled request falls through to the
+    // same neutral answer below; telling the two apart would leak which
+    // addresses have accounts, which is the whole point of that answer.
+    if (allowSend(sendKey("reset", email))) {
+      try {
+        // Relative on purpose. Better Auth resolves it against `baseURL`, and
+        // `originCheck` allows relative paths — so this can't be broken by the
+        // browser using 127.0.0.1 while BETTER_AUTH_URL says localhost.
+        await auth.api.requestPasswordReset({
+          body: { email, redirectTo: "/reset-password" },
+          headers: request.headers,
+        });
+      } catch (error) {
+        const message = messageFor(error, "Unable to send a reset link.");
+        if (message === null) throw error;
 
-      return fail(400, { email, message });
+        return fail(400, { email, message });
+      }
     }
 
     // Deliberately not "we sent it": saying so for any address would tell an

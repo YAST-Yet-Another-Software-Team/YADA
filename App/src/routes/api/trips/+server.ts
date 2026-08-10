@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { eq } from 'drizzle-orm';
 
-import { apiError } from '$lib/server/api-guard';
+import { apiError, emailUnverified } from '$lib/server/api-guard';
 import { getBusinessAddress, getCourierSummary } from '$lib/server/data/business';
 import { getCourierFix } from '$lib/server/data/courier-location';
 import { ratingByRaterForTrip } from '$lib/server/data/ratings';
@@ -67,6 +67,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const user = locals.user;
 	if (!user) return apiError(401, 'denied', 'Sign in required.');
 	if (user.role !== 'business') return apiError(403, 'denied', 'Business account required.');
+	if (!user.emailVerified) return emailUnverified('sending a delivery');
 
 	try {
 		const business = await getBusinessAddress(user.id);

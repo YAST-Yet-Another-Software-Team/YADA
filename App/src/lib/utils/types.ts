@@ -35,6 +35,14 @@ export type AuthUser = {
   phone: string | null;
   role: AuthRole;
   image: string | null;
+  /**
+   * Whether the address has been confirmed by clicking a link sent to it.
+   *
+   * Google accounts arrive with this already true — the provider vouches for
+   * the address — so the nag banner and the two verification gates only ever
+   * apply to email sign-ups.
+   */
+  emailVerified: boolean;
 };
 
 /**
