@@ -125,6 +125,9 @@ export async function seedTestBusinessUser() {
 			orderPrice: '55.00',
 			notes: 'Call on arrival',
 			requestedAt: new Date(Date.now() - 1000 * 60 * 35),
+			// Taken 3 minutes after it was raised; still running, so no completion
+			// and so no recorded ride time yet.
+			acceptedAt: new Date(Date.now() - 1000 * 60 * 32),
 			assignedCourierId: courierUser.id
 		},
 		{
@@ -143,6 +146,9 @@ export async function seedTestBusinessUser() {
 			orderPrice: '35.00',
 			notes: 'Delivered to front desk',
 			requestedAt: new Date(Date.now() - 1000 * 60 * 92),
+			// Deliberately not `estimatedDurationMinutes` (5 min) — this ride took
+			// 14, which is the point of recording it rather than the estimate.
+			acceptedAt: new Date(Date.now() - 1000 * 60 * 26),
 			completedAt: new Date(Date.now() - 1000 * 60 * 12),
 			assignedCourierId: courierUser.id
 		}
@@ -167,6 +173,7 @@ export async function seedTestBusinessUser() {
 				orderPrice: trip.orderPrice,
 				notes: trip.notes,
 				requestedAt: trip.requestedAt,
+				acceptedAt: trip.acceptedAt ?? null,
 				completedAt: trip.completedAt ?? null
 			})
 			.onConflictDoNothing();

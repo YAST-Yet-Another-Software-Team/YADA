@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import Button from '$lib/components/Button.svelte';
+  import { formatRideTimeBetween } from '$lib/shared/ride-time';
   import IconCheck from '~icons/mdi/check-bold';
 
   let {
@@ -12,9 +13,9 @@
         businessName: string;
         pickupAddress: string;
         dropoffAddress: string;
+        acceptedAt: string | null;
         completedAt: string | null;
         estimatedDistanceKm: number | null;
-        estimatedDurationMinutes: number | null;
       };
     };
   } = $props();
@@ -23,10 +24,14 @@
     data.trip.estimatedDistanceKm != null ? `${data.trip.estimatedDistanceKm.toFixed(1)} km` : '—'
   );
 
+  /**
+   * What the ride took, from the rider's own accept to their own completion —
+   * not what the map predicted before they set off. This screen is the receipt
+   * for a job just finished, so a forecast here would be the one number on it
+   * that isn't a record of what happened.
+   */
   const duration = $derived(
-    data.trip.estimatedDurationMinutes != null
-      ? `${Math.round(data.trip.estimatedDurationMinutes)} min`
-      : '—'
+    formatRideTimeBetween(data.trip.acceptedAt, data.trip.completedAt) ?? '—'
   );
 
   /** In the rider's own clock, not the server's. */

@@ -54,8 +54,8 @@
 								· {trip.rider}
 							{/if}
 							· {trip.destination}
-							{#if trip.eta}
-								· <span class="font-mono-data text-primary">{trip.eta}</span>
+							{#if trip.rideTime}
+								· <span class="font-mono-data text-primary">{trip.rideTime}</span>
 							{/if}
 						{/if}
 					</button>

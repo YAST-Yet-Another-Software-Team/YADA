@@ -10,6 +10,7 @@
   import IconPlus from "~icons/mdi/plus";
   import IconChevronRight from "~icons/mdi/chevron-right";
   import IconPackage from "~icons/mdi/package-variant-closed";
+  import { isMatchingNow } from "$lib/shared/dispatch";
   import { isCancellableStage } from "$lib/shared/trip-status";
   import { formatCedis } from "$lib/shared/text";
   import type { DashboardTripRecord } from "$lib/utils/types";
@@ -38,6 +39,20 @@
   let selected = $state<DashboardTripRecord | null>(null);
   let cancelling = $state(false);
   let panelError = $state("");
+
+  /**
+   * Whether the selected request is still ringing riders, and so whether the
+   * counter on the map and its pill are allowed to animate.
+   *
+   * Evaluated per selection rather than on a ticker, because this page has no
+   * clock — nothing else here updates live either, and a timer whose only job
+   * was stopping an animation would be the sole moving part on a static screen.
+   * A request that expires while the panel is already open keeps pulsing until
+   * the next load; tracking is the screen that narrates a search live.
+   */
+  const matching = $derived(
+    selected != null && isMatchingNow(selected.status, selected.dispatchStartedAt),
+  );
 
   /**
    * Withdrawing stays available until the rider reaches the counter — the same
@@ -192,13 +207,16 @@
                 </p>
                 <p class="truncate text-sm text-ink-secondary">
                   {trip.rider ?? "Looking for a rider"}
-                  {#if trip.eta}
-                    <span class="font-mono-data text-primary">· {trip.eta}</span>
+                  {#if trip.rideTime}
+                    <span class="font-mono-data text-primary">· {trip.rideTime}</span>
                   {/if}
                 </p>
               </div>
               <div class="flex shrink-0 items-center gap-1">
-                <StatusPill status={trip.status} />
+                <StatusPill
+                  status={trip.status}
+                  pulse={isMatchingNow(trip.status, trip.dispatchStartedAt)}
+                />
                 <IconChevronRight
                   class="h-5 w-5 text-ink-tertiary"
                   aria-hidden="true"
@@ -299,7 +317,7 @@
         <div>
           <p class="font-mono-data text-xs text-ink-tertiary">#{selected.id}</p>
           <h2 class="text-lg font-semibold text-ink">{selected.destination}</h2>
-          <div class="mt-2"><StatusPill status={selected.status} /></div>
+          <div class="mt-2"><StatusPill status={selected.status} pulse={matching} /></div>
         </div>
         <button
           type="button"
@@ -331,8 +349,9 @@
                     label: data.dashboard.businessProfile.businessName,
                     role: "business" as const,
                     // Same signal as the tracking map: the counter radiates
-                    // while its request is still looking for a rider.
-                    pulse: selected.status === "searching",
+                    // while its request is still ringing riders, and stills
+                    // once someone accepts or the window closes with nobody.
+                    pulse: matching,
                   },
                 ]
               : []),
@@ -378,10 +397,10 @@
           <span class="font-semibold text-ink">Rider:</span>
           {selected.rider ?? "Unassigned"}
         </p>
-        {#if selected.eta}
+        {#if selected.rideTime}
           <p class="text-ink-secondary">
-            <span class="font-semibold text-ink">ETA:</span>
-            <span class="font-mono-data text-primary">{selected.eta}</span>
+            <span class="font-semibold text-ink">Time taken:</span>
+            <span class="font-mono-data text-primary">{selected.rideTime}</span>
           </p>
         {/if}
         <p class="text-ink-secondary">

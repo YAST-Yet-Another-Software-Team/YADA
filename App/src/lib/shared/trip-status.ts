@@ -39,8 +39,9 @@ export function isPickupPhase(status: string): boolean {
  * the counter, and no further.
  *
  * `courier_arriving` is deliberately outside the window — it is written from
- * the rider's own position when they get within 150 m of the pickup, so by then
- * they are at the shop. Calling it off from a screen at that point leaves
+ * the rider's own position once they are inside `PICKUP_PROXIMITY_KM` of the
+ * pickup, so by then they are at the shop. Calling it off from a screen at that
+ * point leaves
  * someone standing there; that is a conversation, not a button.
  *
  * The two sides differ only in where they start. A business can withdraw a

@@ -17,14 +17,20 @@ import { haversineKm } from './service-area';
 /**
  * PROVISIONAL — both radii are estimates pending field tests around KNUST.
  *
- * 150 m is roughly a building and its forecourt, and comfortably wider than a
- * phone GPS fix is inaccurate in the open. Expect to move them once someone has
- * ridden the route: pickup may want to be tighter (a shop is a doorway) and
- * delivery looser (hostel blocks are addressed by their gate). They are
- * separate constants for exactly that reason — tune one without the other.
+ * Both are deliberately tight: "at the doorway" and "at the door", not "on the
+ * block". Separate constants so one can be tuned without the other — a shop is
+ * a doorway, whereas hostel blocks are addressed by their gate and delivery may
+ * yet want to be the looser of the two.
+ *
+ * Both now sit at or below the error on a typical phone GPS fix, which is the
+ * risk to watch: someone genuinely standing at the door can still read as out
+ * of range, and `LOCATION_FRESHNESS_MS` will not save them because the position
+ * is recent and simply wrong. If either side reports the confirm button
+ * refusing to appear where it should, these numbers are the first suspect —
+ * not the freshness window.
  */
-export const PICKUP_PROXIMITY_KM = 0.15;
-export const DELIVERY_PROXIMITY_KM = 0.15;
+export const PICKUP_PROXIMITY_KM = 0.015;
+export const DELIVERY_PROXIMITY_KM = 0.031;
 
 /**
  * How old the courier's last stored fix may be for the server to close a phase

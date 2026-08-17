@@ -218,8 +218,19 @@ export type DashboardTripRecord = {
   rider: string | null;
   destination: string;
   pickup: string | null;
-  eta: string | null;
+  /**
+   * How long the ride actually took, preformatted ("14 min"), or null until it
+   * has been both accepted and completed. Replaces the map's ETA, which was a
+   * forecast being displayed against finished trips. See `$lib/shared/ride-time`.
+   */
+  rideTime: string | null;
   status: TripStage;
+  /**
+   * When the current dispatch round started, ISO, or null if it never did.
+   * Lets a `searching` row be told apart from one whose 60s window has closed —
+   * the status alone stays `searching` either way. See `isDispatchExpired`.
+   */
+  dispatchStartedAt: string | null;
   completedAt: string | null;
   notes: string | null;
   /** What was sent, and what it was worth — the audit half of a delivery. */

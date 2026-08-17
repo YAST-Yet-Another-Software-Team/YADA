@@ -132,6 +132,18 @@
 	);
 
 	/**
+	 * Riders are being ringed *right now* — the only state anything on this screen
+	 * is allowed to animate in.
+	 *
+	 * Distinct from `searching`, which stays true after the dispatch window closes
+	 * because the trip is still unassigned. Animating on `searching` alone kept the
+	 * pulse running under "No rider accepted in time", which reads as a search
+	 * still in progress and makes the re-ring button look redundant. Anything that
+	 * moves belongs to this flag, not to `searching`.
+	 */
+	const matching = $derived(searching && !closed && !dispatchExpired);
+
+	/**
 	 * The pickup phase is still open: a rider is assigned and the parcel hasn't
 	 * been handed over. This is the window in which the confirm button exists.
 	 */
@@ -472,8 +484,9 @@
 						role: 'business' as const,
 						// Rings while the request is still ringing riders: the search
 						// radiates from this counter, and the map is the only place that
-						// can show it happening. It stops the moment someone accepts.
-						pulse: searching && !closed
+						// can show it happening. It stops the moment someone accepts —
+						// or the moment the dispatch window closes with nobody.
+						pulse: matching
 					},
 					{
 						id: 'dropoff',
@@ -699,7 +712,7 @@
 			     thing that can be done about it. Centred on a phone, where it's the
 			     whole screen; left-aligned in the desktop column, where it isn't. -->
 			<div class="flex flex-1 flex-col items-center gap-3 py-2 text-center lg:items-start lg:py-0 lg:text-left">
-				<StatusPill status="searching" />
+				<StatusPill status="searching" pulse={matching} />
 				<div>
 					<p class="text-lg font-semibold text-ink lg:text-base">Finding a rider near you</p>
 					<!-- Small on purpose. A rider dropping out before the counter is

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import StatusPill from '$lib/components/StatusPill.svelte';
+	import { isMatchingNow } from '$lib/shared/dispatch';
 	import type { DashboardTripRecord } from '$lib/utils/types';
 
 	let {
@@ -18,7 +19,7 @@
 				<th class="text-eyebrow px-3 py-2 first:pl-0 last:pr-0">Order</th>
 				<th class="text-eyebrow px-3 py-2 first:pl-0 last:pr-0">Rider</th>
 				<th class="text-eyebrow px-3 py-2 first:pl-0 last:pr-0">Destination</th>
-				<th class="text-eyebrow px-3 py-2 first:pl-0 last:pr-0">ETA</th>
+				<th class="text-eyebrow px-3 py-2 first:pl-0 last:pr-0">Time taken</th>
 				<th class="text-eyebrow px-3 py-2 first:pl-0 last:pr-0">Status</th>
 			</tr>
 		</thead>
@@ -36,8 +37,13 @@
 					>
 					<td class="truncate px-3 py-3 text-ink first:pl-0 last:pr-0">{trip.rider ?? '—'}</td>
 					<td class="truncate px-3 py-3 text-ink first:pl-0 last:pr-0">{trip.destination}</td>
-					<td class="font-mono-data px-3 py-3 text-ink first:pl-0 last:pr-0">{trip.eta ?? '—'}</td>
-					<td class="px-3 py-3 first:pl-0 last:pr-0"><StatusPill status={trip.status} /></td>
+					<td class="font-mono-data px-3 py-3 text-ink first:pl-0 last:pr-0">{trip.rideTime ?? '—'}</td>
+					<td class="px-3 py-3 first:pl-0 last:pr-0">
+						<StatusPill
+							status={trip.status}
+							pulse={isMatchingNow(trip.status, trip.dispatchStartedAt)}
+						/>
+					</td>
 				</tr>
 			{/each}
 		</tbody>

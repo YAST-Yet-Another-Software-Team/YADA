@@ -13,6 +13,8 @@
  * UI must describe the same clock the server enforces.
  */
 
+import type { TripStage } from '$lib/utils/types';
+
 /** Beyond this a courier isn't a candidate at all — roughly the service zone. */
 export const MAX_MATCH_RADIUS_KM = 6;
 
@@ -41,6 +43,27 @@ export function ringForElapsed(elapsedSeconds: number) {
 
 export function isDispatchExpired(elapsedSeconds: number) {
   return elapsedSeconds > DISPATCH_TIMEOUT_SECONDS;
+}
+
+/**
+ * Whether riders are being ringed for this request *right now* — the question
+ * every animated element on a business screen should be asking.
+ *
+ * The stage alone cannot answer it. A request stays `searching` after its
+ * window closes with nobody accepting, because it is still unassigned, so
+ * anything keyed on the stage keeps pulsing over a search that has already
+ * failed and reads as work still in progress. Only a manual re-ring restarts
+ * it, and a live-looking screen is exactly what stops someone pressing that.
+ *
+ * A null `dispatchStartedAt` counts as matching: rows predating the dispatch
+ * clock, and the gap between a request being written and its first round
+ * starting, are both better shown as searching than as failed.
+ */
+export function isMatchingNow(stage: TripStage, dispatchStartedAt: string | null) {
+  if (stage !== 'searching') return false;
+  if (!dispatchStartedAt) return true;
+
+  return !isDispatchExpired((Date.now() - new Date(dispatchStartedAt).getTime()) / 1000);
 }
 
 /** "400 m", "800 m", "across the zone" — for the business watching the search. */

@@ -55,16 +55,22 @@
     }
   };
 
-  let { status = 'searching' }: { status?: Status } = $props();
+  // `pulse` overrides the per-status default in one direction only: it can
+  // still a pill that would otherwise animate. A `searching` request whose
+  // dispatch window has run out is the case that needs it — the label is still
+  // "Finding rider" because the trip is still unassigned, but nothing is being
+  // ringed, and an animation there says work is happening when none is.
+  let { status = 'searching', pulse }: { status?: Status; pulse?: boolean } = $props();
 
   const s = $derived(statusMap[status] ?? statusMap.searching);
   const Icon = $derived(s.icon);
+  const pulsing = $derived(s.pulse && pulse !== false);
 </script>
 
 <span
   class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold {s.className}"
 >
-  <span class="inline-flex h-3.5 w-3.5 items-center justify-center {s.pulse ? 'animate-yada-pulse' : ''}">
+  <span class="inline-flex h-3.5 w-3.5 items-center justify-center {pulsing ? 'animate-yada-pulse' : ''}">
     <Icon class="h-3.5 w-3.5" aria-hidden="true" />
   </span>
   {s.label}
