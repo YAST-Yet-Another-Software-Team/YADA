@@ -8,6 +8,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Input from '$lib/components/Input.svelte';
+	import RatingBadge from '$lib/components/RatingBadge.svelte';
 	import Tabs from '$lib/components/Tabs.svelte';
 	import LocationPickerMap from '$lib/components/LocationPickerMap.svelte';
 	import { getSession } from '$auth/session.svelte';
@@ -24,6 +25,7 @@
 	}: {
 		data: {
 			business: { businessName: string; address: string; lat: number; lng: number } | null;
+			rating: { average: number | null; count: number };
 		};
 	} = $props();
 
@@ -321,6 +323,25 @@
 					<div class="mt-3"><Alert>{photoError}</Alert></div>
 				{/if}
 			</section>
+
+			<!-- What riders make of delivering here (SRS 3.4). Read-only, and above
+			     the editable fields because it is the one thing on this tab the
+			     business cannot change about itself. -->
+			<div
+				class="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-5 shadow-xs"
+			>
+				<div class="min-w-0">
+					<h2 class="text-base font-semibold text-ink">Rider rating</h2>
+					<p class="mt-1 text-sm text-ink-secondary">
+						How riders scored their deliveries for you.
+					</p>
+				</div>
+				<RatingBadge
+					average={data.rating.average}
+					count={data.rating.count}
+					emptyLabel="No ratings yet"
+				/>
+			</div>
 
 			<!-- Account details -->
 			<form

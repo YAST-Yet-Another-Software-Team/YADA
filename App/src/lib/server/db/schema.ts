@@ -106,6 +106,16 @@ export const businessProfiles = pgTable('business_profiles', {
   address: text('address').notNull(),
   latitude: numeric('latitude', { precision: 10, scale: 6 }).notNull(),
   longitude: numeric('longitude', { precision: 10, scale: 6 }).notNull(),
+  // The other half of SRS 3.4: what riders think of delivering for this
+  // business. Same shape and same cache rationale as `courier_profiles` —
+  // an average with its weight, refreshed from the `trip_ratings` aggregate
+  // whenever a rating lands, so no screen re-aggregates to name a business.
+  //
+  // Unlike the courier's, this score does not currently feed matching: riders
+  // are ranked and offered a job, businesses are not. It is informational —
+  // a rider seeing who they are about to deliver for.
+  rating: numeric('rating', { precision: 3, scale: 2 }).notNull().default('0.00'),
+  ratingCount: integer('rating_count').notNull().default(0),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 });
 

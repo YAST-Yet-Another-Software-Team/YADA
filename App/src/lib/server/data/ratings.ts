@@ -1,7 +1,7 @@
 import { and, avg, count, eq, inArray } from 'drizzle-orm';
 
 import { db } from '../db';
-import { courierProfiles, tripRatings } from '../db/schema';
+import { businessProfiles, courierProfiles, tripRatings } from '../db/schema';
 
 /** The second rating of the same trip by the same rater. A conflict, not an update. */
 export class AlreadyRatedError extends Error {
@@ -19,20 +19,33 @@ function isUniqueViolation(error: unknown) {
 }
 
 /**
- * Record the business's verdict on a courier and refresh the courier's cached
+ * Which side of a trip is being scored. Decides only which profile table holds
+ * the cached average — the `trip_ratings` row itself is identical either way.
+ */
+export type RatedRole = 'courier' | 'business';
+
+/**
+ * Record one party's verdict on the other and refresh the rated party's cached
  * average in the same transaction.
+ *
+ * Direction is a parameter rather than two near-identical functions: both
+ * halves of SRS 3.4 write the same row shape into the same table with the same
+ * unique constraint, and the only thing that differs is which profile caches
+ * the result. Forking here would mean two places to fix when the aggregate rule
+ * changes, and the second one would be the one nobody remembered.
  *
  * The average is recomputed from the `trip_ratings` aggregate rather than
  * nudged incrementally — `(old * n + stars) / (n + 1)` drifts the moment any
- * row is ever deleted or corrected, and an aggregate over a courier's ratings
+ * row is ever deleted or corrected, and an aggregate over one party's ratings
  * is cheap at any volume this app will see. Ratings are append-only by design:
- * a rating you can revise after the rider argues with you isn't a rating, it's
- * a negotiation.
+ * a rating you can revise after the other side argues with you isn't a rating,
+ * it's a negotiation.
  */
-export async function rateCourierForTrip(input: {
+export async function rateForTrip(input: {
   tripId: string;
   raterId: string;
-  courierId: string;
+  ratedId: string;
+  ratedRole: RatedRole;
   stars: number;
   comment: string | null;
 }) {
@@ -41,7 +54,7 @@ export async function rateCourierForTrip(input: {
       await tx.insert(tripRatings).values({
         tripId: input.tripId,
         raterId: input.raterId,
-        ratedId: input.courierId,
+        ratedId: input.ratedId,
         stars: input.stars,
         comment: input.comment
       });
@@ -49,18 +62,30 @@ export async function rateCourierForTrip(input: {
       const [aggregate] = await tx
         .select({ average: avg(tripRatings.stars), total: count() })
         .from(tripRatings)
-        .where(eq(tripRatings.ratedId, input.courierId));
+        .where(eq(tripRatings.ratedId, input.ratedId));
 
       const average = Number(aggregate.average ?? 0);
+      const cache = {
+        rating: average.toFixed(2),
+        ratingCount: aggregate.total,
+        updatedAt: new Date()
+      };
 
-      await tx
-        .update(courierProfiles)
-        .set({
-          rating: average.toFixed(2),
-          ratingCount: aggregate.total,
-          updatedAt: new Date()
-        })
-        .where(eq(courierProfiles.userId, input.courierId));
+      // Both profile tables carry the same two columns for the same reason, so
+      // the only branch is the table. A rated party with no profile row simply
+      // updates nothing: the rating is still recorded, and the aggregate above
+      // remains the source of truth the cache is rebuilt from.
+      if (input.ratedRole === 'courier') {
+        await tx
+          .update(courierProfiles)
+          .set(cache)
+          .where(eq(courierProfiles.userId, input.ratedId));
+      } else {
+        await tx
+          .update(businessProfiles)
+          .set(cache)
+          .where(eq(businessProfiles.userId, input.ratedId));
+      }
 
       return { average, total: aggregate.total };
     });

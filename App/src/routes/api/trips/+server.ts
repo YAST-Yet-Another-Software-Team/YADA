@@ -202,13 +202,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		: null;
 	const courierFix = trip.assignedCourierId ? await getCourierFix(trip.assignedCourierId) : null;
 
-	// Whether this business has already rated the trip, so the tracking screen
-	// offers the stars once and shows them read-only ever after. Only asked for
-	// a completed trip viewed by its business — everyone else gets null.
+	// Whether *this viewer* has already rated the trip, so their screen offers
+	// the stars once and shows them read-only ever after. Asked for either
+	// participant now that both directions exist — the row is keyed by rater, so
+	// the business's verdict and the rider's are separate answers to this and
+	// neither can be mistaken for the other.
 	const myRating =
-		user.id === trip.businessId && trip.status === 'completed'
-			? await ratingByRaterForTrip(user.id, trip.id)
-			: null;
+		trip.status === 'completed' ? await ratingByRaterForTrip(user.id, trip.id) : null;
 
 	const pickupLat = trip.pickupLatitude != null ? Number(trip.pickupLatitude) : null;
 	const pickupLng = trip.pickupLongitude != null ? Number(trip.pickupLongitude) : null;
