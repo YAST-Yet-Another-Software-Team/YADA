@@ -5,7 +5,7 @@
   // against the Google one on the same database and the same accounts. Do not
   // rename this to `yada` on this branch — that would overwrite the other
   // deployment rather than sit beside it.
-  "name": "yada-osm",
+  "name": "yada",
   "main": ".svelte-kit/cloudflare/_worker.js",
   "compatibility_date": "2026-08-04",
   // Better Auth and Drizzle both pull Node built-ins.
@@ -24,8 +24,8 @@
     "REALTIME_ENABLED": "false",
     // Must exactly match the origin the browser uses, or sign-ins appear to
     // succeed and then don't stick. This is the OSM origin, not the Google one.
-    "BETTER_AUTH_URL": "https://yada-osm.flaviosobbin04.workers.dev",
-    "SOCKET_CORS_ORIGIN": "https://yada-osm.flaviosobbin04.workers.dev",
+    "BETTER_AUTH_URL": "https://yada.flaviosobbin04.workers.dev",
+    "SOCKET_CORS_ORIGIN": "https://yada.flaviosobbin04.workers.dev",
     // MapLibre style document. OpenFreeMap serves OSM tiles with no key, no
     // quota and no sign-up; swap for a Protomaps or self-hosted style URL to
     // change the cartography. Blank it and the map falls back to the grid
