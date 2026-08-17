@@ -1,5 +1,6 @@
 import { desc, eq, inArray } from 'drizzle-orm';
 
+import { formatRideTimeBetween } from '$lib/shared/ride-time';
 import { toDispatchStage } from '$lib/shared/trip-status';
 import type { DashboardTripRecord } from '$lib/utils/types';
 
@@ -55,9 +56,11 @@ export async function getDashboardTrips(ownerId: string) {
 			pickupLongitude: deliveryRequests.pickupLongitude,
 			dropoffLatitude: deliveryRequests.dropoffLatitude,
 			dropoffLongitude: deliveryRequests.dropoffLongitude,
-			estimatedDurationMinutes: deliveryRequests.estimatedDurationMinutes,
+			orderName: deliveryRequests.orderName,
+			orderPrice: deliveryRequests.orderPrice,
 			notes: deliveryRequests.notes,
 			requestedAt: deliveryRequests.requestedAt,
+			dispatchStartedAt: deliveryRequests.dispatchStartedAt,
 			acceptedAt: deliveryRequests.acceptedAt,
 			completedAt: deliveryRequests.completedAt,
 			businessName: users.name
@@ -86,9 +89,6 @@ export async function getDashboardTrips(ownerId: string) {
 		const baseId = formatTripId(record.id);
 		const status = toDispatchStage(record.status);
 		const completedAt = record.completedAt ? formatTime(record.completedAt) : null;
-		const duration = record.estimatedDurationMinutes
-			? `${Math.round(Number(record.estimatedDurationMinutes))} min`
-			: null;
 		return {
 			id: baseId,
 			rawId: record.id,
@@ -99,9 +99,16 @@ export async function getDashboardTrips(ownerId: string) {
 				: null,
 			destination: record.dropoffAddress,
 			pickup: record.pickupAddress,
-			eta: status === 'searching' || status === 'cancelled' ? null : duration,
+			// The measured ride, not the forecast one. Null while a trip is still
+			// running or was never accepted, because there is no elapsed time to
+			// report yet — deliberately not falling back to the estimate, which is
+			// the thing this replaced.
+			rideTime: formatRideTimeBetween(record.acceptedAt, record.completedAt),
 			status,
+			dispatchStartedAt: record.dispatchStartedAt ? record.dispatchStartedAt.toISOString() : null,
 			completedAt,
+			orderName: record.orderName,
+			orderPrice: Number(record.orderPrice),
 			notes: record.notes,
 			myRating: myRatings.get(record.id) ?? null,
 			pickupLat: record.pickupLatitude != null ? Number(record.pickupLatitude) : null,

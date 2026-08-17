@@ -106,6 +106,16 @@ export const businessProfiles = pgTable('business_profiles', {
   address: text('address').notNull(),
   latitude: numeric('latitude', { precision: 10, scale: 6 }).notNull(),
   longitude: numeric('longitude', { precision: 10, scale: 6 }).notNull(),
+  // The other half of SRS 3.4: what riders think of delivering for this
+  // business. Same shape and same cache rationale as `courier_profiles` —
+  // an average with its weight, refreshed from the `trip_ratings` aggregate
+  // whenever a rating lands, so no screen re-aggregates to name a business.
+  //
+  // Unlike the courier's, this score does not currently feed matching: riders
+  // are ranked and offered a job, businesses are not. It is informational —
+  // a rider seeing who they are about to deliver for.
+  rating: numeric('rating', { precision: 3, scale: 2 }).notNull().default('0.00'),
+  ratingCount: integer('rating_count').notNull().default(0),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 });
 
@@ -153,6 +163,16 @@ export const deliveryRequests = pgTable('delivery_requests', {
   dropoffLongitude: numeric('dropoff_longitude', { precision: 10, scale: 6 }),
   pickupPlaceId: text('pickup_place_id'),
   dropoffPlaceId: text('dropoff_place_id'),
+  // What is actually being sent, and what it is worth. Captured before the
+  // request can be raised — a delivery record that cannot say what was in the
+  // parcel is not an audit record. Both are NOT NULL for that reason: there is
+  // no such thing as a YADA delivery of nothing.
+  //
+  // The price is the *order's* value in cedis, not a delivery fee: YADA does
+  // not price the ride. It is here so a disputed handover has a number attached
+  // to it, and it is deliberately never sent to the courier app.
+  orderName: text('order_name').notNull(),
+  orderPrice: numeric('order_price', { precision: 10, scale: 2 }).notNull(),
   notes: text('notes'),
   estimatedDistanceKm: numeric('estimated_distance_km', { precision: 8, scale: 2 }),
   estimatedDurationMinutes: numeric('estimated_duration_minutes', { precision: 8, scale: 2 }),

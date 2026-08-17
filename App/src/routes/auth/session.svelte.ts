@@ -24,6 +24,7 @@ type RawUser = {
   image?: string | null;
   phoneNumber?: string | null;
   role?: unknown;
+  emailVerified?: boolean | null;
 } | null;
 
 /** Better Auth is inconsistent about wrapping: some routes return `{ user }`,
@@ -38,7 +39,8 @@ function mapUser(user: RawUser): AuthUser | null {
         email: user.email ?? null,
         phone: user.phoneNumber ?? null,
         role: toRole(user.role),
-        image: user.image ?? null
+        image: user.image ?? null,
+        emailVerified: user.emailVerified === true
       }
     : null;
 }
@@ -181,6 +183,42 @@ export class Session {
 
       this.#user = user;
       return user;
+    });
+  }
+
+  /**
+   * Set or clear the profile photo. `null` removes it.
+   *
+   * Not part of `updateProfile` because it does not go through Better Auth:
+   * `update-user` would take the data URL unchecked, so the write goes to
+   * `PUT /api/account/photo`, which validates the scheme and the length first.
+   * The user is patched locally rather than re-fetched — the endpoint echoes
+   * back exactly what it stored, and nothing else about the account moved.
+   */
+  async updatePhoto(image: string | null) {
+    return this.#track(async () => {
+      let response: Response;
+
+      try {
+        response = await fetch('/api/account/photo', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image })
+        });
+      } catch {
+        throw networkError();
+      }
+
+      const payload = await readJson<{ message?: string; image?: string | null }>(response);
+
+      if (!response.ok) {
+        throw new AuthError(payload?.message ?? 'Unable to save your photo.');
+      }
+
+      const current = this.#user;
+      if (current) this.#user = { ...current, image: payload?.image ?? null };
+
+      return payload?.image ?? null;
     });
   }
 

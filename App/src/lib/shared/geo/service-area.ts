@@ -1,7 +1,6 @@
 import type { LatLng } from '$lib/utils/types';
 
 import zone from './kumasi-knust-zone.json';
-import { GeoError, geoErrorMessage } from './errors';
 
 export const KUMASI_CENTER: LatLng = {
   lat: zone.properties.center.lat,
@@ -51,11 +50,10 @@ export function containsPoint(point: LatLng): boolean {
   return inside;
 }
 
-export function assertInZone(point: LatLng): void {
-  if (!containsPoint(point)) {
-    throw new GeoError('out_of_zone', geoErrorMessage('out_of_zone'));
-  }
-}
+// `assertInZone` used to live here, and refusing an address outside the polygon
+// was the app arguing with the person who knows where their shop is. The zone
+// is now what it is good for — centring the map, biasing address search, and
+// reporting whether a point is in the core area — and never a gate.
 
 export function haversineKm(a: LatLng, b: LatLng): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;

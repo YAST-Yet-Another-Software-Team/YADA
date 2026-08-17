@@ -89,3 +89,32 @@ export async function readProfilePhoto(file: File): Promise<string> {
     bitmap.close();
   }
 }
+
+/**
+ * The same thing, for a photo that is already on the web — in practice the
+ * avatar a Google account arrives with.
+ *
+ * Storing Google's URL as-is would work until it doesn't: it is a third party's
+ * CDN, its lifetime is not ours, and it leaks a request to Google every time
+ * anyone in YADA looks at the rider. Fetching it once and putting it through
+ * the same downscale means what we hold is a photo, not a link.
+ *
+ * Throws `ProfilePhotoError` when the fetch is refused — a cross-origin policy
+ * we don't control is a perfectly ordinary outcome here, and the caller's job
+ * is then to offer an upload rather than to fail.
+ */
+export async function readProfilePhotoFromUrl(url: string): Promise<string> {
+  let blob: Blob;
+
+  try {
+    const response = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    if (!response.ok) throw new Error(String(response.status));
+    blob = await response.blob();
+  } catch {
+    throw new ProfilePhotoError("We couldn't fetch that picture. Choose a photo instead.");
+  }
+
+  // `readProfilePhoto` wants a File for its type and size guards, and a File is
+  // a Blob with a name — so this reuses every rule rather than restating them.
+  return readProfilePhoto(new File([blob], 'profile.jpg', { type: blob.type || 'image/jpeg' }));
+}

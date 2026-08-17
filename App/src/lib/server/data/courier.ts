@@ -3,12 +3,20 @@ import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { DISPATCH_TIMEOUT_SECONDS } from '$lib/shared/dispatch';
 import { haversineKm } from '$lib/shared/geo/service-area';
 import { ACTIVE_TRIP_STATUSES, CLOSED_TRIP_STATUSES } from '$lib/shared/trip-status';
+import { normalisePlate } from '$lib/shared/plate';
 import { initials } from '$lib/shared/text';
 import type { CourierOffer, CourierRequest, CourierTrip, LatLng } from '$lib/utils/types';
 
 import { db } from '../db';
-import { courierProfiles, deliveryRequests, tripDeclines, users } from '../db/schema';
+import {
+  businessProfiles,
+  courierProfiles,
+  deliveryRequests,
+  tripDeclines,
+  users
+} from '../db/schema';
 import { courierMatchScore, MATCH_LOCATION_FRESH_MS, offerWindow } from './matching';
+import { ratingByRaterForTrip, ratingsByRaterFor } from './ratings';
 
 export type CourierHomeSummary = {
   completedTrips: number;
@@ -43,14 +51,23 @@ const tripColumns = {
   completedAt: deliveryRequests.completedAt,
   notes: deliveryRequests.notes,
   businessName: users.name,
-  businessPhone: users.phoneNumber
+  businessPhone: users.phoneNumber,
+  businessRating: businessProfiles.rating,
+  businessRatingCount: businessProfiles.ratingCount
 };
 
 function tripQuery() {
-  return db
-    .select(tripColumns)
-    .from(deliveryRequests)
-    .innerJoin(users, eq(deliveryRequests.businessId, users.id));
+  return (
+    db
+      .select(tripColumns)
+      .from(deliveryRequests)
+      .innerJoin(users, eq(deliveryRequests.businessId, users.id))
+      // Left, not inner: the profile is created when a business sets its
+      // dispatch address, and a trip must not vanish from a rider's screen
+      // because the sender hasn't finished onboarding. Both rating columns come
+      // back null in that case, which reads as unrated.
+      .leftJoin(businessProfiles, eq(businessProfiles.userId, deliveryRequests.businessId))
+  );
 }
 
 type TripRow = Awaited<ReturnType<ReturnType<typeof tripQuery>['execute']>>[number];
@@ -82,11 +99,23 @@ function toCourierRequest(row: TripRow): CourierRequest {
     dropoffLat: asNumber(row.dropoffLatitude),
     dropoffLng: asNumber(row.dropoffLongitude),
     notes: row.notes,
-    requestedAt: row.requestedAt.toISOString()
+    requestedAt: row.requestedAt.toISOString(),
+    businessRating: {
+      // Null unless somebody has actually rated them: the cached column
+      // defaults to 0.00, and showing that as a score would brand every new
+      // business a zero.
+      average: row.businessRatingCount ? Number(row.businessRating) : null,
+      count: row.businessRatingCount ?? 0
+    }
   };
 }
 
-function toCourierTrip(row: TripRow): CourierTrip {
+/**
+ * `myRating` defaults to null because most callers are looking at a trip that
+ * is still running, where the rider's verdict cannot exist yet. Only the two
+ * completed-trip queries below pay for the extra read.
+ */
+function toCourierTrip(row: TripRow, myRating: number | null = null): CourierTrip {
   return {
     ...toCourierRequest(row),
     // The stored status, not a display stage: the pickup screen has to tell
@@ -95,7 +124,8 @@ function toCourierTrip(row: TripRow): CourierTrip {
     acceptedAt: row.acceptedAt?.toISOString() ?? null,
     completedAt: row.completedAt?.toISOString() ?? null,
     estimatedDistanceKm: asNumber(row.estimatedDistanceKm),
-    estimatedDurationMinutes: asNumber(row.estimatedDurationMinutes)
+    estimatedDurationMinutes: asNumber(row.estimatedDurationMinutes),
+    myRating
   };
 }
 
@@ -217,14 +247,12 @@ export async function setCourierAvailability(userId: string, online: boolean) {
 }
 
 /**
- * A plate as it should be stored: upper case, single-spaced, or null when the
- * rider clears the field. Ghanaian plates read `GT 4521-20`, and riders type
- * them however they like.
+ * A plate as it should be stored. Moved to `$lib/shared/plate` when the format
+ * arrived — the same shaping now runs in the field as the rider types, and a
+ * component cannot import `$lib/server`. Re-exported here so its callers, and
+ * anything importing it by habit, do not have to move.
  */
-export function normalisePlate(value: string | null | undefined) {
-  const trimmed = value?.trim().replace(/\s+/g, ' ').toUpperCase() ?? '';
-  return trimmed.length > 0 ? trimmed : null;
-}
+export { normalisePlate };
 
 /** The courier's own profile, for the screens that let them edit it. */
 export async function getCourierProfile(userId: string) {
@@ -462,7 +490,12 @@ export async function getCourierLatestCompletedTrip(userId: string, tripId?: str
     .orderBy(...byMostRecentlyCompleted)
     .limit(1);
 
-  return row ? toCourierTrip(row) : null;
+  if (!row) return null;
+
+  // The completion screen offers the business its stars, so it has to know
+  // whether this rider already gave them — otherwise a reload after rating
+  // hands them a fresh form that the API will then reject as a duplicate.
+  return toCourierTrip(row, await ratingByRaterForTrip(userId, row.id));
 }
 
 export async function getCourierTripHistory(userId: string) {
@@ -470,7 +503,13 @@ export async function getCourierTripHistory(userId: string) {
     .where(closedTripsFor(userId))
     .orderBy(...byMostRecentlyCompleted);
 
-  const historyTrips = rows.map(toCourierTrip);
+  // One read for the whole page rather than one per card.
+  const myRatings = await ratingsByRaterFor(
+    userId,
+    rows.map((row) => row.id)
+  );
+
+  const historyTrips = rows.map((row) => toCourierTrip(row, myRatings.get(row.id) ?? null));
 
   return {
     historyTrips,

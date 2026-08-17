@@ -40,8 +40,49 @@
   let root = $state<HTMLDivElement | null>(null);
   let listRef = $state<HTMLUListElement | null>(null);
 
+  /**
+   * Viewport coordinates for the menu, because it is positioned `fixed` rather
+   * than `absolute`.
+   *
+   * An absolutely-positioned menu is only ever above what its *own* stacking
+   * context contains, and any ancestor with a transform, a filter, or an
+   * opacity below 1 silently becomes that context — at which point `z-50` is
+   * competing inside a box the rest of the page paints over, and no z-index
+   * can win. The page entrance animations are exactly such an ancestor, and
+   * they will not be the last one.
+   *
+   * `fixed` takes the menu out of that argument entirely: it is positioned
+   * against the viewport and only has to beat the things it is genuinely
+   * layered against. The cost is that it no longer follows the trigger for
+   * free, which is what `place()` and the scroll listeners below pay.
+   */
+  let position = $state<{ top: number; right: number; minWidth: number } | null>(null);
+
   const selectedIndex = $derived(options.findIndex((option) => option.value === value));
   const selectedLabel = $derived(options[selectedIndex]?.label ?? '');
+
+  /** Gap between trigger and menu, matching the `mt-1` this used to have. */
+  const OFFSET = 4;
+
+  function place() {
+    const trigger = root?.querySelector('button');
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const menuHeight = listRef?.offsetHeight ?? 0;
+    const below = window.innerHeight - rect.bottom - OFFSET;
+
+    // Flip above only when there is genuinely more room there — a menu that
+    // opens upward into an even smaller gap is worse than one that is clipped.
+    const flip = menuHeight > below && rect.top - OFFSET > below;
+
+    position = {
+      top: flip ? Math.max(OFFSET, rect.top - OFFSET - menuHeight) : rect.bottom + OFFSET,
+      // Right-aligned to the trigger, as the absolute version was.
+      right: Math.max(0, window.innerWidth - rect.right),
+      minWidth: rect.width
+    };
+  }
 
   async function openMenu() {
     open = true;
@@ -49,6 +90,11 @@
     // the user already is rather than from the top of the list.
     highlighted = selectedIndex >= 0 ? selectedIndex : 0;
     await tick();
+    // Twice: the first pass gives the menu a height, the second uses it to
+    // decide whether it still fits below.
+    place();
+    await tick();
+    place();
     listRef?.focus();
   }
 
@@ -56,6 +102,7 @@
     if (!open) return;
     open = false;
     highlighted = -1;
+    position = null;
     if (returnFocus) root?.querySelector('button')?.focus();
   }
 
@@ -111,13 +158,27 @@
     if (!root?.contains(event.target as Node)) closeMenu(false);
   }
 
+  /**
+   * A fixed menu does not travel with its trigger, so anything that moves the
+   * trigger has to move the menu. Capture-phase, because the scroller is
+   * usually an ancestor element rather than the window and a bubbling `scroll`
+   * listener on `document` would never hear it.
+   */
+  function reposition() {
+    if (open) place();
+  }
+
   onMount(() => {
     document.addEventListener('mousedown', handleDocumentPointerDown);
+    document.addEventListener('scroll', reposition, { capture: true, passive: true });
+    window.addEventListener('resize', reposition, { passive: true });
   });
 
   onDestroy(() => {
     if (typeof document !== 'undefined') {
       document.removeEventListener('mousedown', handleDocumentPointerDown);
+      document.removeEventListener('scroll', reposition, { capture: true });
+      window.removeEventListener('resize', reposition);
     }
   });
 </script>
@@ -149,7 +210,13 @@
     <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
     <ul
       bind:this={listRef}
-      class="absolute right-0 z-50 mt-1 min-w-full overflow-hidden rounded-md border border-border bg-surface py-1 shadow-lg outline-none"
+      class="fixed z-50 max-h-[min(18rem,60svh)] overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg outline-none"
+      style={position
+        ? `top:${position.top}px;right:${position.right}px;min-width:${position.minWidth}px`
+        : // Measured before it is shown: laid out so `offsetHeight` is real,
+          // but invisible and inert so the first frame isn't a flash of a menu
+          // in the top-left corner.
+          'top:0;left:0;visibility:hidden;pointer-events:none'}
       role="listbox"
       aria-label={ariaLabel}
       aria-activedescendant={highlighted >= 0 ? `${id}-option-${highlighted}` : undefined}

@@ -42,6 +42,7 @@
   const maps = getMapsConfig();
 
   let riderPoint = $state<LatLng | null>(null);
+  let riderHeading = $state<number | null>(null);
   let routePath = $state<LatLng[]>([]);
   let etaText = $state('Calculating…');
   let locationUnavailable = $state(false);
@@ -119,6 +120,7 @@
       enabled: true,
       onUpdate: (point) => {
         riderPoint = { lat: point.lat, lng: point.lng };
+        riderHeading = point.heading;
         locationUnavailable = point.stale;
 
         // Only redraw when there's no route yet or the courier has left the one
@@ -149,11 +151,12 @@
 </svelte:head>
 
 <div class="relative flex h-full min-h-[inherit] flex-1 flex-col bg-bg">
-  <div class="relative min-h-[45%] flex-1">
+  <!-- Map fades, sheet lifts: the same pairing every courier trip screen uses. -->
+  <div class="fade-in relative min-h-[45%] flex-1">
     <MapBackdrop
       routeLabel
       center={riderPoint ?? KUMASI_CENTER}
-      followId="rider"
+      fitIds={['rider', 'dropoff']}
       {locationUnavailable}
       polylinePath={routePath}
       markers={[
@@ -161,8 +164,11 @@
           id: 'pickup',
           lat: pickupPoint.lat,
           lng: pickupPoint.lng,
-          label: 'Pickup',
-          role: 'pickup'
+          // Collected already, so this is a waypoint behind the rider rather
+          // than a destination — but it is still the same shop, and it should
+          // not turn back into an anonymous pin now the parcel is aboard.
+          label: data.trip.businessName,
+          role: 'business'
         },
         {
           id: 'dropoff',
@@ -179,6 +185,7 @@
                 lng: riderPoint.lng,
                 label: 'You',
                 role: 'rider' as const,
+                heading: riderHeading,
                 stale: locationUnavailable
               }
             ]
@@ -187,7 +194,10 @@
     />
   </div>
 
-  <div class="z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg">
+  <div
+    class="rise z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg"
+    style="--rise-delay: 80ms"
+  >
     <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1 text-sm font-semibold text-primary">
       <IconArrowRight class="h-4 w-4 shrink-0" aria-hidden="true" />
       Delivering · {etaText}

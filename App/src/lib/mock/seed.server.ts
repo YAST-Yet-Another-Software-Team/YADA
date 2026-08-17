@@ -104,6 +104,8 @@ export async function seedTestBusinessUser() {
 			dropoffLongitude: '-1.571600',
 			estimatedDistanceKm: '1.20',
 			estimatedDurationMinutes: '6',
+			orderName: 'Jollof and chicken × 2',
+			orderPrice: '90.00',
 			notes: 'Leave at reception',
 			requestedAt: new Date(Date.now() - 1000 * 60 * 18)
 		},
@@ -119,8 +121,13 @@ export async function seedTestBusinessUser() {
 			dropoffLongitude: '-1.573200',
 			estimatedDistanceKm: '1.80',
 			estimatedDurationMinutes: '8',
+			orderName: 'Pancakes × 4',
+			orderPrice: '55.00',
 			notes: 'Call on arrival',
 			requestedAt: new Date(Date.now() - 1000 * 60 * 35),
+			// Taken 3 minutes after it was raised; still running, so no completion
+			// and so no recorded ride time yet.
+			acceptedAt: new Date(Date.now() - 1000 * 60 * 32),
 			assignedCourierId: courierUser.id
 		},
 		{
@@ -135,8 +142,13 @@ export async function seedTestBusinessUser() {
 			dropoffLongitude: '-1.560000',
 			estimatedDistanceKm: '0.90',
 			estimatedDurationMinutes: '5',
+			orderName: 'Waakye bowl',
+			orderPrice: '35.00',
 			notes: 'Delivered to front desk',
 			requestedAt: new Date(Date.now() - 1000 * 60 * 92),
+			// Deliberately not `estimatedDurationMinutes` (5 min) — this ride took
+			// 14, which is the point of recording it rather than the estimate.
+			acceptedAt: new Date(Date.now() - 1000 * 60 * 26),
 			completedAt: new Date(Date.now() - 1000 * 60 * 12),
 			assignedCourierId: courierUser.id
 		}
@@ -157,8 +169,11 @@ export async function seedTestBusinessUser() {
 				dropoffLongitude: trip.dropoffLongitude,
 				estimatedDistanceKm: trip.estimatedDistanceKm,
 				estimatedDurationMinutes: trip.estimatedDurationMinutes,
+				orderName: trip.orderName,
+				orderPrice: trip.orderPrice,
 				notes: trip.notes,
 				requestedAt: trip.requestedAt,
+				acceptedAt: trip.acceptedAt ?? null,
 				completedAt: trip.completedAt ?? null
 			})
 			.onConflictDoNothing();

@@ -2,8 +2,10 @@
   import type { Snippet } from "svelte";
   import { fade, fly } from "svelte/transition";
   import { page } from "$app/state";
+  import { motion } from "$lib/client/motion";
   import ProfileMenu from "$lib/components/ProfileMenu.svelte";
   import Avatar from "$lib/components/Avatar.svelte";
+  import VerifyEmailBanner from "$lib/components/VerifyEmailBanner.svelte";
   import { getSession } from "$auth/session.svelte";
   import { initials } from "$lib/shared/text";
   import IconMenu from "~icons/mdi/menu";
@@ -73,13 +75,21 @@
 
   /**
    * A phone screen reached *from* somewhere goes back rather than sideways —
-   * /request is a step out of the dashboard, not a peer of it, so it gets an
-   * arrow where the other screens get the menu.
+   * /request and /profile are steps out of the dashboard, not peers of it, so
+   * they get an arrow where the other screens get the menu.
    */
-  const mobileBack = $derived(path === "/request" ? "/dashboard" : null);
+  const mobileBack = $derived(
+    path === "/request" || path === "/profile" ? "/dashboard" : null,
+  );
+
+  /**
+   * Screens outside the tab strip still have to name themselves in the bar —
+   * without this the account page would sit under a heading of "YADA".
+   */
+  const asideTitles: Record<string, string> = { "/profile": "Account" };
 
   const mobileTitle = $derived(
-    links.find((link) => isActive(link.match))?.title ?? "YADA",
+    asideTitles[path] ?? links.find((link) => isActive(link.match))?.title ?? "YADA",
   );
 
   function toggleProfile(e: MouseEvent) {
@@ -97,7 +107,7 @@
        free for the title. -->
   {#if !mobileChromeless}
     <header
-      class="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-2 lg:hidden"
+      class="fade-in sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-2 lg:hidden"
     >
       {#if mobileBack}
         <a
@@ -123,7 +133,7 @@
         {mobileTitle}
       </h1>
 
-      <div class="relative pr-2" data-profile-menu style:display={page.url.pathname === "/request"? 'none' : 'block'}>
+      <div class="relative pr-2" data-profile-menu style:display={page.url.pathname === "/request" || page.url.pathname === "/profile"? 'none' : 'block'}>
         <button
           type="button"
           class="rounded-full outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-focus"
@@ -131,7 +141,12 @@
           aria-expanded={profileOpen}
           onclick={toggleProfile}
         >
-          <Avatar initials={avatarInitials} size={32} />
+          <Avatar
+            initials={avatarInitials}
+            src={session.user?.image ?? null}
+            alt=""
+            size={32}
+          />
         </button>
         <ProfileMenu open={profileOpen} onclose={() => (profileOpen = false)} />
       </div>
@@ -139,7 +154,7 @@
   {/if}
 
   <!-- Desktop chrome -->
-  <header class="sticky top-0 z-20 hidden bg-surface lg:block">
+  <header class="fade-in sticky top-0 z-20 hidden bg-surface lg:block">
     <div
       class="mx-auto flex h-[58px] items-stretch justify-between gap-4 border-b border-border px-6"
     >
@@ -181,13 +196,23 @@
           aria-label="Open business profile"
           aria-expanded={profileOpen}
           onclick={toggleProfile}
+          style:display={page.url.pathname === "/profile"? 'none' : 'block'}
         >
-          <Avatar initials={avatarInitials} size={34} />
+          <Avatar
+            initials={avatarInitials}
+            src={session.user?.image ?? null}
+            alt=""
+            size={34}
+          />
         </button>
         <ProfileMenu open={profileOpen} onclose={() => (profileOpen = false)} />
       </div>
     </div>
   </header>
+
+  <!-- Above `main` rather than inside it, so it sits under both the phone and
+       the desktop header and is not cropped by a full-bleed map. -->
+  <VerifyEmailBanner />
 
   {#if fullBleed}
     <main class="flex min-h-0 w-full flex-1 flex-col">
@@ -209,13 +234,13 @@
       class="absolute inset-0 cursor-default bg-overlay"
       aria-label="Close menu"
       onclick={() => (navOpen = false)}
-      transition:fade={{ duration: 150 }}
+      transition:fade={motion({ duration: 150 })}
     ></button>
 
     <nav
       class="absolute inset-y-0 left-0 flex w-72 max-w-[80vw] flex-col gap-1 border-r border-border bg-surface p-3 shadow-lg"
       aria-label="Business"
-      transition:fly={{ x: -288, duration: 200 }}
+      transition:fly={motion({ x: -288, duration: 200 })}
     >
       <div class="flex items-center px-2 pb-4 pt-2">
         <img src="/logo.svg" alt="YADA" class="h-8 w-auto" />

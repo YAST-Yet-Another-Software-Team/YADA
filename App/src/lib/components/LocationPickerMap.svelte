@@ -101,7 +101,6 @@
     type PlaceSuggestion
   } from '$lib/client/maps/places';
   import { getCurrentDeviceLocation } from '$lib/shared/geo/device-location';
-  import { containsPoint } from '$lib/shared/geo/service-area';
   import IconSearch from '~icons/mdi/magnify';
   import IconPin from '~icons/mdi/map-marker-outline';
 
@@ -110,7 +109,7 @@
     lat: number;
     lng: number;
     label?: string;
-    role?: 'pickup' | 'dropoff' | 'rider' | 'business' | 'search';
+    role?: 'dropoff' | 'rider' | 'business' | 'search';
   };
 
   let {
@@ -131,7 +130,7 @@
     error?: string;
     resolving?: boolean;
     markerLabel?: string;
-    markerRole?: 'pickup' | 'dropoff' | 'business';
+    markerRole?: 'dropoff' | 'business';
     extraMarkers?: PickerMarker[];
     initialCenter?: LatLng | null;
     searchPlaceholder?: string;
@@ -187,16 +186,11 @@
   const pickerId = `location-picker-${Math.random().toString(36).slice(2, 9)}`;
 
   /**
-   * Adopt a point. Out-of-zone picks are rejected outright rather than pinned
-   * and then refused at submit — the map is the input, so it has to be the
-   * thing that says no.
+   * Adopt a point. Anywhere is pickable: the zone is where search and the map
+   * *start*, not a fence — a business up the road from Ayeduase can still say
+   * where it is.
    */
   async function choose(next: LatLng, options?: { label?: string; recenter?: boolean }) {
-    if (!containsPoint(next)) {
-      error = geoErrorMessage('out_of_zone');
-      return;
-    }
-
     error = '';
     point = next;
 
@@ -361,27 +355,24 @@
 
     try {
       const results = await searchAddress(text);
-      // Out-of-zone matches are dropped here rather than offered and then
-      // refused on selection.
-      const inZone = results.filter((result) => containsPoint({ lat: result.lat, lng: result.lng }));
+      // Every match is offered. The search is still *biased* to the zone (see
+      // `getZoneBounds` in the geocoding client), so what's nearby still sorts
+      // first — nothing is dropped for being further out.
       searched = true;
 
-      if (inZone.length === 0) {
-        error =
-          results.length > 0
-            ? geoErrorMessage('out_of_zone')
-            : 'No match for that address. Try a landmark, or tap the map.';
+      if (results.length === 0) {
+        error = 'No match for that address. Try a landmark, or tap the map.';
         return;
       }
 
       // One clear match applies itself; several are offered, because choosing
       // the wrong "Hall" is exactly the mistake this bar exists to avoid.
-      if (inZone.length === 1) {
-        await applyMatch(inZone[0]);
+      if (results.length === 1) {
+        await applyMatch(results[0]);
         return;
       }
 
-      matches = inZone;
+      matches = results;
     } catch (cause) {
       error = cause instanceof GeoError ? cause.message : geoErrorMessage('unavailable');
     } finally {

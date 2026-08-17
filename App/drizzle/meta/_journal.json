@@ -71,6 +71,20 @@
       "when": 1784750157311,
       "tag": "0009_courier_plate",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784750157312,
+      "tag": "0010_order_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784750157313,
+      "tag": "0011_business_ratings",
+      "breakpoints": true
     }
   ]
 }

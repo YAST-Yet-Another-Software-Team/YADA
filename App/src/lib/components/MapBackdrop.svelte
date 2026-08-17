@@ -3,7 +3,13 @@
   import RacingHelmetIcon from '~icons/mdi/racing-helmet';
   import ShopIcon from '~icons/solar/shop-bold';
 
-  type MapMarkerRole = 'pickup' | 'dropoff' | 'rider' | 'business' | 'search';
+  /**
+   * There is no `pickup`. Every map now names the origin of a delivery for what
+   * it is — the business — so the counter is one glyph across the dashboard,
+   * tracking, the request form and the rider's screens, rather than a red pin
+   * here and a shopfront there.
+   */
+  type MapMarkerRole = 'dropoff' | 'rider' | 'business' | 'search';
 
   type MapMarker = {
     id: string;
@@ -20,18 +26,56 @@
      * just motion in the corner of a rider's eye.
      */
     pulse?: boolean;
+    /**
+     * Which way this party is travelling, 0–360° clockwise from north.
+     *
+     * Only a rider has one — a counter does not face anywhere — and only while
+     * they are moving. `null` while it is unknown, which draws no pointer at
+     * all: a marker aimed at north because nothing better was known would be a
+     * confident lie about the one thing it is there to say.
+     */
+    heading?: number | null;
   };
 
   /**
-   * The two roles that are a *who* rather than a *where*. Pickup, dropoff and
-   * search are points on a route and stay as dropped pins; a courier and a
-   * business are parties, so they get a glyph that says which one you're
-   * looking at without reading the tooltip.
+   * The two roles that are a *who* rather than a *where*. Dropoff and search
+   * are points on a route and stay as dropped pins; a courier and a business
+   * are parties, so they get a glyph that says which one you're looking at
+   * without reading the tooltip.
    */
   const ROLE_ICONS: Partial<Record<MapMarkerRole, Component>> = {
     rider: RacingHelmetIcon,
     business: ShopIcon
   };
+
+  /**
+   * Glyph size in pixels, per role. A touch larger than the disc these
+   * replaced, because a bare shape has no ring around it to catch the eye.
+   */
+  const ROLE_ICON_PX: Partial<Record<MapMarkerRole, number>> = {
+    rider: 26,
+    business: 24
+  };
+
+  /** The roles that can be facing somewhere. A shopfront cannot. */
+  const ROLE_HAS_HEADING: Partial<Record<MapMarkerRole, boolean>> = {
+    rider: true
+  };
+
+  /**
+   * How far the direction pointer's tip sits from the centre of the glyph it
+   * orbits, in pixels.
+   *
+   * Has to clear half the glyph (13px of a 26px helmet) *plus* the pointer's
+   * own height, or the wedge laps over the helmet at east and west — where the
+   * icon is widest — while looking fine at north and south. 24 leaves a couple
+   * of pixels of air all the way round.
+   */
+  const POINTER_ORBIT_PX = 24;
+
+  /** Pointer size — small enough to be a hint, big enough to have a direction. */
+  const POINTER_W = 11;
+  const POINTER_H = 9;
 </script>
 
 <script lang="ts">
@@ -56,16 +100,26 @@
   import type { GeoJSONSource, LngLatLike, Map as MapLibreMap, Marker } from 'maplibre-gl';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
+  import {
+    AUTO_FIT_DELAY_MS,
+    boundsOf,
+    containsAll,
+    FIT_MAX_ZOOM,
+    FIT_PADDING_PX,
+    type Bounds
+  } from '$lib/shared/geo/framing';
   import type { LatLng } from '$lib/utils/types';
   import { MAP_COLORS, MAP_ROLE_COLORS, MAP_SURFACE } from '$lib/styles/map-colors';
+  import IconRecentre from '~icons/mdi/crosshairs-gps';
 
   let {
     routeLabel = false,
     interactive = false,
     locationUnavailable = false,
-    followId = null,
+    fitIds = [],
     markers = [],
     polylinePath = $bindable([]),
+    hintPath = [],
     center = null,
     zoom = null,
     children,
@@ -74,9 +128,26 @@
     routeLabel?: boolean;
     interactive?: boolean;
     locationUnavailable?: boolean;
-    followId?: string | null;
+    /**
+     * Marker ids that must stay on screen together.
+     *
+     * This replaced a `followId` that centred the camera on one marker and
+     * forced the zoom in to 16 on every update. A delivery has two parties, so
+     * following one of them guaranteed the other was off screen — and the
+     * forced zoom undid the viewer's own zoom about once a second, which read
+     * as the map reloading. Framing is the honest version of what that prop
+     * was reaching for.
+     */
+    fitIds?: string[];
     markers?: MapMarker[];
+    /** The routed leg, drawn solid. */
     polylinePath?: LatLng[];
+    /**
+     * A straight dashed line — "and then it goes over there". Deliberately not
+     * a route: it costs no routing call, and drawing it as roads would claim a
+     * precision about a journey nobody has started.
+     */
+    hintPath?: LatLng[];
     center?: LatLng | null;
     zoom?: number | null;
     children?: Snippet;
@@ -85,35 +156,81 @@
 
   const ROUTE_SOURCE = 'yada-route';
   const ROUTE_LAYER = 'yada-route-line';
+  const HINT_SOURCE = 'yada-hint';
+  const HINT_LAYER = 'yada-hint-line';
 
   let mapElement = $state<HTMLDivElement | null>(null);
   let mapState = $state<'fallback' | 'loading' | 'ready' | 'error'>('fallback');
   let map: MapLibreMap | null = null;
-  let renderedMarkers: Marker[] = [];
-  /** Icon components mounted into marker elements, held so they can be torn down. */
-  let renderedIcons: Record<string, unknown>[] = [];
   let lastCenteredKey = '';
   const maps = getMapsConfig();
 
   /**
-   * The knockout colour for marker rings and glyphs.
+   * The knockout colour for marker outlines.
    *
    * Under the Google build this followed the app theme, because the basemap did
-   * too — `colorScheme` handed a dark app dark cartography, and a white ring
+   * too — `colorScheme` handed a dark app dark cartography, and a white outline
    * against it was glare. The OSM style is a single URL with a single palette
-   * and stays light whichever theme the app is in, so the ring that separates a
-   * marker from the streets under it stays light with it.
+   * and stays light whichever theme the app is in, so the outline that separates
+   * a marker from the streets under it stays light with it. That is also why
+   * nothing here rebuilds the map on a theme change: there is no second
+   * cartography to rebuild it into.
    */
   const MARKER_KNOCKOUT = MAP_SURFACE.light;
+
+  /**
+   * One rendered marker, kept so the next update can move it rather than
+   * rebuild it. `signature` covers everything that decides the *content* — the
+   * position and the heading are excluded on purpose, because changing is the
+   * common case for both and the whole point of holding these.
+   */
+  type RenderedMarker = {
+    marker: Marker;
+    icons: Record<string, unknown>[];
+    signature: string;
+    /** The layer the direction pointer hangs off, or null for a marker with none. */
+    rotor: HTMLElement | null;
+    /**
+     * The angle currently on the element, *unwrapped* — it accumulates past 360
+     * and below 0 rather than resetting. A rider crossing north goes 350° → 10°,
+     * and a transition between those two numbers spins the pointer 340° the
+     * wrong way round; carrying the total means every turn takes the short way.
+     */
+    angle: number;
+  };
+
+  let rendered = new Map<string, RenderedMarker>();
+
+  /** The viewer took the wheel; nothing moves the camera until they ask. */
+  let suspended = $state(false);
+
+  /** Armed when a framed party leaves the view, cleared when they return. */
+  let refitTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /**
+   * How many parties the camera was last framed around.
+   *
+   * A count rather than a flag, because they arrive one at a time: a trip is
+   * framed on the counter alone until the rider's first fix lands. Growing
+   * past this is a first frame, not drift, and gets the camera immediately.
+   */
+  let framedCount = 0;
 
   function markerColor(marker: MapMarker) {
     if (marker.role) return MAP_ROLE_COLORS[marker.role];
     return marker.accent ? MAP_COLORS.primary : MAP_COLORS.secondary;
   }
 
+  /**
+   * Four decimals — about 11 m.
+   *
+   * This was six, which is 0.11 m: finer than any GPS fix is accurate, so the
+   * guard it exists to be never once held and the camera was re-aimed on every
+   * jitter. A cell this size is smaller than the marker drawn in it.
+   */
   function centerKey(point: LatLng | null) {
     if (!point) return '';
-    return `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
+    return `${point.lat.toFixed(4)},${point.lng.toFixed(4)}`;
   }
 
   /** MapLibre speaks [lng, lat]; the rest of the app speaks {lat, lng}. */
@@ -121,31 +238,247 @@
     return [point.lng, point.lat];
   }
 
+  /** Pan, and only change zoom when a caller actually asked for one. */
   function panToPoint(point: LatLng, nextZoom?: number | null) {
     if (!map) return;
+
     map.easeTo({
       center: toLngLat(point),
-      zoom: nextZoom ?? Math.max(map.getZoom(), 16),
+      ...(nextZoom != null ? { zoom: nextZoom } : {}),
       duration: 400
     });
   }
 
+  /** The points that have to stay on screen together, in marker order. */
+  function fitPoints(): LatLng[] {
+    if (fitIds.length === 0) return [];
+
+    return fitIds
+      .map((id) => markers.find((marker) => marker.id === id))
+      .filter((marker): marker is MapMarker => marker != null)
+      .map((marker) => ({ lat: marker.lat, lng: marker.lng }));
+  }
+
+  function currentBounds(): Bounds | null {
+    const bounds = map?.getBounds();
+    if (!bounds) return null;
+
+    return {
+      south: bounds.getSouth(),
+      west: bounds.getWest(),
+      north: bounds.getNorth(),
+      east: bounds.getEast()
+    };
+  }
+
   /**
-   * A teardrop for a dropped pin, a glyph disc for everything else — the same
-   * visual split the Google build drew with PinElement and a styled div.
+   * Frame everything in `fitIds`.
    *
-   * The disc carries the role's icon knocked out in surface white, so a courier
-   * and a business are told apart by shape as well as by colour. MapLibre takes
-   * a DOM element it does not own, which is what makes mounting a Svelte
-   * component into it work here the same way it did under the Google SDK.
+   * A single point is panned to rather than fitted: fitting a zero-width box
+   * zooms to the maximum the map will give, which is a street-level close-up of
+   * one marker. Unlike the Google SDK, MapLibre takes `maxZoom` on the fit
+   * itself, so the cap needs no follow-up listener — two parties on the same
+   * street cannot fill the screen with the gap between them.
    */
-  function markerElement(marker: MapMarker) {
-    const color = markerColor(marker);
-    const isPin = marker.role === 'search' || marker.role === 'dropoff' || marker.role === 'pickup';
+  function frameNow() {
+    const points = fitPoints();
+    if (!map || points.length === 0) return;
+
+    clearRefit();
+    framedCount = points.length;
+
+    if (points.length === 1) {
+      panToPoint(points[0]);
+      return;
+    }
+
+    const box = boundsOf(points);
+    if (!box) return;
+
+    map.fitBounds(
+      [
+        [box.west, box.south],
+        [box.east, box.north]
+      ],
+      { padding: FIT_PADDING_PX, maxZoom: FIT_MAX_ZOOM, duration: 400 }
+    );
+  }
+
+  function clearRefit() {
+    if (refitTimer) clearTimeout(refitTimer);
+    refitTimer = undefined;
+  }
+
+  /**
+   * Decide whether the camera owes anyone a move.
+   *
+   * Called after every settle and every marker update. Going off screen arms
+   * the grace period rather than moving straight away — a rider clipping the
+   * edge at a junction is not worth chasing, and one that has genuinely left
+   * is still there five seconds later.
+   */
+  function reviewFraming() {
+    const points = fitPoints();
+
+    if (!map || points.length === 0) {
+      clearRefit();
+      return;
+    }
+
+    // The viewer's choice outranks everything below, including a party
+    // arriving: they moved the camera deliberately and asked for nothing else.
+    if (suspended) {
+      clearRefit();
+      return;
+    }
+
+    // A party the camera has never framed is not drift — the screen has never
+    // shown this set together, so there is nothing to be patient about.
+    if (points.length > framedCount) {
+      frameNow();
+      return;
+    }
+
+    if (containsAll(currentBounds(), points)) {
+      clearRefit();
+      return;
+    }
+
+    if (refitTimer) return;
+    refitTimer = setTimeout(() => {
+      refitTimer = undefined;
+      if (!suspended) frameNow();
+    }, AUTO_FIT_DELAY_MS);
+  }
+
+  /** The viewer moved the map themselves. */
+  function suspendFraming() {
+    if (fitIds.length === 0) return;
+
+    suspended = true;
+    clearRefit();
+  }
+
+  function recentre() {
+    suspended = false;
+    frameNow();
+  }
+
+  /**
+   * Everything about a marker that decides what it *looks* like.
+   *
+   * Position is deliberately absent: a moving rider is the common case, and
+   * the whole reason these are held is so movement is an assignment rather
+   * than a teardown. Heading is absent for the same reason — it is applied to
+   * the element already on screen, see `applyHeading`. There is no theme here
+   * either: the cartography does not follow the app's.
+   */
+  function markerSignature(marker: MapMarker) {
+    return [
+      marker.role ?? '',
+      marker.label ?? '',
+      marker.accent ? 'accent' : '',
+      marker.stale ? 'stale' : '',
+      marker.pulse ? 'pulse' : ''
+    ].join('|');
+  }
+
+  /**
+   * The pointer that says which way a rider is going.
+   *
+   * A wedge orbiting the helmet rather than a rotation of it: the helmet is
+   * drawn side-on, so turning it to face north would leave a rider lying on
+   * their back. Keeping the glyph upright and moving a pointer around it is the
+   * arrangement every navigation app settles on, and it separates the two
+   * questions the marker answers — *who* is that, and *where are they headed*.
+   *
+   * Built as a zero-size box pinned to the centre of the glyph: rotating a box
+   * with no dimensions turns its contents about that centre, so the pointer
+   * swings around the helmet without any trigonometry here.
+   */
+  function directionPointer(color: string) {
+    const rotor = document.createElement('div');
+    rotor.style.position = 'absolute';
+    rotor.style.left = '50%';
+    rotor.style.top = '50%';
+    rotor.style.width = '0';
+    rotor.style.height = '0';
+    rotor.style.pointerEvents = 'none';
+    // Hidden until the first heading lands, so a rider whose direction is not
+    // known yet is a plain helmet rather than one pointed arbitrarily north.
+    rotor.style.opacity = '0';
+    rotor.style.transition = 'transform 500ms ease-out, opacity 250ms linear';
+
+    const namespace = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(namespace, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${POINTER_W} ${POINTER_H}`);
+    svg.setAttribute('width', `${POINTER_W}`);
+    svg.setAttribute('height', `${POINTER_H}`);
+    svg.style.position = 'absolute';
+    svg.style.left = `${-POINTER_W / 2}px`;
+    svg.style.top = `${-POINTER_ORBIT_PX}px`;
+    svg.style.display = 'block';
+
+    // Same outline treatment as the glyph it orbits — filled in the marker's
+    // colour, hairlined in the surface behind it, stroke painted first so the
+    // outline sits outside the shape rather than eating into it.
+    const wedge = document.createElementNS(namespace, 'path');
+    wedge.setAttribute('d', `M${POINTER_W / 2} 0 L${POINTER_W} ${POINTER_H} L0 ${POINTER_H} Z`);
+    wedge.setAttribute('fill', color);
+    wedge.setAttribute('stroke', MARKER_KNOCKOUT);
+    wedge.setAttribute('stroke-width', '2');
+    wedge.setAttribute('stroke-linejoin', 'round');
+    wedge.setAttribute('paint-order', 'stroke');
+
+    svg.appendChild(wedge);
+    rotor.appendChild(svg);
+
+    return rotor;
+  }
+
+  /**
+   * Turn a marker that is already on screen.
+   *
+   * The angle accumulates rather than being written straight through: see
+   * `RenderedMarker.angle` for why 350° → 10° must not be a 340° turn.
+   */
+  function applyHeading(entry: RenderedMarker, heading: number | null | undefined) {
+    if (!entry.rotor) return;
+
+    if (heading == null || !Number.isFinite(heading)) {
+      entry.rotor.style.opacity = '0';
+      return;
+    }
+
+    const delta = ((((heading - entry.angle) % 360) + 540) % 360) - 180;
+
+    entry.angle += delta;
+    entry.rotor.style.opacity = '1';
+    entry.rotor.style.transform = `rotate(${entry.angle}deg)`;
+  }
+
+  /**
+   * The element MapLibre will own: a teardrop for a dropped pin, a bare glyph
+   * for a party.
+   *
+   * Riders and businesses used to be a filled disc with the glyph knocked out
+   * of it, which reads as a *place* — the same badge a pin is. They are drawn
+   * as the bare glyph instead: brand red, and outlined a hairline in the
+   * surface colour, which is the whole trick behind a racing-game minimap icon.
+   * The outline is what separates the shape from whatever it is sitting on.
+   *
+   * Markers with no role at all keep the plain dot; there is no shape to
+   * outline, so the ring is still doing the separating.
+   */
+  function markerContent(marker: MapMarker, color: string, icons: Record<string, unknown>[]) {
+    const isPin = marker.role === 'search' || marker.role === 'dropoff';
     const element = document.createElement('div');
-    let content: HTMLElement = element;
+    let size: number;
 
     if (isPin) {
+      // MapLibre has no PinElement, so the teardrop is drawn here. Nudged up by
+      // its own tip so the point of the drop sits on the coordinate.
+      size = 34;
       element.innerHTML = `
         <svg width="26" height="34" viewBox="0 0 26 34" aria-hidden="true">
           <path d="M13 33C13 33 25 20.5 25 13A12 12 0 1 0 1 13c0 7.5 12 20 12 20Z"
@@ -155,126 +488,185 @@
       element.style.transform = 'translateY(-6px)';
     } else {
       const icon = marker.role ? ROLE_ICONS[marker.role] : undefined;
-      const diameter = (marker.role === 'rider' ? 12 : 10) * 2;
-
-      element.style.width = `${diameter}px`;
-      element.style.height = `${diameter}px`;
-      element.style.borderRadius = '50%';
-      element.style.background = color;
-      element.style.border = `2px solid ${MARKER_KNOCKOUT}`;
-      element.style.boxSizing = 'content-box';
 
       if (icon) {
+        size = (marker.role && ROLE_ICON_PX[marker.role]) || 24;
+
         element.style.display = 'flex';
         element.style.alignItems = 'center';
         element.style.justifyContent = 'center';
-        // The icons draw with `currentColor`, so one colour on the host is enough.
-        element.style.color = MARKER_KNOCKOUT;
 
-        renderedIcons.push(
-          mount(icon, {
-            target: element,
-            props: { width: diameter * 0.68, height: diameter * 0.68 }
-          })
-        );
-      }
+        element.style.color = color;
+        element.style.stroke = MARKER_KNOCKOUT;
+        element.style.setProperty('stroke-width', '2');
+        element.style.setProperty('paint-order', 'stroke');
 
-      if (marker.pulse) {
-        content = pulseHost(element, diameter, color);
+        icons.push(mount(icon, { target: element, props: { width: size, height: size } }));
+      } else {
+        size = 30;
+
+        element.style.width = `${size}px`;
+        element.style.height = `${size}px`;
+        element.style.borderRadius = '50%';
+        element.style.background = color;
+        element.style.border = `2px solid ${MARKER_KNOCKOUT}`;
+        element.style.boxSizing = 'content-box';
       }
     }
 
-    // Staleness is expressed on the element, as it was before.
-    content.style.opacity = marker.stale ? '0.45' : '1';
-    if (marker.label) content.title = marker.label;
+    const steerable = Boolean(marker.role && ROLE_HAS_HEADING[marker.role]);
 
-    return content;
-  }
+    if (!marker.pulse && !steerable) return { content: element, rotor: null };
 
-  /**
-   * Wrap a disc in expanding rings.
-   *
-   * Marker content is built imperatively, outside the template, so component
-   * CSS can't reach it — the rings are animated through the Web Animations API
-   * instead of a keyframes rule. Two of them, half a cycle apart, so the pulse
-   * reads as continuous rather than as a blink. Only discs get this: the one
-   * marker that earns rings is the business still ringing riders, and a pin is
-   * a place rather than a party waiting on something.
-   */
-  function pulseHost(element: HTMLElement, diameter: number, color: string) {
+    // Anything layered around the glyph needs something to be positioned
+    // against, and both the rings and the pointer are measured from its centre.
     const host = document.createElement('div');
     host.style.position = 'relative';
     host.style.display = 'flex';
     host.style.alignItems = 'center';
     host.style.justifyContent = 'center';
 
-    for (const delay of [0, 1200]) {
-      const ring = document.createElement('div');
-      ring.style.position = 'absolute';
-      ring.style.width = `${diameter}px`;
-      ring.style.height = `${diameter}px`;
-      ring.style.borderRadius = '50%';
-      ring.style.border = `2px solid ${color}`;
-      ring.style.pointerEvents = 'none';
-      ring.animate(
-        [
-          { transform: 'scale(1)', opacity: 0.75 },
-          { transform: 'scale(3.4)', opacity: 0 }
-        ],
-        { duration: 2400, iterations: Infinity, delay, easing: 'ease-out' }
-      );
-      host.appendChild(ring);
+    if (marker.pulse) {
+      // Marker content is built imperatively, outside the template, so component
+      // CSS can't reach it — the rings are animated through the Web Animations
+      // API instead of a keyframes rule. Two of them, half a cycle apart, so the
+      // pulse reads as continuous rather than as a blink.
+      for (const delay of [0, 1200]) {
+        const ring = document.createElement('div');
+        ring.style.position = 'absolute';
+        ring.style.width = `${size}px`;
+        ring.style.height = `${size}px`;
+        ring.style.borderRadius = '50%';
+        ring.style.border = `2px solid ${color}`;
+        ring.style.pointerEvents = 'none';
+        ring.animate(
+          [
+            { transform: 'scale(1)', opacity: 0.75 },
+            { transform: 'scale(3.4)', opacity: 0 }
+          ],
+          { duration: 2400, iterations: Infinity, delay, easing: 'ease-out' }
+        );
+        host.appendChild(ring);
+      }
     }
 
     host.appendChild(element);
-    return host;
+
+    const rotor = steerable ? directionPointer(color) : null;
+    if (rotor) host.appendChild(rotor);
+
+    return { content: host, rotor };
   }
 
-  function syncMarkers() {
-    renderedMarkers.forEach((marker) => marker.remove());
-    renderedMarkers = [];
-    renderedIcons.forEach((icon) => void unmount(icon));
-    renderedIcons = [];
+  /** Build one marker's DOM and the Svelte roots that live inside it. */
+  function buildMarker(marker: MapMarker, instance: MapLibreMap): RenderedMarker {
+    const color = markerColor(marker);
+    const icons: Record<string, unknown>[] = [];
+    const built = markerContent(marker, color, icons);
 
-    const instance = map;
-    if (!instance) return;
+    // MapLibre's Marker has no opacity option — it takes a DOM element, so
+    // staleness is expressed on the element itself.
+    built.content.style.opacity = marker.stale ? '0.45' : '1';
+    if (marker.label) built.content.title = marker.label;
 
-    renderedMarkers = markers.map((marker) =>
-      new MarkerCtor({ element: markerElement(marker), anchor: 'center' })
+    const entry: RenderedMarker = {
+      marker: new MarkerCtor({ element: built.content, anchor: 'center' })
         .setLngLat(toLngLat(marker))
-        .addTo(instance)
-    );
+        .addTo(instance),
+      icons,
+      signature: markerSignature(marker),
+      rotor: built.rotor,
+      angle: marker.heading ?? 0
+    };
 
-    if (followId) {
-      const target = markers.find((m) => m.id === followId);
-      if (target) {
-        panToPoint({ lat: target.lat, lng: target.lng });
-      }
+    // Straight onto the element, with no transition to play: a marker being
+    // built for the first time should arrive already pointing the right way
+    // rather than swinging round from north as it appears.
+    if (entry.rotor && marker.heading != null) {
+      entry.rotor.style.opacity = '1';
+      entry.rotor.style.transform = `rotate(${entry.angle}deg)`;
     }
+
+    return entry;
+  }
+
+  function dropMarker(entry: RenderedMarker) {
+    entry.marker.remove();
+    entry.icons.forEach((icon) => void unmount(icon));
   }
 
   /**
-   * Update the route line in place.
+   * Bring the rendered markers in line with the incoming set, keyed by `id`.
    *
-   * The source and layer are created once, when the style loads, and only their
-   * data changes afterwards — removing and re-adding a layer on every fix makes
-   * the line flicker, and mid-trip this runs whenever the rider leaves it.
+   * This used to detach every marker and rebuild all of them on every update —
+   * including unmounting and remounting a Svelte root per glyph — which, with a
+   * rider fix arriving about once a second, meant the markers were blinking
+   * continuously. Moving one is now an assignment; only a marker whose
+   * *appearance* changed is rebuilt.
    */
-  function syncPolyline() {
+  function syncMarkers() {
     const instance = map;
-    if (!instance || !instance.isStyleLoaded()) return;
+    if (!instance) return;
 
-    const source = instance.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
-    if (!source) return;
+    const seen = new Set<string>();
 
-    source.setData({
+    for (const marker of markers) {
+      seen.add(marker.id);
+
+      const existing = rendered.get(marker.id);
+
+      if (existing && existing.signature === markerSignature(marker)) {
+        existing.marker.setLngLat(toLngLat(marker));
+        applyHeading(existing, marker.heading);
+        continue;
+      }
+
+      if (existing) dropMarker(existing);
+
+      rendered.set(marker.id, buildMarker(marker, instance));
+    }
+
+    for (const [id, entry] of rendered) {
+      if (seen.has(id)) continue;
+
+      dropMarker(entry);
+      rendered.delete(id);
+    }
+
+    // A marker that moved may have taken a framed party off screen with it.
+    reviewFraming();
+  }
+
+  function lineData(path: LatLng[]): GeoJSON.Feature<GeoJSON.LineString> {
+    return {
       type: 'Feature',
       properties: {},
       geometry: {
         type: 'LineString',
-        coordinates: polylinePath.length > 1 ? polylinePath.map((p) => [p.lng, p.lat]) : []
+        coordinates: path.length > 1 ? path.map((point) => [point.lng, point.lat]) : []
       }
-    });
+    };
+  }
+
+  /**
+   * Update both lines in place.
+   *
+   * The sources and layers are created once, when the style loads, and only
+   * their data changes afterwards — removing and re-adding a layer on every fix
+   * makes the line flicker, and mid-trip this runs whenever the rider leaves it.
+   * That is also why there is no memo key here as there was under the Google
+   * build: `setData` on an unchanged path is cheap and, unlike a rebuild, has
+   * nothing to get out of step with.
+   */
+  function syncPolylines() {
+    const instance = map;
+    if (!instance || !instance.isStyleLoaded()) return;
+
+    const route = instance.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
+    route?.setData(lineData(polylinePath));
+
+    const hint = instance.getSource(HINT_SOURCE) as GeoJSONSource | undefined;
+    hint?.setData(lineData(hintPath));
   }
 
   // Held at module-instance scope because `syncMarkers` needs the constructor and
@@ -332,16 +724,44 @@
         map.getCanvas().style.cursor = 'crosshair';
       }
 
+      // Telling our own camera moves from the viewer's needs no fence here, as
+      // it did under the Google SDK: MapLibre puts the browser event that
+      // started a move on the event itself, and a move we started has none. A
+      // drag or a zoom with an `originalEvent` is the viewer's, and their choice
+      // outranks any framing of ours.
+      map.on('dragstart', (event) => {
+        if (event.originalEvent) suspendFraming();
+      });
+      map.on('zoomstart', (event) => {
+        if (event.originalEvent) suspendFraming();
+      });
+      map.on('moveend', () => reviewFraming());
+
       await new Promise<void>((resolve, reject) => {
         map?.once('load', () => resolve());
         map?.once('error', (event) => reject(event.error ?? new Error('Map failed to load.')));
       });
 
-      // Create the route source and layer once; syncPolyline only sets data.
-      map.addSource(ROUTE_SOURCE, {
-        type: 'geojson',
-        data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } }
+      // Created once; syncPolylines only sets data. The hint goes in first so
+      // the routed leg draws over it: it is context rather than the thing being
+      // followed.
+      map.addSource(HINT_SOURCE, { type: 'geojson', data: lineData([]) });
+      map.addLayer({
+        id: HINT_LAYER,
+        type: 'line',
+        source: HINT_SOURCE,
+        layout: { 'line-cap': 'butt', 'line-join': 'round' },
+        paint: {
+          'line-color': MAP_COLORS.secondary,
+          'line-width': 3,
+          'line-opacity': 0.9,
+          // Dashes are how a line says "this is not a route" — the same job the
+          // repeating dash symbol did on the Google build.
+          'line-dasharray': [2, 2]
+        }
       });
+
+      map.addSource(ROUTE_SOURCE, { type: 'geojson', data: lineData([]) });
       map.addLayer({
         id: ROUTE_LAYER,
         type: 'line',
@@ -357,15 +777,23 @@
       mapState = 'ready';
       lastCenteredKey = centerKey(center ?? KUMASI_CENTER);
       syncMarkers();
-      syncPolyline();
+      syncPolylines();
+      reviewFraming();
     } catch (error) {
       console.error('Unable to load the map.', error);
       mapState = 'error';
     }
   });
 
+  /**
+   * Follow `center`, but only where nothing better owns the camera.
+   *
+   * With `fitIds` set the framing decides where to look, and a centre that
+   * moves with every fix would fight it. The pickers, which have no framing,
+   * still get their pan when a search result lands.
+   */
   $effect(() => {
-    if (mapState === 'ready' && map && center) {
+    if (mapState === 'ready' && map && center && fitIds.length === 0) {
       const key = centerKey(center);
       if (key && key !== lastCenteredKey) {
         lastCenteredKey = key;
@@ -375,7 +803,7 @@
   });
 
   $effect(() => {
-    if (mapState === 'ready' && map && zoom != null) {
+    if (mapState === 'ready' && map && zoom != null && fitIds.length === 0) {
       map.setZoom(zoom);
     }
   });
@@ -390,24 +818,32 @@
   $effect(() => {
     if (mapState === 'ready') {
       polylinePath;
-      syncPolyline();
+      hintPath;
+      syncPolylines();
     }
   });
 
   onDestroy(() => {
-    renderedMarkers.forEach((marker) => marker.remove());
-    renderedMarkers = [];
-    renderedIcons.forEach((icon) => void unmount(icon));
-    renderedIcons = [];
+    clearRefit();
+    rendered.forEach((entry) => dropMarker(entry));
+    rendered = new Map();
     map?.remove();
     map = null;
   });
 </script>
 
+<!-- `h-full w-full` alongside `absolute inset-0`, and it is load-bearing.
+     MapLibre injects its own stylesheet at runtime — after Tailwind's — and it
+     carries `.maplibregl-map { position: relative }`. Same specificity as
+     `.absolute`, later in the cascade, so it wins: the container it is given
+     stops being absolutely positioned, `inset-0` no longer sizes it, and it
+     collapses to zero height inside a full-height parent. Every map on this
+     stack then draws into a box nobody can see. Sizing it explicitly holds
+     whichever way that tie lands. -->
 <div class="absolute inset-0 overflow-hidden bg-surface-sunken">
   <div
     bind:this={mapElement}
-    class="absolute inset-0 transition-opacity duration-300"
+    class="absolute inset-0 h-full w-full transition-opacity duration-300"
     class:opacity-0={mapState !== 'ready'}
   ></div>
 
@@ -448,6 +884,20 @@
     >
       Location unavailable — showing last known position
     </div>
+  {/if}
+
+  <!-- Only after the viewer has moved the map themselves. Until then the
+       camera frames both parties on its own and a button offering to do what
+       is already happening would be noise. -->
+  {#if suspended && mapState === 'ready' && fitIds.length > 0}
+    <button
+      type="button"
+      class="absolute bottom-4 right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-surface/95 px-3.5 py-2 text-sm font-semibold text-ink shadow-md backdrop-blur-sm transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-3 focus-visible:outline-focus"
+      onclick={recentre}
+    >
+      <IconRecentre class="h-4 w-4 shrink-0" aria-hidden="true" />
+      Recentre
+    </button>
   {/if}
 
   {@render children?.()}

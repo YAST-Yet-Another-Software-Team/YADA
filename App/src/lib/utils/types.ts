@@ -35,6 +35,14 @@ export type AuthUser = {
   phone: string | null;
   role: AuthRole;
   image: string | null;
+  /**
+   * Whether the address has been confirmed by clicking a link sent to it.
+   *
+   * Google accounts arrive with this already true — the provider vouches for
+   * the address — so the nag banner and the two verification gates only ever
+   * apply to email sign-ups.
+   */
+  emailVerified: boolean;
 };
 
 /**
@@ -61,7 +69,6 @@ export type GeoErrorCode =
   | 'quota'
   | 'denied'
   | 'no_results'
-  | 'out_of_zone'
   | 'unavailable'
   | 'invalid_request';
 
@@ -140,6 +147,15 @@ export type CourierRequest = {
   dropoffLng: number | null;
   notes: string | null;
   requestedAt: string;
+  /**
+   * What other riders made of delivering for this business (SRS 3.4). `average`
+   * is null until someone has rated them, so a new business reads as unrated
+   * rather than as zero-starred — the two are opposite claims.
+   *
+   * Carried on the request rather than fetched per screen so the score is
+   * present on the offer itself, which is where a rider decides.
+   */
+  businessRating: { average: number | null; count: number };
 };
 
 /**
@@ -196,6 +212,12 @@ export type CourierTrip = CourierRequest & {
   completedAt: string | null;
   estimatedDistanceKm: number | null;
   estimatedDurationMinutes: number | null;
+  /**
+   * The stars *this rider* gave the business for this trip, or null if they
+   * haven't rated it. Their own verdict only — never the business's verdict on
+   * them, which is aggregated into their profile score and not shown per trip.
+   */
+  myRating: number | null;
 };
 
 /**
@@ -211,10 +233,24 @@ export type DashboardTripRecord = {
   rider: string | null;
   destination: string;
   pickup: string | null;
-  eta: string | null;
+  /**
+   * How long the ride actually took, preformatted ("14 min"), or null until it
+   * has been both accepted and completed. Replaces the map's ETA, which was a
+   * forecast being displayed against finished trips. See `$lib/shared/ride-time`.
+   */
+  rideTime: string | null;
   status: TripStage;
+  /**
+   * When the current dispatch round started, ISO, or null if it never did.
+   * Lets a `searching` row be told apart from one whose 60s window has closed —
+   * the status alone stays `searching` either way. See `isDispatchExpired`.
+   */
+  dispatchStartedAt: string | null;
   completedAt: string | null;
   notes: string | null;
+  /** What was sent, and what it was worth — the audit half of a delivery. */
+  orderName: string;
+  orderPrice: number;
   /** The stars this business gave, or null while the trip is unrated. */
   myRating?: number | null;
   pickupLat?: number | null;

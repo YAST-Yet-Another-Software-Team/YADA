@@ -6,6 +6,8 @@
  * over Socket.IO — is `(business)/realtime`.
  */
 
+import { createHeadingTracker } from '$lib/shared/geo/heading';
+
 /**
  * How often a fix is actually POSTed, by what the courier is doing.
  *
@@ -33,7 +35,14 @@ const STALE_MS = 30_000;
 export function startCourierLocationReporter(options: {
   tripId: string | null;
   enabled: boolean;
-  onUpdate?: (point: { lat: number; lng: number; recordedAt: string; stale: boolean }) => void;
+  onUpdate?: (point: {
+    lat: number;
+    lng: number;
+    recordedAt: string;
+    stale: boolean;
+    /** Which way they are going, 0–360° from north, or null while unknown. */
+    heading: number | null;
+  }) => void;
   onError?: (code: 'denied' | 'unavailable') => void;
 }) {
   // A trip id is what separates the two cadences: it is only ever set by the
@@ -44,6 +53,18 @@ export function startCourierLocationReporter(options: {
   let watchId: number | null = null;
   let lastSent = 0;
   let lastPoint: { lat: number; lng: number; recordedAt: string } | null = null;
+  let lastHeading: number | null = null;
+
+  /**
+   * The rider's direction, from the device where it offers one and from the
+   * trail of fixes where it does not.
+   *
+   * Worth deriving rather than passing `coords.heading` straight through: that
+   * field is null on every desktop browser and on a phone that is not moving,
+   * which is most of the fixes this sends — and the business watching the map
+   * still wants to know which way their rider is pointing.
+   */
+  const heading = createHeadingTracker();
 
   function stop() {
     if (watchId != null && navigator.geolocation) {
@@ -52,7 +73,13 @@ export function startCourierLocationReporter(options: {
     }
   }
 
-  if (!options.enabled || typeof navigator === 'undefined' || !navigator.geolocation) {
+  // Turned off by the caller is not the same as unavailable, and only the
+  // second is worth telling anyone about: `onError` is what raises "Location
+  // unavailable — showing last known position" on the rider's screen, and a
+  // reporter that was deliberately never started has nothing to apologise for.
+  if (!options.enabled) return stop;
+
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
     options.onError?.('unavailable');
     return stop;
   }
@@ -67,7 +94,8 @@ export function startCourierLocationReporter(options: {
         recordedAt
       };
       lastPoint = point;
-      options.onUpdate?.({ ...point, stale: false });
+      lastHeading = heading.next(point, position.coords.heading);
+      options.onUpdate?.({ ...point, stale: false, heading: lastHeading });
 
       if (now - lastSent < throttleMs) return;
       lastSent = now;
@@ -76,7 +104,7 @@ export function startCourierLocationReporter(options: {
         tripId: options.tripId,
         lat: point.lat,
         lng: point.lng,
-        heading: position.coords.heading,
+        heading: lastHeading,
         recordedAt
       };
 
@@ -90,12 +118,19 @@ export function startCourierLocationReporter(options: {
         // keep UI on last known
       });
     },
-    () => {
-      options.onError?.('denied');
+    (error) => {
+      // The browser says which of the three it is, and they are not the same
+      // thing: a refused permission stays refused, while a timeout or a lost
+      // signal is a tunnel or a stairwell and the next fix may well arrive.
+      // Reporting every one of them as `denied` threw that away, and left the
+      // `unavailable` half of this callback's own union unreachable except
+      // when the API is missing altogether.
+      options.onError?.(error.code === error.PERMISSION_DENIED ? 'denied' : 'unavailable');
       if (lastPoint) {
         options.onUpdate?.({
           ...lastPoint,
-          stale: Date.now() - new Date(lastPoint.recordedAt).getTime() > STALE_MS
+          stale: Date.now() - new Date(lastPoint.recordedAt).getTime() > STALE_MS,
+          heading: lastHeading
         });
       }
     },

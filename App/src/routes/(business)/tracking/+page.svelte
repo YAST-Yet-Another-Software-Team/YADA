@@ -11,6 +11,7 @@
 	import StatusPill from '$lib/components/StatusPill.svelte';
 	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
 	import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
+	import { createHeadingTracker } from '$lib/shared/geo/heading';
 	import type { LatLng } from '$lib/utils/types';
 	import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
@@ -29,7 +30,10 @@
 	import IconStar from '~icons/mdi/star';
 	import IconCheck from '~icons/mdi/check';
 	import { DISPATCH_TIMEOUT_SECONDS, ringForElapsed, ringLabel } from '$lib/shared/dispatch';
-	import { isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
+	import { isCancellableByBusiness, isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
+	import { formatCedis } from '$lib/shared/text';
+	import { formatPhone } from '$lib/shared/phone';
+	import { formatPlate } from '$lib/shared/plate';
 	import type { CourierSummary, RiderLocationEvent, TripStatus } from '$lib/utils/types';
 
 	type ActiveTrip = {
@@ -45,6 +49,10 @@
 		completedAt?: string | null;
 		assignedCourierId?: string | null;
 		courier?: CourierSummary | null;
+		orderName?: string | null;
+		orderPrice?: number | null;
+		/** A rider took this and let it go again before reaching the counter. */
+		releasedByCourier?: boolean;
 	};
 
 	const POLL_MS = 4000;
@@ -71,6 +79,17 @@
 	let actionError = $state('');
 	let riderPoint = $state<LatLng | null>(null);
 	let riderStale = $state(false);
+	let riderHeading = $state<number | null>(null);
+
+	/**
+	 * Which way the rider is pointing.
+	 *
+	 * The fix carries the courier's own heading when their phone had one, and the
+	 * tracker falls back to the bearing between the last two fixes when it did
+	 * not — which is every fix from a rider whose device reports no heading, and
+	 * every fix on the polled path, where only a position is stored.
+	 */
+	const heading = createHeadingTracker();
 	let etaText = $state('—');
 	let routePath = $state<LatLng[]>([]);
 	let cancelling = $state(false);
@@ -118,13 +137,25 @@
 	 */
 	const searching = $derived(!trip || trip.status === 'requested' || !trip.assignedCourierId);
 	const closed = $derived(trip?.status === 'completed' || trip?.status === 'cancelled');
-	/** Mirrors the rule `POST /api/trips/cancel` enforces. */
-	const canCancel = $derived(trip?.status === 'requested');
+	/** Mirrors the rule `POST /api/trips/cancel` enforces: until the rider arrives. */
+	const canCancel = $derived(trip != null && isCancellableByBusiness(trip.status));
 
 	/** The 60-second search ran out with nobody accepting; only a re-ring restarts it. */
 	const dispatchExpired = $derived(
 		searching && !closed && dispatchElapsed != null && dispatchElapsed > DISPATCH_TIMEOUT_SECONDS
 	);
+
+	/**
+	 * Riders are being ringed *right now* — the only state anything on this screen
+	 * is allowed to animate in.
+	 *
+	 * Distinct from `searching`, which stays true after the dispatch window closes
+	 * because the trip is still unassigned. Animating on `searching` alone kept the
+	 * pulse running under "No rider accepted in time", which reads as a search
+	 * still in progress and makes the re-ring button look redundant. Anything that
+	 * moves belongs to this flag, not to `searching`.
+	 */
+	const matching = $derived(searching && !closed && !dispatchExpired);
 
 	/**
 	 * The pickup phase is still open: a rider is assigned and the parcel hasn't
@@ -204,7 +235,10 @@
 				estimatedDurationMinutes: payload.trip.estimatedDurationMinutes,
 				completedAt: payload.trip.completedAt ?? null,
 				assignedCourierId: payload.trip.assignedCourierId ?? null,
-				courier: payload.trip.courier ?? null
+				courier: payload.trip.courier ?? null,
+				orderName: payload.trip.orderName ?? null,
+				orderPrice: payload.trip.orderPrice ?? null,
+				releasedByCourier: payload.trip.releasedByCourier === true
 			};
 			myRating = payload.trip.myRating ?? null;
 			dispatchElapsedBase = payload.trip.dispatchElapsedSeconds ?? null;
@@ -228,6 +262,9 @@
 					});
 				} else if (!riderPoint) {
 					riderPoint = { lat: fix.lat, lng: fix.lng };
+					// Through the tracker, so the first live fix has something to take
+					// a bearing from rather than starting a step behind.
+					riderHeading = heading.next(riderPoint);
 					riderStale = Date.now() - new Date(fix.recordedAt).getTime() > LOCATION_STALE_MS;
 				}
 			}
@@ -247,6 +284,7 @@
 		if (trip && payload.tripId && payload.tripId !== trip.id) return;
 
 		riderPoint = { lat: payload.lat, lng: payload.lng };
+		riderHeading = heading.next(riderPoint, payload.heading);
 		riderStale = Date.now() - new Date(payload.recordedAt).getTime() > LOCATION_STALE_MS;
 
 		const target = legTarget();
@@ -464,8 +502,9 @@
 						role: 'business' as const,
 						// Rings while the request is still ringing riders: the search
 						// radiates from this counter, and the map is the only place that
-						// can show it happening. It stops the moment someone accepts.
-						pulse: searching && !closed
+						// can show it happening. It stops the moment someone accepts —
+						// or the moment the dispatch window closes with nobody.
+						pulse: matching
 					},
 					{
 						id: 'dropoff',
@@ -482,6 +521,7 @@
 									lng: riderPoint.lng,
 									label: trip.courier?.name ?? 'Rider',
 									role: 'rider' as const,
+									heading: riderHeading,
 									stale: riderStale
 								}
 							]
@@ -562,7 +602,7 @@
 		     the operator is watching several jobs at once and this one closing is
 		     an update rather than the whole screen. -->
 		<section
-			class="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-10 lg:hidden"
+			class="rise flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-10 lg:hidden"
 		>
 			<div class="mx-auto flex w-full max-w-sm flex-1 flex-col items-center text-center">
 				<span
@@ -620,15 +660,18 @@
 		</div>
 
 		<!-- Focus follows the job. While the request is open the destination is the
-		     only thing to look at; the moment a rider takes it the map centres on
-		     them — `followId` pans and closes in on each new fix — because from
-		     then until the handover, where that rider is *is* the status. The line
-		     under them is their run to the counter, and stops when they get there. -->
+		     only thing to look at; the moment a rider takes it the map frames the
+		     rider *and* this counter together, because what the sender is watching
+		     is the gap between the two closing. The only line drawn is the rider's
+		     run to the counter — the dashed pickup→dropoff hint that used to sit
+		     under it is gone: it competed with the leg actually being watched, and
+		     it described a journey nobody has started. The dropoff keeps its
+		     marker, so where the parcel goes next is still on the map. -->
 		<MapBackdrop
 			center={riderPoint ?? (trip ? { lat: trip.dropoffLat, lng: trip.dropoffLng } : KUMASI_CENTER)}
 			{markers}
 			polylinePath={routePath}
-			followId={searching ? null : 'rider'}
+			fitIds={searching ? [] : ['rider', 'pickup']}
 			locationUnavailable={!searching && riderStale}
 		>
 			{#if searching && !closed}
@@ -655,7 +698,8 @@
 	     courier screens use. On desktop it's a column beside the map, so it
 	     scrolls itself rather than growing the page. -->
 	<aside
-		class="z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg lg:w-[320px] lg:shrink-0 lg:overflow-y-auto lg:rounded-none lg:border-t-0 lg:p-6 lg:shadow-none {delivered
+		style="--rise-delay: 90ms"
+		class="rise z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg lg:w-[320px] lg:shrink-0 lg:overflow-y-auto lg:rounded-none lg:border-t-0 lg:p-6 lg:shadow-none {delivered
 			? 'hidden lg:flex'
 			: ''}"
 	>
@@ -672,9 +716,17 @@
 			     thing that can be done about it. Centred on a phone, where it's the
 			     whole screen; left-aligned in the desktop column, where it isn't. -->
 			<div class="flex flex-1 flex-col items-center gap-3 py-2 text-center lg:items-start lg:py-0 lg:text-left">
-				<StatusPill status="searching" />
+				<StatusPill status="searching" pulse={matching} />
 				<div>
 					<p class="text-lg font-semibold text-ink lg:text-base">Finding a rider near you</p>
+					<!-- Small on purpose. A rider dropping out before the counter is
+					     ordinary, and the request is already back out to everyone else
+					     — this says why the search restarted, not that anything broke. -->
+					{#if trip?.releasedByCourier && !dispatchExpired}
+						<p class="mt-1 text-sm text-ink-secondary">
+							The last rider dropped this job — we're ringing others.
+						</p>
+					{/if}
 					<p class="mt-1 text-sm text-ink-secondary">
 						{#if dispatchExpired}
 							No rider accepted in time. Ring again, or cancel the request.
@@ -734,7 +786,7 @@
 						     motorbike, so "Motorbike" told the counter nothing they could
 						     check. The plate is what pulls up outside. -->
 						<span class={trip.courier.plateNumber ? 'font-mono-data' : ''}>
-							{trip.courier.plateNumber ?? trip.courier.vehicleType ?? 'Rider'}
+							{formatPlate(trip.courier.plateNumber) || trip.courier.vehicleType || 'Rider'}
 						</span>
 						{#if trip.courier.rating}
 							<span aria-hidden="true">·</span>
@@ -770,6 +822,21 @@
 			</p>
 		</div>
 
+		<!-- What is in the parcel, on the sender's screen only: the rider is
+		     carrying it either way, and a value on their phone is a reason to be
+		     robbed for it. The API leaves both fields out of their copy. -->
+		{#if trip?.orderName}
+			<div class="border-t border-border pt-3">
+				<p class="text-eyebrow text-ink-tertiary">Order</p>
+				<p class="mt-1 flex items-baseline justify-between gap-3 text-sm">
+					<span class="min-w-0 truncate text-ink">{trip.orderName}</span>
+					<span class="font-mono-data shrink-0 text-ink-secondary">
+						{formatCedis(trip.orderPrice)}
+					</span>
+				</p>
+			</div>
+		{/if}
+
 		{#if !searching && !closed && trip?.courier?.phone}
 			<!-- Real links, not decoration: the number belongs to the rider actually
 			     carrying this parcel. -->
@@ -781,11 +848,23 @@
 				>
 					<IconPhone class="h-[18px] w-[18px]" aria-hidden="true" />
 				</a>
-				<p class="font-mono-data text-sm text-ink-secondary">{trip.courier.phone}</p>
+				<!-- Grouped for reading and reading back; the button beside it dials
+				     the stored E.164 number, which is what a dialler wants. -->
+				<p class="font-mono-data text-sm text-ink-secondary">{formatPhone(trip.courier.phone)}</p>
 			</div>
 		{/if}
 
 		<div class="mt-auto flex flex-col gap-2 lg:pt-4">
+			{#if canCancel}
+				<!-- Still callable off: the rider has accepted but hasn't reached the
+				     counter, so nobody is standing at the shop for this yet. The
+				     button disappears the moment they arrive — from there it is a
+				     conversation, not a control. -->
+				<Button variant="outline" size="sm" disabled={cancelling} onclick={cancelRequest}>
+					{cancelling ? 'Cancelling…' : 'Cancel delivery'}
+				</Button>
+			{/if}
+
 			{#if awaitingPickup}
 				<!-- The pickup phase ends here, on the counter it happens at. -->
 				{#if riderAtCounter}

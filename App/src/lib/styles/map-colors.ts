@@ -42,15 +42,26 @@ export const MAP_SURFACE = {
 } as const;
 
 /**
- * Semantic role → colour for map pins. Mirrors how the same concepts are
- * coloured in the rest of the UI: the destination carries brand primary, the
- * origin carries secondary, and riders/businesses use the info/success
- * statuses rather than arbitrary blues and greens.
+ * Semantic role → colour, for every marker on every map.
+ *
+ * Two hues, split by what the marker *is* rather than by which screen drew it:
+ *
+ * - **Brand red for the parties.** A rider and a business are a *who*, drawn as
+ *   glyphs, and red is what makes them findable in a glance across a whole map.
+ * - **Secondary orange for the destination.** It is a *where* — a dropped pin —
+ *   and it used to be red as well, which put the loudest colour on the map in
+ *   two places at once and left the eye nothing to sort them by. Orange is the
+ *   same hue the request form gives the destination row, so the pin and the
+ *   field that set it match.
+ *
+ * There is no `pickup`: the origin of a YADA delivery is always the business,
+ * so it is a `business` glyph on every map rather than a second pin competing
+ * with the destination for meaning.
  */
 export const MAP_ROLE_COLORS = {
-  pickup: MAP_COLORS.secondary,
-  dropoff: MAP_COLORS.primary,
-  rider: MAP_COLORS.info,
-  business: MAP_COLORS.success,
-  search: MAP_COLORS.primary
+  dropoff: MAP_COLORS.secondary,
+  /** A pin mid-placement in the picker — the destination before it is fixed. */
+  search: MAP_COLORS.secondary,
+  rider: MAP_COLORS.primary,
+  business: MAP_COLORS.primary
 } as const;

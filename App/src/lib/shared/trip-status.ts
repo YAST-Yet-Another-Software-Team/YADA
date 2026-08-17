@@ -35,6 +35,39 @@ export function isPickupPhase(status: string): boolean {
 }
 
 /**
+ * How long either party can still call a delivery off: until the rider reaches
+ * the counter, and no further.
+ *
+ * `courier_arriving` is deliberately outside the window — it is written from
+ * the rider's own position once they are inside `PICKUP_PROXIMITY_KM` of the
+ * pickup, so by then they are at the shop. Calling it off from a screen at that
+ * point leaves
+ * someone standing there; that is a conversation, not a button.
+ *
+ * The two sides differ only in where they start. A business can withdraw a
+ * request nobody has taken yet; a courier can only let go of one they hold —
+ * turning down an offer they never accepted is `POST /api/courier/decline-trip`,
+ * which is a different thing with a different memory.
+ */
+export const CANCELLABLE_STATUSES = ['requested', 'accepted'] as const satisfies readonly TripStatus[];
+
+export function isCancellableByBusiness(status: string): boolean {
+  return (CANCELLABLE_STATUSES as readonly string[]).includes(status);
+}
+
+export function isReleasableByCourier(status: string): boolean {
+  return status === 'accepted';
+}
+
+/**
+ * The same window, in the vocabulary the business screens hold. They deal in
+ * stages rather than statuses, and `requested`/`accepted` collapse to these two.
+ */
+export function isCancellableStage(stage: TripStage): boolean {
+  return stage === 'searching' || stage === 'assigned';
+}
+
+/**
  * Which half of the journey a trip is in. `picked_up` counts as delivery: the
  * parcel is with the courier, even though they haven't set off yet.
  */

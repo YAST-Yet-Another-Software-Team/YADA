@@ -36,9 +36,18 @@ function writeOnline(online: boolean) {
  */
 export class CourierOnline {
   #online = $state(false);
+  #error = $state('');
 
   get online() {
     return this.#online;
+  }
+
+  /**
+   * Why the last toggle didn't stick, if it didn't. Empty the rest of the time.
+   * Cleared by the next attempt.
+   */
+  get error() {
+    return this.#error;
   }
 
   /** Adopt the persisted value. Safe to call more than once. */
@@ -46,27 +55,52 @@ export class CourierOnline {
     this.#online = readOnline();
   }
 
-  set(online: boolean) {
+  async set(online: boolean) {
+    // Flip first: the toggle has to feel immediate, and the common case is
+    // that the server agrees.
+    const previous = this.#online;
     this.#online = online;
+    this.#error = '';
     writeOnline(online);
 
     // The server has to know too: dispatch rings by availability, and going
     // offline must stop the ringing at once — a location fix stays fresh for
-    // minutes after a courier clocks off. Fire-and-forget: if this fails the
-    // UI state still stands, and the fix going stale is the backstop.
-    void fetch('/api/courier/availability', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ online })
-    }).catch(() => {});
+    // minutes after a courier clocks off.
+    //
+    // The answer is read rather than discarded. The server can refuse — an
+    // unconfirmed email may not go online — and a rejection that left the pill
+    // reading "Online" would be the exact desync this flag exists to prevent:
+    // a rider who believes they are on shift while dispatch cannot see them.
+    // A network failure is different: the request may well have landed, and
+    // the stored value still describes what the rider asked for.
+    try {
+      const response = await fetch('/api/courier/availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ online })
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+        this.#online = previous;
+        writeOnline(previous);
+        this.#error = payload?.message ?? "That didn't go through. Try again.";
+      }
+    } catch {
+      // Offline or interrupted. The optimistic value stands; the fix going
+      // stale is the backstop it always was.
+    }
   }
 
+  // `set` reports through `error` rather than by rejecting, so these two don't
+  // wait on it — the pill has already moved by the time it resolves.
   goOnline() {
-    this.set(true);
+    void this.set(true);
   }
 
   goOffline() {
-    this.set(false);
+    void this.set(false);
   }
 }
 

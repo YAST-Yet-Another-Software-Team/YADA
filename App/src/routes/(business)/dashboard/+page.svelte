@@ -1,5 +1,8 @@
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
+  import { cubicOut } from "svelte/easing";
+  import { fade, fly } from "svelte/transition";
+  import { motion } from "$lib/client/motion";
   import DashboardBoard from "$lib/components/DashboardBoard.svelte";
   import DashboardTable from "$lib/components/DashboardTable.svelte";
   import MapBackdrop from "$lib/components/MapBackdrop.svelte";
@@ -10,6 +13,9 @@
   import IconPlus from "~icons/mdi/plus";
   import IconChevronRight from "~icons/mdi/chevron-right";
   import IconPackage from "~icons/mdi/package-variant-closed";
+  import { isMatchingNow } from "$lib/shared/dispatch";
+  import { isCancellableStage } from "$lib/shared/trip-status";
+  import { formatCedis } from "$lib/shared/text";
   import type { DashboardTripRecord } from "$lib/utils/types";
   import { DashboardViewPreference } from "./dashboard-view.svelte";
 
@@ -38,11 +44,45 @@
   let panelError = $state("");
 
   /**
-   * Withdrawing is only offered while nobody has taken the job — the same rule
-   * `POST /api/trips/cancel` enforces, and the same one the tracking screen
-   * applies. Once a rider has accepted, this panel is a view, not a control.
+   * Whether the selected request is still ringing riders, and so whether the
+   * counter on the map and its pill are allowed to animate.
+   *
+   * Evaluated per selection rather than on a ticker, because this page has no
+   * clock — nothing else here updates live either, and a timer whose only job
+   * was stopping an animation would be the sole moving part on a static screen.
+   * A request that expires while the panel is already open keeps pulsing until
+   * the next load; tracking is the screen that narrates a search live.
    */
-  const canCancelSelected = $derived(selected?.status === "searching");
+  const matching = $derived(
+    selected != null && isMatchingNow(selected.status, selected.dispatchStartedAt),
+  );
+
+  /**
+   * Where the parcel is collected: the trip's own pickup, and the saved profile
+   * only as a fallback. The trip is the record of where this delivery actually
+   * started — a shop that has since moved its address would otherwise redraw
+   * its history at the new one.
+   */
+  const pickupPoint = $derived(
+    selected?.pickupLat != null && selected?.pickupLng != null
+      ? { lat: selected.pickupLat, lng: selected.pickupLng }
+      : data.dashboard.businessProfile
+        ? {
+            lat: data.dashboard.businessProfile.lat,
+            lng: data.dashboard.businessProfile.lng,
+          }
+        : null,
+  );
+
+  /**
+   * Withdrawing stays available until the rider reaches the counter — the same
+   * rule `POST /api/trips/cancel` enforces, and the same one the tracking
+   * screen applies. Once they have arrived, this panel is a view, not a
+   * control: someone is standing at the shop for this delivery.
+   */
+  const canCancelSelected = $derived(
+    selected !== null && isCancellableStage(selected.status),
+  );
 
   // Adopted from storage after mount — $effect never runs on the server,
   // where localStorage doesn't exist.
@@ -125,7 +165,7 @@
 
 <div class="relative flex flex-1 flex-col gap-5 lg:gap-6">
   <div class="grid grid-cols-2 gap-3 px-4 pt-4 lg:grid-cols-3 lg:p-0">
-    <div class="rounded-lg border border-border bg-surface p-4 shadow-xs">
+    <div class="rise rounded-lg border border-border bg-surface p-4 shadow-xs">
       <p class="text-eyebrow text-ink-tertiary">
         <span class="lg:hidden">Active</span>
         <span class="hidden lg:inline">Active deliveries</span>
@@ -135,14 +175,18 @@
       </p>
     </div>
     <div
-      class="hidden rounded-lg border border-border bg-surface p-4 shadow-xs lg:block"
+      class="rise hidden rounded-lg border border-border bg-surface p-4 shadow-xs lg:block"
+      style="--rise-delay: 60ms"
     >
       <p class="text-eyebrow text-ink-tertiary">Avg. pickup time</p>
       <p class="font-mono-data mt-2 text-2xl font-bold text-ink">
         {data.dashboard.activeTrips.length > 0 ? "Live" : "—"}
       </p>
     </div>
-    <div class="rounded-lg border border-border bg-surface p-4 shadow-xs">
+    <div
+      class="rise rounded-lg border border-border bg-surface p-4 shadow-xs"
+      style="--rise-delay: 120ms"
+    >
       <p class="text-eyebrow text-ink-tertiary">
         <span class="lg:hidden">Today</span>
         <span class="hidden lg:inline">Delivered today</span>
@@ -154,7 +198,10 @@
     </div>
   </div>
 
-  <section class="flex flex-1 flex-col gap-3 px-4 lg:hidden">
+  <!-- The list animates as a block, not row by row: `invalidateAll` after a
+       cancel re-keys the each, and per-row entrances would replay the whole
+       list every time one trip changed. -->
+  <section class="rise flex flex-1 flex-col gap-3 px-4 lg:hidden" style="--rise-delay: 180ms">
     <h2 class="text-base font-semibold text-ink">Active requests</h2>
 
     {#if data.dashboard.activeTrips.length === 0}
@@ -187,13 +234,16 @@
                 </p>
                 <p class="truncate text-sm text-ink-secondary">
                   {trip.rider ?? "Looking for a rider"}
-                  {#if trip.eta}
-                    <span class="font-mono-data text-primary">· {trip.eta}</span>
+                  {#if trip.rideTime}
+                    <span class="font-mono-data text-primary">· {trip.rideTime}</span>
                   {/if}
                 </p>
               </div>
               <div class="flex shrink-0 items-center gap-1">
-                <StatusPill status={trip.status} />
+                <StatusPill
+                  status={trip.status}
+                  pulse={isMatchingNow(trip.status, trip.dispatchStartedAt)}
+                />
                 <IconChevronRight
                   class="h-5 w-5 text-ink-tertiary"
                   aria-hidden="true"
@@ -206,7 +256,7 @@
     {/if}
   </section>
 
-  <section class="hidden flex-col gap-4 lg:flex">
+  <section class="rise hidden flex-col gap-4 lg:flex" style="--rise-delay: 180ms">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h2 class="text-base font-semibold text-ink">Active requests</h2>
 
@@ -262,8 +312,11 @@
   <!-- Sticky rather than fixed: it sits in the column, so it can't overlap the
        last card and the list doesn't need a phantom pad at the bottom to clear
        it. The safe-area inset keeps it above a home indicator. -->
+  <!-- `fade-in`, not `rise`: a transform on a sticky element makes it the
+       containing block for its own offsets and the stickiness stops working. -->
   <div
-    class="sticky bottom-0 z-10 border-t border-border bg-surface px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 shadow-nav lg:hidden"
+    class="fade-in sticky bottom-0 z-10 border-t border-border bg-surface px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 shadow-nav lg:hidden"
+    style="--rise-delay: 240ms"
   >
     <Button variant="primary" size="lg" fullWidth onclick={newRequest}>
       <IconPlus class="h-5 w-5" aria-hidden="true" />
@@ -273,11 +326,15 @@
 </div>
 
 {#if selected}
-  <!-- Overlay map panel (stays on dashboard) -->
+  <!-- Overlay map panel (stays on dashboard).
+       Svelte transitions rather than the CSS classes here: this subtree really
+       is created on open, which is the case `in:` was built for, and the panel
+       needs an *out* as well so closing it doesn't just blink away. -->
   <div
     class="fixed inset-0 z-40 flex justify-end bg-overlay"
     role="dialog"
     aria-modal="true"
+    transition:fade={motion({ duration: 180 })}
   >
     <button
       type="button"
@@ -287,6 +344,7 @@
     ></button>
     <aside
       class="relative z-10 flex h-full w-full max-w-lg flex-col border-l border-border bg-surface shadow-lg"
+      transition:fly={motion({ x: 32, duration: 260, easing: cubicOut })}
     >
       <div
         class="flex items-start justify-between gap-3 border-b border-border px-5 py-4"
@@ -294,7 +352,7 @@
         <div>
           <p class="font-mono-data text-xs text-ink-tertiary">#{selected.id}</p>
           <h2 class="text-lg font-semibold text-ink">{selected.destination}</h2>
-          <div class="mt-2"><StatusPill status={selected.status} /></div>
+          <div class="mt-2"><StatusPill status={selected.status} pulse={matching} /></div>
         </div>
         <button
           type="button"
@@ -306,39 +364,39 @@
       </div>
 
       <div class="relative min-h-0 flex-1">
+        <!-- The same two markers, in the same colours, as tracking and the
+             request map: the counter as a red shopfront glyph, the destination
+             as an orange pin. This panel used to draw the counter *twice* — an
+             `hq` glyph from the profile and a red "Pickup" pin from the trip,
+             a few metres apart and claiming to be different places. It also
+             centred on the destination alone, which pushed the counter off
+             screen on anything but a short hop; `fitIds` frames the pair, the
+             way every other map on the job does.
+
+             No `routeLabel`: there is no route line on this map, and the dashed
+             segment it drew across the placeholder implied one. -->
         <MapBackdrop
-          routeLabel={selected.status === "en_route"}
-          center={selected.dropoffLat != null && selected.dropoffLng != null
-            ? { lat: selected.dropoffLat, lng: selected.dropoffLng }
-            : data.dashboard.businessProfile
-              ? {
-                  lat: data.dashboard.businessProfile.lat,
-                  lng: data.dashboard.businessProfile.lng,
-                }
-              : null}
+          center={pickupPoint ??
+            (selected.dropoffLat != null && selected.dropoffLng != null
+              ? { lat: selected.dropoffLat, lng: selected.dropoffLng }
+              : null)}
+          fitIds={["pickup", "dropoff"]}
           markers={[
-            ...(data.dashboard.businessProfile
-              ? [
-                  {
-                    id: "hq",
-                    lat: data.dashboard.businessProfile.lat,
-                    lng: data.dashboard.businessProfile.lng,
-                    label: data.dashboard.businessProfile.businessName,
-                    role: "business" as const,
-                    // Same signal as the tracking map: the counter radiates
-                    // while its request is still looking for a rider.
-                    pulse: selected.status === "searching",
-                  },
-                ]
-              : []),
-            ...(selected.pickupLat != null && selected.pickupLng != null
+            ...(pickupPoint
               ? [
                   {
                     id: "pickup",
-                    lat: selected.pickupLat,
-                    lng: selected.pickupLng,
-                    label: "Pickup",
-                    role: "pickup" as const,
+                    lat: pickupPoint.lat,
+                    lng: pickupPoint.lng,
+                    label:
+                      data.dashboard.businessProfile?.businessName ??
+                      selected.pickup ??
+                      "Pickup",
+                    role: "business" as const,
+                    // Same signal as the tracking map: the counter radiates
+                    // while its request is still ringing riders, and stills
+                    // once someone accepts or the window closes with nobody.
+                    pulse: matching,
                   },
                 ]
               : []),
@@ -373,19 +431,26 @@
           <span class="font-semibold text-ink">Rider:</span>
           {selected.rider ?? "Unassigned"}
         </p>
-        {#if selected.eta}
+        {#if selected.rideTime}
           <p class="text-ink-secondary">
-            <span class="font-semibold text-ink">ETA:</span>
-            <span class="font-mono-data text-primary">{selected.eta}</span>
+            <span class="font-semibold text-ink">Time taken:</span>
+            <span class="font-mono-data text-primary">{selected.rideTime}</span>
           </p>
         {/if}
         <p class="text-ink-secondary">
           <span class="font-semibold text-ink">Pickup:</span>
           {selected.pickup ?? data.dashboard.businessProfile?.address ?? "—"}
         </p>
+        <!-- The order record. Business-side only: the rider's screens never
+             carry what the parcel is worth. -->
+        <p class="text-ink-secondary">
+          <span class="font-semibold text-ink">Order:</span>
+          {selected.orderName}
+          <span class="font-mono-data">· {formatCedis(selected.orderPrice)}</span>
+        </p>
 
         <div class="flex items-center gap-2 pt-2">
-          <Button variant="outline" size="sm" onclick={trackSelected}
+          <Button variant="primary" size="sm" onclick={trackSelected}
             >Open tracking</Button
           >
           <div class="flex-1"></div>

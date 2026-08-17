@@ -6,6 +6,7 @@
   import Button from '$lib/components/Button.svelte';
   import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
   import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
+  import { isReleasableByCourier } from '$lib/shared/trip-status';
   import type { LatLng, TripStatus } from '$lib/utils/types';
   import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
@@ -43,10 +44,12 @@
   const POLL_MS = 4000;
 
   let riderPoint = $state<LatLng | null>(null);
+  let riderHeading = $state<number | null>(null);
   let routePath = $state<LatLng[]>([]);
   let etaText = $state('Calculating…');
   let locationUnavailable = $state(false);
   let starting = $state(false);
+  let releasing = $state(false);
   let actionError = $state('');
   let stopReporter: (() => void) | null = null;
   let refreshTimer: ReturnType<typeof setInterval> | undefined;
@@ -78,6 +81,13 @@
     Boolean(riderPoint && isWithinRange(riderPoint, pickupPoint, PICKUP_PROXIMITY_KM))
   );
 
+  /**
+   * Dropping the job is only offered on the way there. `accepted` is the stored
+   * status until the courier's own position writes `courier_arriving`, so this
+   * mirrors the server's window rather than guessing at it.
+   */
+  const canRelease = $derived(isReleasableByCourier(data.trip.status));
+
   async function updateRoute(from: LatLng) {
     if (!maps.routingEnabled) return;
     try {
@@ -86,6 +96,43 @@
       etaText = route.durationText;
     } catch {
       etaText = 'Unavailable';
+    }
+  }
+
+  /**
+   * Let the job go, before reaching the counter.
+   *
+   * Not a cancellation of the delivery: the business still wants it moved, so
+   * the request goes back out to every other rider (see
+   * `POST /api/courier/cancel-trip`). The window closes on arrival — from the
+   * shop's doorstep this is a conversation, not a button — which is why it
+   * follows the same `atPickup` reading the rest of this screen uses, and the
+   * server checks the stored status regardless.
+   */
+  async function releaseTrip() {
+    if (releasing || !canRelease) return;
+
+    releasing = true;
+    actionError = '';
+
+    try {
+      const response = await fetch('/api/courier/cancel-trip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId: data.trip.id })
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        actionError = payload?.message ?? 'Unable to cancel this job.';
+        return;
+      }
+
+      goto('/home');
+    } catch {
+      actionError = 'Unable to cancel this job. Check your connection and try again.';
+    } finally {
+      releasing = false;
     }
   }
 
@@ -124,6 +171,7 @@
       enabled: true,
       onUpdate: (point) => {
         riderPoint = { lat: point.lat, lng: point.lng };
+        riderHeading = point.heading;
         locationUnavailable = point.stale;
 
         // Redraw only when there's no route yet or the courier has left the one
@@ -161,11 +209,18 @@
 </svelte:head>
 
 <div class="relative flex h-full min-h-[inherit] flex-1 flex-col bg-bg">
-  <div class="relative min-h-[45%] flex-1">
+  <!-- Map fades, sheet lifts: the same pairing every courier trip screen uses. -->
+  <div class="fade-in relative min-h-[45%] flex-1">
+    <!-- Deliberately no `hintPath`. The dashed pickup→dropoff line used to be
+         drawn here as well as on tracking, but on this screen the rider's job is
+         to reach the counter: a second line heading somewhere else competes with
+         the route they are actually following, and the leg it describes has not
+         started. The dropoff keeps its marker, so where the parcel goes next is
+         still on the map — just without a line pulling the eye off the route. -->
     <MapBackdrop
       routeLabel
       center={riderPoint ?? KUMASI_CENTER}
-      followId="rider"
+      fitIds={['rider', 'pickup']}
       {locationUnavailable}
       polylinePath={routePath}
       markers={[
@@ -173,8 +228,12 @@
           id: 'pickup',
           lat: pickupPoint.lat,
           lng: pickupPoint.lng,
-          label: 'Pickup',
-          role: 'pickup'
+          // The shop's own name and glyph, not a generic red pin. The rider is
+          // looking for a counter, and `business` is the role that carries the
+          // shopfront icon — the same one the tracking map gives the business
+          // for itself, so both sides point at the same landmark.
+          label: data.trip.businessName,
+          role: 'business'
         },
         ...(dropoffPoint
           ? [
@@ -195,6 +254,7 @@
                 lng: riderPoint.lng,
                 label: 'You',
                 role: 'rider' as const,
+                heading: riderHeading,
                 stale: locationUnavailable
               }
             ]
@@ -203,7 +263,10 @@
     />
   </div>
 
-  <div class="z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg">
+  <div
+    class="rise z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg"
+    style="--rise-delay: 80ms"
+  >
     {#if collected}
       <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1 text-sm font-semibold text-primary">
         <IconCheck class="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -282,5 +345,19 @@
         <Button variant="neutral" size="sm" onclick={() => goto('/home')}>Back home</Button>
       {/if}
     </div>
+
+    {#if canRelease}
+      <!-- Last, and quiet: dropping a job is the rare thing on this screen, and
+           it belongs below the two the rider came here to do. The request goes
+           straight back out to other riders — it is not cancelled. -->
+      <button
+        type="button"
+        class="self-start text-sm font-semibold text-ink-secondary underline-offset-2 transition-colors hover:text-danger hover:underline disabled:opacity-60"
+        disabled={releasing}
+        onclick={releaseTrip}
+      >
+        {releasing ? 'Cancelling…' : "Cancel — I can't take this job"}
+      </button>
+    {/if}
   </div>
 </div>

@@ -132,6 +132,136 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------------------------------------------------------------------------
+   Cross-page transitions
+
+   Driven by `onNavigate` in the root layout, which is what actually starts a
+   view transition; these rules only say what it should look like. They have to
+   live here rather than in a component `<style>` because `::view-transition-*`
+   are pseudo-elements of the document root, which Svelte's scoping can never
+   match.
+
+   The default UA pairing is a plain cross-fade of the whole page. Overriding
+   only `root` keeps that, and adds a small vertical drift so the two pages read
+   as one moving forward rather than two dissolving into each other.
+   --------------------------------------------------------------------------- */
+::view-transition-old(root) {
+  animation: page-exit var(--duration-fast) var(--ease-in) both;
+}
+
+::view-transition-new(root) {
+  animation: page-enter var(--duration-normal) var(--ease-out) both;
+}
+
+/* A shared element: one name, one element per page, and the browser tweens the
+   two rather than fading them. The landing header's logo lands as the auth
+   card's. Only ever put this on a *single* element per page — two at once and
+   the browser skips the whole transition. */
+.vt-brand-logo {
+  view-transition-name: brand-logo;
+}
+
+@keyframes page-exit {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* The navigation itself is already skipped for reduced motion in the layout;
+   this is the belt to that braces, for a transition started anywhere else. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Entrance choreography
+
+   The fade-and-lift the public pages open with, promoted out of the auth page's
+   local `<style>` so the signed-in workspace can speak the same language rather
+   than inventing a second one.
+
+   CSS rather than Svelte's `in:fly`, for the workspace, because these pages are
+   server-rendered and SvelteKit *hydrates* — Svelte only plays intro
+   transitions on nodes it creates, so a hydrated page needs a `mounted` flag
+   and a wasted first frame before anything moves. A CSS animation on the
+   server's own markup just runs. `in:fly` stays the right tool for genuinely
+   dynamic nodes (an offer sheet arriving, a panel opening); this is for the
+   page that was already there.
+
+   Stagger with an inline `--rise-delay`, matching how the auth page does it:
+
+     <section class="rise" style="--rise-delay: 120ms">
+
+   One caveat worth knowing before reaching for this. A CSS animation runs when
+   the element is created, so putting `.rise` on rows inside an `{#each}` that a
+   poll re-keys makes the whole list flicker every few seconds. Animate the
+   container instead, and let the rows arrive inside it.
+   --------------------------------------------------------------------------- */
+/* `backwards`, deliberately not `both`.
+
+   `both` keeps the animation in effect after it finishes, so the animated
+   `transform` never stops applying — and an element with a transform is a
+   stacking context forever. That traps every `absolute; z-index` descendant
+   inside it: a dropdown in an animated container renders under whatever comes
+   after that container, however high its z-index. `backwards` still covers the
+   delay with the from-state, then lets go, and the to-state here is identical
+   to the element's own computed style so nothing moves when it does. */
+.rise {
+  animation: rise 0.55s var(--ease-out) backwards;
+  animation-delay: var(--rise-delay, 0ms);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Same lift, no travel — for anything already positioned by a layout that a
+   transform would fight, such as a map overlay or a sticky bar. */
+/* `backwards` for the same reason as `.rise` — an opacity below 1 creates a
+   stacking context just as a transform does. */
+.fade-in {
+  animation: fade-in 0.45s var(--ease-out) backwards;
+  animation-delay: var(--rise-delay, 0ms);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Not `animation: none` — on some engines that leaves the element parked at
+     the keyframe's from-state, i.e. invisible. Collapsing to a single frame
+     lands it on the to-state immediately. */
+  .rise,
+  .fade-in {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+  }
+}
+
 @keyframes yada-pulse {
   0%,
   100% {
