@@ -872,11 +872,8 @@
   @view-transition {
     navigation: auto;
   }
-  .rise {
-    animation: rise 0.55s var(--ease-out) both;
-    animation-delay: var(--rise-delay, 0ms);
-  }
-
+  /* `.rise` and its keyframes now live in app.css, shared with the workspace
+     pages. The shapes below stay local — they are this page's decoration. */
   .float-shape {
     animation: float 3.2s ease-in-out infinite;
   }
@@ -890,16 +887,6 @@
     animation: travel 4s ease-in-out infinite;
   }
 
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(14px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
   @keyframes float {
     0%,
     100% {
@@ -941,14 +928,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    /* Not `animation: none` — that would leave `.rise` elements at the
-       keyframe's from-state on some engines. Collapsing it to a single frame
-       lands them on the to-state immediately. */
-    .rise {
-      animation-duration: 1ms;
-      animation-delay: 0ms;
-    }
-
     .float-shape,
     .pulse-shape,
     .spin-shape,

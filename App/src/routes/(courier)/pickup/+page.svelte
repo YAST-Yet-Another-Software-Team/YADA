@@ -207,7 +207,8 @@
 </svelte:head>
 
 <div class="relative flex h-full min-h-[inherit] flex-1 flex-col bg-bg">
-  <div class="relative min-h-[45%] flex-1">
+  <!-- Map fades, sheet lifts: the same pairing every courier trip screen uses. -->
+  <div class="fade-in relative min-h-[45%] flex-1">
     <MapBackdrop
       routeLabel
       center={riderPoint ?? KUMASI_CENTER}
@@ -250,7 +251,10 @@
     />
   </div>
 
-  <div class="z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg">
+  <div
+    class="rise z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg"
+    style="--rise-delay: 80ms"
+  >
     {#if collected}
       <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1 text-sm font-semibold text-primary">
         <IconCheck class="h-4 w-4 shrink-0" aria-hidden="true" />

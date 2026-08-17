@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
+	import { cubicOut } from 'svelte/easing';
+	import { fade, fly } from 'svelte/transition';
+	import { motion } from '$lib/client/motion';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Card from '$lib/components/Card.svelte';
@@ -130,7 +133,8 @@
 	{#if data.activeTrip}
 		<!-- Shown even when offline: going offline stops new offers, it doesn't
 		     hand back a parcel the courier is already carrying. -->
-		<Card>
+		<div class="rise">
+			<Card>
 			<div class="flex flex-col gap-3">
 				<div class="flex items-start justify-between gap-3">
 					<div class="min-w-0 space-y-1">
@@ -155,11 +159,12 @@
 					Open active trip
 				</Button>
 			</div>
-		</Card>
+			</Card>
+		</div>
 	{/if}
 
 	{#if online.online}
-		<div class="flex flex-1 flex-col gap-3">
+		<div class="rise flex flex-1 flex-col gap-3" style="--rise-delay: 80ms">
 			<p class="text-eyebrow text-ink-tertiary">Incoming requests</p>
 
 			{#if liveOffers.length === 0}
@@ -180,6 +185,12 @@
 					{@const left = secondsLeft(offer)}
 					{@const pickupAway = distanceLabel(offer.distanceToPickupKm)}
 					{@const tripAway = distanceLabel(offer.tripDistanceKm)}
+					<!-- Keyed by id, so this plays for an offer the ring has just reached
+					     and not for the ones already listed when the poll returns. -->
+					<div
+						in:fly={motion({ y: 12, duration: 260, easing: cubicOut })}
+						out:fade={motion({ duration: 150 })}
+					>
 					<Card>
 						<div class="flex flex-col gap-3">
 							<div class="flex items-start justify-between gap-3">
@@ -237,11 +248,12 @@
 							</div>
 						</div>
 					</Card>
+					</div>
 				{/each}
 			{/if}
 		</div>
 	{:else if !data.activeTrip}
-		<div class="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
+		<div class="rise flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
 			<p class="font-semibold text-ink">No active orders</p>
 			<p class="text-sm text-ink-secondary">Go online from Home to start receiving requests.</p>
 		</div>

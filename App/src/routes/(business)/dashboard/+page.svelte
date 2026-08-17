@@ -1,5 +1,8 @@
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
+  import { cubicOut } from "svelte/easing";
+  import { fade, fly } from "svelte/transition";
+  import { motion } from "$lib/client/motion";
   import DashboardBoard from "$lib/components/DashboardBoard.svelte";
   import DashboardTable from "$lib/components/DashboardTable.svelte";
   import MapBackdrop from "$lib/components/MapBackdrop.svelte";
@@ -145,7 +148,7 @@
 
 <div class="relative flex flex-1 flex-col gap-5 lg:gap-6">
   <div class="grid grid-cols-2 gap-3 px-4 pt-4 lg:grid-cols-3 lg:p-0">
-    <div class="rounded-lg border border-border bg-surface p-4 shadow-xs">
+    <div class="rise rounded-lg border border-border bg-surface p-4 shadow-xs">
       <p class="text-eyebrow text-ink-tertiary">
         <span class="lg:hidden">Active</span>
         <span class="hidden lg:inline">Active deliveries</span>
@@ -155,14 +158,18 @@
       </p>
     </div>
     <div
-      class="hidden rounded-lg border border-border bg-surface p-4 shadow-xs lg:block"
+      class="rise hidden rounded-lg border border-border bg-surface p-4 shadow-xs lg:block"
+      style="--rise-delay: 60ms"
     >
       <p class="text-eyebrow text-ink-tertiary">Avg. pickup time</p>
       <p class="font-mono-data mt-2 text-2xl font-bold text-ink">
         {data.dashboard.activeTrips.length > 0 ? "Live" : "—"}
       </p>
     </div>
-    <div class="rounded-lg border border-border bg-surface p-4 shadow-xs">
+    <div
+      class="rise rounded-lg border border-border bg-surface p-4 shadow-xs"
+      style="--rise-delay: 120ms"
+    >
       <p class="text-eyebrow text-ink-tertiary">
         <span class="lg:hidden">Today</span>
         <span class="hidden lg:inline">Delivered today</span>
@@ -174,7 +181,10 @@
     </div>
   </div>
 
-  <section class="flex flex-1 flex-col gap-3 px-4 lg:hidden">
+  <!-- The list animates as a block, not row by row: `invalidateAll` after a
+       cancel re-keys the each, and per-row entrances would replay the whole
+       list every time one trip changed. -->
+  <section class="rise flex flex-1 flex-col gap-3 px-4 lg:hidden" style="--rise-delay: 180ms">
     <h2 class="text-base font-semibold text-ink">Active requests</h2>
 
     {#if data.dashboard.activeTrips.length === 0}
@@ -229,7 +239,7 @@
     {/if}
   </section>
 
-  <section class="hidden flex-col gap-4 lg:flex">
+  <section class="rise hidden flex-col gap-4 lg:flex" style="--rise-delay: 180ms">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h2 class="text-base font-semibold text-ink">Active requests</h2>
 
@@ -285,8 +295,11 @@
   <!-- Sticky rather than fixed: it sits in the column, so it can't overlap the
        last card and the list doesn't need a phantom pad at the bottom to clear
        it. The safe-area inset keeps it above a home indicator. -->
+  <!-- `fade-in`, not `rise`: a transform on a sticky element makes it the
+       containing block for its own offsets and the stickiness stops working. -->
   <div
-    class="sticky bottom-0 z-10 border-t border-border bg-surface px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 shadow-nav lg:hidden"
+    class="fade-in sticky bottom-0 z-10 border-t border-border bg-surface px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 shadow-nav lg:hidden"
+    style="--rise-delay: 240ms"
   >
     <Button variant="primary" size="lg" fullWidth onclick={newRequest}>
       <IconPlus class="h-5 w-5" aria-hidden="true" />
@@ -296,11 +309,15 @@
 </div>
 
 {#if selected}
-  <!-- Overlay map panel (stays on dashboard) -->
+  <!-- Overlay map panel (stays on dashboard).
+       Svelte transitions rather than the CSS classes here: this subtree really
+       is created on open, which is the case `in:` was built for, and the panel
+       needs an *out* as well so closing it doesn't just blink away. -->
   <div
     class="fixed inset-0 z-40 flex justify-end bg-overlay"
     role="dialog"
     aria-modal="true"
+    transition:fade={motion({ duration: 180 })}
   >
     <button
       type="button"
@@ -310,6 +327,7 @@
     ></button>
     <aside
       class="relative z-10 flex h-full w-full max-w-lg flex-col border-l border-border bg-surface shadow-lg"
+      transition:fly={motion({ x: 32, duration: 260, easing: cubicOut })}
     >
       <div
         class="flex items-start justify-between gap-3 border-b border-border px-5 py-4"

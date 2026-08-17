@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onDestroy, onMount, untrack } from 'svelte';
+	import { cubicOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
+	import { motion } from '$lib/client/motion';
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import IconButton from '$lib/components/IconButton.svelte';
@@ -236,7 +238,8 @@
 </svelte:head>
 
 <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
-	<div class="absolute inset-0">
+	<!-- The map fades; a transform here would drag the whole backdrop. -->
+	<div class="fade-in absolute inset-0">
 		<!-- `routeLabel` is gone with the line: it drew a dashed segment across the
 		     placeholder map, which implied a route this screen never had. -->
 		<MapBackdrop
@@ -287,7 +290,7 @@
 		     the map rather than inside the sheet so the answer to "am I online?"
 		     and the control that changes it are the same glance apart, whatever
 		     the sheet below is currently showing. -->
-		<div class="px-5 pb-2">
+		<div class="rise px-5 pb-2" style="--rise-delay: 120ms">
 			<p
 				class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold shadow-sm backdrop-blur-sm {online.online
 					? 'bg-success-subtle text-success'
@@ -306,7 +309,8 @@
 		<!-- One sheet, three jobs: the offer, the trip in hand, or the shift switch.
 		     Same 28px lip as every other courier sheet. -->
 		<div
-			class="flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] shadow-lg"
+			class="rise flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] shadow-lg"
+			style="--rise-delay: 60ms"
 		>
 		{#if actionError}
 			<Alert>{actionError}</Alert>
@@ -322,7 +326,7 @@
 			<!-- Variant B from the wireframe: the map stays live underneath and the
 			     offer arrives as a sheet, so accepting doesn't mean losing sight of
 			     where the job is. -->
-			<div in:fly={{ y: 120, duration: 220 }}>
+			<div in:fly={motion({ y: 120, duration: 220, easing: cubicOut })}>
 				<div class="flex items-center justify-between gap-3">
 					<p class="text-lg font-bold text-ink">New request</p>
 					<span

@@ -76,7 +76,7 @@
 	<div class="flex flex-1 flex-col gap-5 px-4 pb-6 pt-4">
 		<!-- Who you are, first: name, shift state, and the way in to change either
 		     the details or the password. -->
-		<section class="rounded-lg bg-surface p-4 shadow-sm">
+		<section class="rise rounded-lg bg-surface p-4 shadow-sm">
 			<div class="flex items-center gap-3">
 				<Avatar
 					initials={avatarInitials}
@@ -103,7 +103,7 @@
 			</div>
 		</section>
 
-		<section>
+		<section class="rise" style="--rise-delay: 70ms">
 			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">Account</h2>
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 				<a href="/settings/profile" class="settings-row">
@@ -146,7 +146,7 @@
 			</div>
 		</section>
 
-		<section>
+		<section class="rise" style="--rise-delay: 130ms">
 			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">
 				General
 			</h2>
@@ -183,7 +183,7 @@
 			</div>
 		</section>
 
-		<section>
+		<section class="rise" style="--rise-delay: 190ms">
 			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">
 				Privacy
 			</h2>
@@ -209,7 +209,7 @@
 			</div>
 		</section>
 
-		<section>
+		<section class="rise" style="--rise-delay: 250ms">
 			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">
 				About
 			</h2>

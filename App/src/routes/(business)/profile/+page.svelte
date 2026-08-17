@@ -267,7 +267,7 @@
      those across 1280px is worse than reading them across 640. Every panel
      below shares this width so the tabs don't resize the page as they switch. -->
 <div class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-6 lg:py-8">
-	<header class="flex flex-col items-center gap-3 text-center">
+	<header class="rise flex flex-col items-center gap-3 text-center">
 		<Avatar initials={avatarInitials} src={user?.image ?? null} alt="" size={72} />
 		<div class="min-w-0 max-w-full">
 			<h1 class="truncate text-xl font-bold tracking-tight text-ink lg:text-2xl">
@@ -279,7 +279,11 @@
 		</div>
 	</header>
 
-	<Tabs {tabs} bind:active={activeTab} />
+	<!-- Wrapped only to carry the entrance: the tab panels below already fly in
+	     on switch, and the strip itself should arrive before they do. -->
+	<div class="rise" style="--rise-delay: 80ms">
+		<Tabs {tabs} bind:active={activeTab} />
+	</div>
 
 	{#if activeTab === 'profile'}
 		<div

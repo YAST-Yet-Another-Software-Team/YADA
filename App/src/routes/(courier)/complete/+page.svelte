@@ -110,19 +110,24 @@
 <div
   class="flex h-full min-h-[inherit] flex-1 flex-col items-center bg-bg px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-10 text-center"
 >
+  <!-- A moment worth staggering: this screen is the reward for finishing a
+       job, and everything on it arrives in the order the rider reads it. -->
   <div
-    class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success-subtle text-success"
+    class="rise mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success-subtle text-success"
   >
     <IconCheck class="h-8 w-8" aria-hidden="true" />
   </div>
 
-  <h1 class="text-2xl font-bold text-ink">Delivered!</h1>
+  <h1 class="rise text-2xl font-bold text-ink" style="--rise-delay: 70ms">Delivered!</h1>
   <!-- What was delivered and where, rather than a line about the backend: the
        rider is checking they finished the right job. -->
-  <p class="mt-1 text-sm text-ink-secondary">{data.trip.dropoffAddress}</p>
+  <p class="rise mt-1 text-sm text-ink-secondary" style="--rise-delay: 110ms">
+    {data.trip.dropoffAddress}
+  </p>
 
   <dl
-    class="mt-6 w-full space-y-2.5 rounded-lg border border-border bg-surface p-4 text-left text-sm shadow-xs"
+    class="rise mt-6 w-full space-y-2.5 rounded-lg border border-border bg-surface p-4 text-left text-sm shadow-xs"
+    style="--rise-delay: 170ms"
   >
     <div class="flex items-center justify-between gap-3">
       <dt class="text-ink-secondary">Distance</dt>
@@ -151,7 +156,10 @@
        completion screen. Below the receipt because the receipt is what the
        rider came here to check; above the buttons because tapping either of
        those leaves, and the stars would be missed entirely under them. -->
-  <div class="mt-4 w-full rounded-lg border border-border bg-surface p-4 text-left shadow-xs">
+  <div
+    class="rise mt-4 w-full rounded-lg border border-border bg-surface p-4 text-left shadow-xs"
+    style="--rise-delay: 240ms"
+  >
     {#if myRating != null}
       <div class="flex items-center justify-between gap-3">
         <p class="text-sm font-semibold text-ink">Your rating</p>
@@ -185,7 +193,7 @@
     {/if}
   </div>
 
-  <div class="mt-auto w-full space-y-2 pt-8">
+  <div class="rise mt-auto w-full space-y-2 pt-8" style="--rise-delay: 310ms">
     <Button variant="primary" size="lg" fullWidth onclick={backOnline}>Back online</Button>
     <Button variant="neutral" size="sm" fullWidth onclick={() => goto('/trips')}>
       See your trips

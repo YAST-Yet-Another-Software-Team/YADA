@@ -601,7 +601,7 @@
 		     the operator is watching several jobs at once and this one closing is
 		     an update rather than the whole screen. -->
 		<section
-			class="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-10 lg:hidden"
+			class="rise flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-10 lg:hidden"
 		>
 			<div class="mx-auto flex w-full max-w-sm flex-1 flex-col items-center text-center">
 				<span
@@ -695,7 +695,8 @@
 	     courier screens use. On desktop it's a column beside the map, so it
 	     scrolls itself rather than growing the page. -->
 	<aside
-		class="z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg lg:w-[320px] lg:shrink-0 lg:overflow-y-auto lg:rounded-none lg:border-t-0 lg:p-6 lg:shadow-none {delivered
+		style="--rise-delay: 90ms"
+		class="rise z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg lg:w-[320px] lg:shrink-0 lg:overflow-y-auto lg:rounded-none lg:border-t-0 lg:p-6 lg:shadow-none {delivered
 			? 'hidden lg:flex'
 			: ''}"
 	>
