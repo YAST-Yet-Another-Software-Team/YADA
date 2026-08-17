@@ -43,6 +43,27 @@ export async function getBusinessAddress(userId: string): Promise<BusinessAddres
 }
 
 /**
+ * What riders make of this business, from the cache `rateForTrip` maintains.
+ *
+ * Mirrors `getCourierRating`, including the null-when-unrated rule: the column
+ * defaults to `0.00`, and a business nobody has rated must not be shown as a
+ * zero-star business. Its own score is the only reason the rider→business
+ * direction is worth collecting — a rating nobody can see changes nothing.
+ */
+export async function getBusinessRating(userId: string) {
+  const [row] = await db
+    .select({ rating: businessProfiles.rating, ratingCount: businessProfiles.ratingCount })
+    .from(businessProfiles)
+    .where(eq(businessProfiles.userId, userId))
+    .limit(1);
+
+  return {
+    average: row && row.ratingCount > 0 ? Number(row.rating) : null,
+    count: row?.ratingCount ?? 0
+  };
+}
+
+/**
  * The courier on a trip, as the business is shown them.
  *
  * One lookup behind every business-facing mention of a rider, so the tracking

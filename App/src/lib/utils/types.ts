@@ -147,6 +147,15 @@ export type CourierRequest = {
   dropoffLng: number | null;
   notes: string | null;
   requestedAt: string;
+  /**
+   * What other riders made of delivering for this business (SRS 3.4). `average`
+   * is null until someone has rated them, so a new business reads as unrated
+   * rather than as zero-starred — the two are opposite claims.
+   *
+   * Carried on the request rather than fetched per screen so the score is
+   * present on the offer itself, which is where a rider decides.
+   */
+  businessRating: { average: number | null; count: number };
 };
 
 /**
@@ -203,6 +212,12 @@ export type CourierTrip = CourierRequest & {
   completedAt: string | null;
   estimatedDistanceKm: number | null;
   estimatedDurationMinutes: number | null;
+  /**
+   * The stars *this rider* gave the business for this trip, or null if they
+   * haven't rated it. Their own verdict only — never the business's verdict on
+   * them, which is aggregated into their profile score and not shown per trip.
+   */
+  myRating: number | null;
 };
 
 /**

@@ -26,7 +26,7 @@
     // domain: this deployment is on a workers.dev subdomain with no DNS of its
     // own, which is the whole reason the provider is Brevo. See
     // $lib/server/email/brevo.
-    "EMAIL_FROM": "fnbsobbin@st.knust.edu.gh",
+    "EMAIL_FROM": "flaviosobbin04@gmail.com",
     "EMAIL_FROM_NAME": "YADA"
   }
 }

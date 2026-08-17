@@ -6,6 +6,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import IconButton from '$lib/components/IconButton.svelte';
 	import MapBackdrop from '$lib/components/MapBackdrop.svelte';
+	import RatingBadge from '$lib/components/RatingBadge.svelte';
 	import { startDeviceLocationWatcher } from '$lib/shared/geo/device-location';
 	import { startCourierLocationReporter } from '../location-reporter';
 	import { getCourierOnline } from '../courier-online.svelte';
@@ -347,7 +348,16 @@
 							<p class="text-eyebrow text-ink-tertiary">
 								{pickupAway ? `Pickup · ${pickupAway} away` : 'Pickup'}
 							</p>
-							<p class="truncate font-semibold text-ink">{liveOffer.businessName}</p>
+							<!-- The sender's score sits with their name, not in a detail row:
+							     the offer is answered in seconds, and anything below the fold
+							     of a glance may as well not be here. -->
+							<div class="flex items-center justify-between gap-2">
+								<p class="truncate font-semibold text-ink">{liveOffer.businessName}</p>
+								<RatingBadge
+									average={liveOffer.businessRating.average}
+									count={liveOffer.businessRating.count}
+								/>
+							</div>
 							<p class="truncate text-sm text-ink-secondary">{liveOffer.pickupAddress}</p>
 						</div>
 						<div>

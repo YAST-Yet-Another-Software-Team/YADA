@@ -1,6 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import Alert from '$lib/components/Alert.svelte';
   import Button from '$lib/components/Button.svelte';
+  import RatingStars from '$lib/components/RatingStars.svelte';
   import { formatRideTimeBetween } from '$lib/shared/ride-time';
   import IconCheck from '~icons/mdi/check-bold';
 
@@ -16,6 +18,7 @@
         acceptedAt: string | null;
         completedAt: string | null;
         estimatedDistanceKm: number | null;
+        myRating: number | null;
       };
     };
   } = $props();
@@ -43,6 +46,57 @@
         })
       : null
   );
+
+  /**
+   * The rider's verdict on the business (SRS 3.4), offered here because this is
+   * the moment they have an opinion — they have just left the place. The trips
+   * list carries the same form for anyone who tapped past this screen.
+   *
+   * The server's answer is the source of truth, so a reload after rating shows
+   * the stars read-only instead of a form the API would reject as a duplicate.
+   * `submitted` only covers the gap before that reload, and is keyed by trip so
+   * that arriving here for a *different* delivery — this screen takes a
+   * `?tripId=` — doesn't inherit the stars given to the last one.
+   */
+  let submitted = $state<{ tripId: string; stars: number } | null>(null);
+  const myRating = $derived(
+    submitted?.tripId === data.trip.id ? submitted.stars : data.trip.myRating
+  );
+  let ratingValue = $state(0);
+  let ratingComment = $state('');
+  let ratingBusy = $state(false);
+  let ratingError = $state('');
+
+  async function submitRating() {
+    if (ratingValue === 0 || ratingBusy) return;
+
+    ratingBusy = true;
+    ratingError = '';
+
+    try {
+      const response = await fetch('/api/trips/rate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tripId: data.trip.id,
+          stars: ratingValue,
+          comment: ratingComment.trim() || undefined
+        })
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        ratingError = payload?.message ?? 'Could not save your rating.';
+        return;
+      }
+
+      submitted = { tripId: data.trip.id, stars: ratingValue };
+    } catch {
+      ratingError = 'Could not save your rating. Check your connection.';
+    } finally {
+      ratingBusy = false;
+    }
+  }
 
   function backOnline() {
     goto('/home');
@@ -92,6 +146,44 @@
       </dd>
     </div>
   </dl>
+
+  <!-- Rating the business, mirroring what the business gets on its own
+       completion screen. Below the receipt because the receipt is what the
+       rider came here to check; above the buttons because tapping either of
+       those leaves, and the stars would be missed entirely under them. -->
+  <div class="mt-4 w-full rounded-lg border border-border bg-surface p-4 text-left shadow-xs">
+    {#if myRating != null}
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-sm font-semibold text-ink">Your rating</p>
+        <RatingStars value={myRating} readonly size={20} />
+      </div>
+    {:else}
+      <div class="flex flex-col gap-3">
+        <p class="text-sm font-semibold text-ink">
+          How was {data.trip.businessName}?
+        </p>
+        <RatingStars bind:value={ratingValue} />
+        <textarea
+          bind:value={ratingComment}
+          rows={2}
+          maxlength={500}
+          placeholder="Anything worth noting? (optional)"
+          class="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-disabled focus:border-primary"
+        ></textarea>
+        {#if ratingError}
+          <Alert>{ratingError}</Alert>
+        {/if}
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={ratingValue === 0 || ratingBusy}
+          onclick={submitRating}
+        >
+          {ratingBusy ? 'Saving…' : 'Rate business'}
+        </Button>
+      </div>
+    {/if}
+  </div>
 
   <div class="mt-auto w-full space-y-2 pt-8">
     <Button variant="primary" size="lg" fullWidth onclick={backOnline}>Back online</Button>

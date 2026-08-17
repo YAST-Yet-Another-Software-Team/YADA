@@ -4,6 +4,7 @@
 	import Alert from '$lib/components/Alert.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Card from '$lib/components/Card.svelte';
+	import RatingBadge from '$lib/components/RatingBadge.svelte';
 	import IconButton from '$lib/components/IconButton.svelte';
 	import StatusPill from '$lib/components/StatusPill.svelte';
 	import { courierTripHref, toTripStage } from '$lib/shared/trip-status';
@@ -184,7 +185,13 @@
 							<div class="flex items-start justify-between gap-3">
 								<div class="min-w-0 space-y-1">
 									<p class="font-mono-data text-xs text-ink-tertiary">{shortId(offer.id)}</p>
-									<p class="truncate font-semibold text-ink">{offer.businessName}</p>
+									<div class="flex items-center gap-2">
+										<p class="truncate font-semibold text-ink">{offer.businessName}</p>
+										<RatingBadge
+											average={offer.businessRating.average}
+											count={offer.businessRating.count}
+										/>
+									</div>
 									<p class="flex items-center gap-1 text-sm text-ink-secondary">
 										<span class="min-w-0 truncate">{offer.pickupAddress}</span>
 										<IconArrowRight
