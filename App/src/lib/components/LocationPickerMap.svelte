@@ -108,7 +108,7 @@
     lat: number;
     lng: number;
     label?: string;
-    role?: 'pickup' | 'dropoff' | 'rider' | 'business' | 'search';
+    role?: 'dropoff' | 'rider' | 'business' | 'search';
   };
 
   let {
@@ -129,7 +129,7 @@
     error?: string;
     resolving?: boolean;
     markerLabel?: string;
-    markerRole?: 'pickup' | 'dropoff' | 'business';
+    markerRole?: 'dropoff' | 'business';
     extraMarkers?: PickerMarker[];
     initialCenter?: LatLng | null;
     searchPlaceholder?: string;

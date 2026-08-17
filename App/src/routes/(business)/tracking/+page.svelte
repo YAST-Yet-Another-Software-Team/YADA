@@ -11,6 +11,7 @@
 	import StatusPill from '$lib/components/StatusPill.svelte';
 	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
 	import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
+	import { createHeadingTracker } from '$lib/shared/geo/heading';
 	import type { LatLng } from '$lib/utils/types';
 	import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
@@ -31,6 +32,8 @@
 	import { DISPATCH_TIMEOUT_SECONDS, ringForElapsed, ringLabel } from '$lib/shared/dispatch';
 	import { isCancellableByBusiness, isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
 	import { formatCedis } from '$lib/shared/text';
+	import { formatPhone } from '$lib/shared/phone';
+	import { formatPlate } from '$lib/shared/plate';
 	import type { CourierSummary, RiderLocationEvent, TripStatus } from '$lib/utils/types';
 
 	type ActiveTrip = {
@@ -76,6 +79,17 @@
 	let actionError = $state('');
 	let riderPoint = $state<LatLng | null>(null);
 	let riderStale = $state(false);
+	let riderHeading = $state<number | null>(null);
+
+	/**
+	 * Which way the rider is pointing.
+	 *
+	 * The fix carries the courier's own heading when their phone had one, and the
+	 * tracker falls back to the bearing between the last two fixes when it did
+	 * not — which is every fix from a rider whose device reports no heading, and
+	 * every fix on the polled path, where only a position is stored.
+	 */
+	const heading = createHeadingTracker();
 	let etaText = $state('—');
 	let routePath = $state<LatLng[]>([]);
 	let cancelling = $state(false);
@@ -248,6 +262,9 @@
 					});
 				} else if (!riderPoint) {
 					riderPoint = { lat: fix.lat, lng: fix.lng };
+					// Through the tracker, so the first live fix has something to take
+					// a bearing from rather than starting a step behind.
+					riderHeading = heading.next(riderPoint);
 					riderStale = Date.now() - new Date(fix.recordedAt).getTime() > LOCATION_STALE_MS;
 				}
 			}
@@ -267,6 +284,7 @@
 		if (trip && payload.tripId && payload.tripId !== trip.id) return;
 
 		riderPoint = { lat: payload.lat, lng: payload.lng };
+		riderHeading = heading.next(riderPoint, payload.heading);
 		riderStale = Date.now() - new Date(payload.recordedAt).getTime() > LOCATION_STALE_MS;
 
 		const target = legTarget();
@@ -503,28 +521,11 @@
 									lng: riderPoint.lng,
 									label: trip.courier?.name ?? 'Rider',
 									role: 'rider' as const,
+									heading: riderHeading,
 									stale: riderStale
 								}
 							]
 						: [])
-				]
-			: []
-	);
-
-	/**
-	 * Where the parcel goes after it leaves the counter, as a straight dashed
-	 * line rather than a route.
-	 *
-	 * Shown only while the rider is still on their way in: it is context for the
-	 * leg being watched — "and then it goes there" — not a journey anyone is on.
-	 * Costs no Routes call, which is the other reason it is a straight line and
-	 * not roads.
-	 */
-	const hintPath = $derived(
-		awaitingPickup && trip
-			? [
-					{ lat: trip.pickupLat, lng: trip.pickupLng },
-					{ lat: trip.dropoffLat, lng: trip.dropoffLng }
 				]
 			: []
 	);
@@ -601,7 +602,7 @@
 		     the operator is watching several jobs at once and this one closing is
 		     an update rather than the whole screen. -->
 		<section
-			class="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-10 lg:hidden"
+			class="rise flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-10 lg:hidden"
 		>
 			<div class="mx-auto flex w-full max-w-sm flex-1 flex-col items-center text-center">
 				<span
@@ -661,13 +662,15 @@
 		<!-- Focus follows the job. While the request is open the destination is the
 		     only thing to look at; the moment a rider takes it the map frames the
 		     rider *and* this counter together, because what the sender is watching
-		     is the gap between the two closing. The solid line under the rider is
-		     their run here; the dashed one is where the parcel goes afterwards. -->
+		     is the gap between the two closing. The only line drawn is the rider's
+		     run to the counter — the dashed pickup→dropoff hint that used to sit
+		     under it is gone: it competed with the leg actually being watched, and
+		     it described a journey nobody has started. The dropoff keeps its
+		     marker, so where the parcel goes next is still on the map. -->
 		<MapBackdrop
 			center={riderPoint ?? (trip ? { lat: trip.dropoffLat, lng: trip.dropoffLng } : KUMASI_CENTER)}
 			{markers}
 			polylinePath={routePath}
-			{hintPath}
 			fitIds={searching ? [] : ['rider', 'pickup']}
 			locationUnavailable={!searching && riderStale}
 		>
@@ -695,7 +698,8 @@
 	     courier screens use. On desktop it's a column beside the map, so it
 	     scrolls itself rather than growing the page. -->
 	<aside
-		class="z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg lg:w-[320px] lg:shrink-0 lg:overflow-y-auto lg:rounded-none lg:border-t-0 lg:p-6 lg:shadow-none {delivered
+		style="--rise-delay: 90ms"
+		class="rise z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg lg:w-[320px] lg:shrink-0 lg:overflow-y-auto lg:rounded-none lg:border-t-0 lg:p-6 lg:shadow-none {delivered
 			? 'hidden lg:flex'
 			: ''}"
 	>
@@ -782,7 +786,7 @@
 						     motorbike, so "Motorbike" told the counter nothing they could
 						     check. The plate is what pulls up outside. -->
 						<span class={trip.courier.plateNumber ? 'font-mono-data' : ''}>
-							{trip.courier.plateNumber ?? trip.courier.vehicleType ?? 'Rider'}
+							{formatPlate(trip.courier.plateNumber) || trip.courier.vehicleType || 'Rider'}
 						</span>
 						{#if trip.courier.rating}
 							<span aria-hidden="true">·</span>
@@ -844,7 +848,9 @@
 				>
 					<IconPhone class="h-[18px] w-[18px]" aria-hidden="true" />
 				</a>
-				<p class="font-mono-data text-sm text-ink-secondary">{trip.courier.phone}</p>
+				<!-- Grouped for reading and reading back; the button beside it dials
+				     the stored E.164 number, which is what a dialler wants. -->
+				<p class="font-mono-data text-sm text-ink-secondary">{formatPhone(trip.courier.phone)}</p>
 			</div>
 		{/if}
 

@@ -4,6 +4,8 @@
 	import Button from '$lib/components/Button.svelte';
 	import { getSession } from '$auth/session.svelte';
 	import { initials } from '$lib/shared/text';
+	import { formatPhone } from '$lib/shared/phone';
+	import { formatPlate } from '$lib/shared/plate';
 	import IconAccount from '~icons/mdi/account-outline';
 	import IconPhone from '~icons/mdi/phone-outline';
 	import IconMail from '~icons/mdi/email-outline';
@@ -32,13 +34,13 @@
 	const avatarInitials = $derived(initials(user?.name, 'C'));
 	const profileName = $derived(user?.name || 'Courier');
 	const profileEmail = $derived(user?.email || 'No email on file');
-	const profilePhone = $derived(user?.phone || 'No phone on file');
+	const profilePhone = $derived(formatPhone(user?.phone) || 'No phone on file');
 	/**
 	 * The bike, as anyone else identifies it. The vehicle *type* is the same for
 	 * every courier on YADA, so the plate is the only part of it worth a row —
 	 * and the only part a business can check when a rider pulls up.
 	 */
-	const plate = $derived(data.courierProfile.plateNumber);
+	const plate = $derived(formatPlate(data.courierProfile.plateNumber));
 
 	const THEME_KEY = 'yada.courierTheme';
 	const LANG_KEY = 'yada.courierLanguage';
@@ -76,7 +78,7 @@
 	<div class="flex flex-1 flex-col gap-5 px-4 pb-6 pt-4">
 		<!-- Who you are, first: name, shift state, and the way in to change either
 		     the details or the password. -->
-		<section class="rounded-lg bg-surface p-4 shadow-sm">
+		<section class="rise rounded-lg bg-surface p-4 shadow-sm">
 			<div class="flex items-center gap-3">
 				<Avatar
 					initials={avatarInitials}
@@ -103,7 +105,7 @@
 			</div>
 		</section>
 
-		<section>
+		<section class="rise" style="--rise-delay: 70ms">
 			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">Account</h2>
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
 				<a href="/settings/profile" class="settings-row">
@@ -137,7 +139,7 @@
 					</span>
 					<span class="settings-label">Number plate</span>
 					<span class="settings-value {plate ? 'font-mono-data' : ''}">
-						{plate ?? 'Not set'}
+						{plate || 'Not set'}
 					</span>
 					<span class="settings-chevron" aria-hidden="true">
 						<IconChevronRight class="h-5 w-5" />
@@ -146,7 +148,7 @@
 			</div>
 		</section>
 
-		<section>
+		<section class="rise" style="--rise-delay: 130ms">
 			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">
 				General
 			</h2>
@@ -183,7 +185,7 @@
 			</div>
 		</section>
 
-		<section>
+		<section class="rise" style="--rise-delay: 190ms">
 			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">
 				Privacy
 			</h2>
@@ -209,7 +211,7 @@
 			</div>
 		</section>
 
-		<section>
+		<section class="rise" style="--rise-delay: 250ms">
 			<h2 class="mb-2 px-1 text-eyebrow font-bold text-ink-tertiary">
 				About
 			</h2>

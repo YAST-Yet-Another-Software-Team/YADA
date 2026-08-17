@@ -44,6 +44,7 @@
   const POLL_MS = 4000;
 
   let riderPoint = $state<LatLng | null>(null);
+  let riderHeading = $state<number | null>(null);
   let routePath = $state<LatLng[]>([]);
   let etaText = $state('Calculating…');
   let locationUnavailable = $state(false);
@@ -170,6 +171,7 @@
       enabled: true,
       onUpdate: (point) => {
         riderPoint = { lat: point.lat, lng: point.lng };
+        riderHeading = point.heading;
         locationUnavailable = point.stale;
 
         // Redraw only when there's no route yet or the courier has left the one
@@ -207,21 +209,31 @@
 </svelte:head>
 
 <div class="relative flex h-full min-h-[inherit] flex-1 flex-col bg-bg">
-  <div class="relative min-h-[45%] flex-1">
+  <!-- Map fades, sheet lifts: the same pairing every courier trip screen uses. -->
+  <div class="fade-in relative min-h-[45%] flex-1">
+    <!-- Deliberately no `hintPath`. The dashed pickup→dropoff line used to be
+         drawn here as well as on tracking, but on this screen the rider's job is
+         to reach the counter: a second line heading somewhere else competes with
+         the route they are actually following, and the leg it describes has not
+         started. The dropoff keeps its marker, so where the parcel goes next is
+         still on the map — just without a line pulling the eye off the route. -->
     <MapBackdrop
       routeLabel
       center={riderPoint ?? KUMASI_CENTER}
       fitIds={['rider', 'pickup']}
       {locationUnavailable}
       polylinePath={routePath}
-      hintPath={dropoffPoint ? [pickupPoint, dropoffPoint] : []}
       markers={[
         {
           id: 'pickup',
           lat: pickupPoint.lat,
           lng: pickupPoint.lng,
-          label: 'Pickup',
-          role: 'pickup'
+          // The shop's own name and glyph, not a generic red pin. The rider is
+          // looking for a counter, and `business` is the role that carries the
+          // shopfront icon — the same one the tracking map gives the business
+          // for itself, so both sides point at the same landmark.
+          label: data.trip.businessName,
+          role: 'business'
         },
         ...(dropoffPoint
           ? [
@@ -242,6 +254,7 @@
                 lng: riderPoint.lng,
                 label: 'You',
                 role: 'rider' as const,
+                heading: riderHeading,
                 stale: locationUnavailable
               }
             ]
@@ -250,7 +263,10 @@
     />
   </div>
 
-  <div class="z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg">
+  <div
+    class="rise z-10 flex flex-col gap-4 rounded-t-[28px] border-t border-border bg-surface p-5 shadow-lg"
+    style="--rise-delay: 80ms"
+  >
     {#if collected}
       <span class="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary-subtle px-3 py-1 text-sm font-semibold text-primary">
         <IconCheck class="h-4 w-4 shrink-0" aria-hidden="true" />

@@ -15,6 +15,7 @@
 	import { messageOf } from '$auth/errors';
 	import { ProfilePhotoError, readProfilePhoto } from '$lib/client/images/profile-photo';
 	import { initials } from '$lib/shared/text';
+	import { maskPhone, normalisePhone } from '$lib/shared/phone';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 	import IconCamera from '~icons/mdi/camera-outline';
 	import IconMapMarker from '~icons/mdi/map-marker-outline';
@@ -69,14 +70,17 @@
 	// svelte-ignore state_referenced_locally
 	let name = $state(session.user?.name ?? '');
 	// svelte-ignore state_referenced_locally
-	let phone = $state(session.user?.phone ?? '');
+	let phone = $state(maskPhone(session.user?.phone ?? ''));
 	const email = $derived(user?.email ?? '');
 
 	let profileError = $state('');
 	let profileSaved = $state(false);
 
 	const nameChanged = $derived(name.trim() !== (user?.name ?? ''));
-	const phoneChanged = $derived(phone.trim() !== (user?.phone ?? ''));
+	// Compared as it is stored, not as it is shown: the field now reads
+	// `+233 24 123 4567` and the account holds `+233241234567`, so a literal
+	// comparison would call an untouched number changed and never disarm Save.
+	const phoneChanged = $derived(normalisePhone(phone) !== (user?.phone ?? ''));
 	const canSaveProfile = $derived(name.trim().length >= 2 && (nameChanged || phoneChanged));
 
 	async function saveProfile() {
@@ -91,7 +95,10 @@
 		const renaming = nameChanged;
 
 		try {
-			await session.updateProfile({ name: name.trim(), phone: phone.trim() });
+			// Normalised here rather than server-side: this posts to Better Auth's
+			// own update endpoint, which never runs the `phoneNumber` schema, so
+			// the grouping would otherwise be stored verbatim.
+			await session.updateProfile({ name: name.trim(), phone: normalisePhone(phone) });
 
 			// The trading name is stamped on the dispatch row as well — it is what
 			// labels this business on a courier's map — so a rename that stopped at
@@ -267,7 +274,7 @@
      those across 1280px is worse than reading them across 640. Every panel
      below shares this width so the tabs don't resize the page as they switch. -->
 <div class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-6 lg:py-8">
-	<header class="flex flex-col items-center gap-3 text-center">
+	<header class="rise flex flex-col items-center gap-3 text-center">
 		<Avatar initials={avatarInitials} src={user?.image ?? null} alt="" size={72} />
 		<div class="min-w-0 max-w-full">
 			<h1 class="truncate text-xl font-bold tracking-tight text-ink lg:text-2xl">
@@ -279,7 +286,11 @@
 		</div>
 	</header>
 
-	<Tabs {tabs} bind:active={activeTab} />
+	<!-- Wrapped only to carry the entrance: the tab panels below already fly in
+	     on switch, and the strip itself should arrive before they do. -->
+	<div class="rise" style="--rise-delay: 80ms">
+		<Tabs {tabs} bind:active={activeTab} />
+	</div>
 
 	{#if activeTab === 'profile'}
 		<div
@@ -359,7 +370,15 @@
 				</div>
 
 				<Input label="Business name" type="text" placeholder="Favorie Kitchen" bind:value={name} />
-				<Input label="Phone number" type="tel" placeholder="024 123 4567" bind:value={phone} />
+				<Input
+					label="Phone number"
+					type="tel"
+					placeholder="024 123 4567"
+					autocomplete="tel"
+					inputmode="tel"
+					format={maskPhone}
+					bind:value={phone}
+				/>
 				<div>
 					<Input label="Email" type="email" value={email} disabled />
 					<p class="mt-1.5 text-xs text-ink-tertiary">

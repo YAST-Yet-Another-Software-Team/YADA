@@ -2,6 +2,7 @@
   import type { Snippet } from "svelte";
   import { fade, fly } from "svelte/transition";
   import { page } from "$app/state";
+  import { motion } from "$lib/client/motion";
   import ProfileMenu from "$lib/components/ProfileMenu.svelte";
   import Avatar from "$lib/components/Avatar.svelte";
   import VerifyEmailBanner from "$lib/components/VerifyEmailBanner.svelte";
@@ -106,7 +107,7 @@
        free for the title. -->
   {#if !mobileChromeless}
     <header
-      class="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-2 lg:hidden"
+      class="fade-in sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-2 lg:hidden"
     >
       {#if mobileBack}
         <a
@@ -153,7 +154,7 @@
   {/if}
 
   <!-- Desktop chrome -->
-  <header class="sticky top-0 z-20 hidden bg-surface lg:block">
+  <header class="fade-in sticky top-0 z-20 hidden bg-surface lg:block">
     <div
       class="mx-auto flex h-[58px] items-stretch justify-between gap-4 border-b border-border px-6"
     >
@@ -233,13 +234,13 @@
       class="absolute inset-0 cursor-default bg-overlay"
       aria-label="Close menu"
       onclick={() => (navOpen = false)}
-      transition:fade={{ duration: 150 }}
+      transition:fade={motion({ duration: 150 })}
     ></button>
 
     <nav
       class="absolute inset-y-0 left-0 flex w-72 max-w-[80vw] flex-col gap-1 border-r border-border bg-surface p-3 shadow-lg"
       aria-label="Business"
-      transition:fly={{ x: -288, duration: 200 }}
+      transition:fly={motion({ x: -288, duration: 200 })}
     >
       <div class="flex items-center px-2 pb-4 pt-2">
         <img src="/logo.svg" alt="YADA" class="h-8 w-auto" />

@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { DISPATCH_TIMEOUT_SECONDS } from '$lib/shared/dispatch';
 import { haversineKm } from '$lib/shared/geo/service-area';
 import { ACTIVE_TRIP_STATUSES, CLOSED_TRIP_STATUSES } from '$lib/shared/trip-status';
+import { normalisePlate } from '$lib/shared/plate';
 import { initials } from '$lib/shared/text';
 import type { CourierOffer, CourierRequest, CourierTrip, LatLng } from '$lib/utils/types';
 
@@ -246,14 +247,12 @@ export async function setCourierAvailability(userId: string, online: boolean) {
 }
 
 /**
- * A plate as it should be stored: upper case, single-spaced, or null when the
- * rider clears the field. Ghanaian plates read `GT 4521-20`, and riders type
- * them however they like.
+ * A plate as it should be stored. Moved to `$lib/shared/plate` when the format
+ * arrived — the same shaping now runs in the field as the rider types, and a
+ * component cannot import `$lib/server`. Re-exported here so its callers, and
+ * anything importing it by habit, do not have to move.
  */
-export function normalisePlate(value: string | null | undefined) {
-  const trimmed = value?.trim().replace(/\s+/g, ' ').toUpperCase() ?? '';
-  return trimmed.length > 0 ? trimmed : null;
-}
+export { normalisePlate };
 
 /** The courier's own profile, for the screens that let them edit it. */
 export async function getCourierProfile(userId: string) {

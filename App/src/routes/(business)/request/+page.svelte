@@ -254,7 +254,9 @@
 		<!-- Map on top in portrait; right pane in landscape. It takes whatever the
 		     sheet below doesn't need, with a floor under it so the sheet can never
 		     grow over the pin the person is placing. -->
-		<div class="relative order-1 min-h-[38svh] flex-1 lg:order-2 lg:min-h-0">
+		<!-- The map fades rather than lifts: it is the full-bleed backdrop, and a
+		     translate on it would show a bare edge for the length of the animation. -->
+		<div class="fade-in relative order-1 min-h-[38svh] flex-1 lg:order-2 lg:min-h-0">
 			{#if business}
 				<LocationPickerMap
 					bind:point={dropoffPoint}
@@ -286,12 +288,22 @@
 		     On a phone the panel lifts over the bottom of the map — the same
 		     rounded sheet the courier screens use — so the two read as one
 		     surface rather than two stacked panes. -->
+		<!-- `max-h` is what stops the sheet eating the map on a phone. It was 58svh,
+		     which left the map barely more than a third of the screen once the
+		     sheet filled — and the sheet scrolls internally, so the extra height
+		     bought no content, only a smaller map to place a pin on. -->
 		<aside
-			class="relative z-20 order-2 -mt-5 flex max-h-[58svh] w-full shrink-0 flex-col rounded-t-[28px] border-t border-border bg-surface shadow-lg lg:order-1 lg:mt-0 lg:max-h-none lg:w-[320px] lg:flex-none lg:rounded-none lg:border-r lg:border-t-0 lg:shadow-none"
+			style="--rise-delay: 90ms"
+			class="rise relative z-20 order-2 -mt-5 flex max-h-[52svh] w-full shrink-0 flex-col rounded-t-[28px] border-t border-border bg-surface shadow-lg lg:order-1 lg:mt-0 lg:max-h-none lg:w-[320px] lg:flex-none lg:rounded-none lg:border-r lg:border-t-0 lg:shadow-none"
 		>
-			<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 lg:gap-5 lg:p-6">
+			<!-- `pt-7` on mobile, not `p-4`: the sheet is pulled 20px over the map and
+			     its top corners are a 28px radius, so 16px of padding put the first
+			     label inside the curve. The top padding has to clear the radius. -->
+			<div
+				class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 pt-7 lg:gap-5 lg:p-6"
+			>
 				{#if business}
-					<div class="hidden lg:block">
+					<div class="rise hidden lg:block" style="--rise-delay: 150ms">
 						<h1 class="text-xl font-semibold text-ink">New delivery request</h1>
 						<p class="mt-1 text-sm text-ink-secondary">
 							Search the customer's address, then nudge the pin if it needs it.
@@ -305,7 +317,7 @@
 					<!-- Two rows, one journey: the labelled boxes read as the form the
 					     wireframe asks for, and the connector between the pins says
 					     which way the parcel goes without a word. -->
-					<section class="space-y-2">
+					<section class="rise space-y-2" style="--rise-delay: 200ms">
 						<div class="flex gap-3">
 							<div class="flex flex-col items-center pt-3.5">
 								<IconCircle class="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
@@ -381,7 +393,7 @@
 					<!-- The order itself. Above the estimate because it is part of the
 					     request rather than a consequence of it, and required before
 					     "Find a rider" will do anything. -->
-					<section class="space-y-2 border-t border-border pt-3">
+					<section class="rise space-y-2 border-t border-border pt-3" style="--rise-delay: 260ms">
 						<p class="text-eyebrow text-ink-tertiary">Order</p>
 
 						<Input
@@ -438,7 +450,8 @@
 			<!-- The one action, always on screen: on a phone it stays at the foot of
 			     the sheet however long the addresses run. -->
 			<div
-				class="shrink-0 border-t border-border px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 lg:border-t-0 lg:px-6 lg:pb-6 lg:pt-0"
+				class="fade-in shrink-0 border-t border-border px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 lg:border-t-0 lg:px-6 lg:pb-6 lg:pt-0"
+				style="--rise-delay: 320ms"
 			>
 				{#if business}
 					<Button

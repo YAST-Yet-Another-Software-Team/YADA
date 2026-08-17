@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { normalisePhone, PHONE_PATTERN } from '$lib/shared/phone';
+
 /**
  * A Ghanaian mobile number, normalised to E.164.
  *
@@ -8,6 +10,10 @@ import { z } from 'zod';
  * actually type and storing one of them is the point of parsing rather than
  * merely checking.
  *
+ * The rules themselves live in `$lib/shared/phone`, because the fields that
+ * write this column now group the digits as they are typed and a component
+ * cannot import `$lib/server`. This is the same check, said once.
+ *
  * Shared by the two screens that can write the column: sign-up, and the
  * finish-setup screen a Google account lands on — where the number is the one
  * thing Google cannot supply.
@@ -15,7 +21,7 @@ import { z } from 'zod';
 export const phoneNumber = z
 	.string()
 	.transform((value) => value.replace(/[^\d+]/g, ''))
-	.refine((value) => /^(0\d{9}|\+?233\d{9})$/.test(value), {
+	.refine((value) => PHONE_PATTERN.test(value), {
 		message: 'Enter a 10-digit phone number, like 024 123 4567.'
 	})
-	.transform((value) => `+233${value.replace(/^(\+?233|0)/, '')}`);
+	.transform(normalisePhone);

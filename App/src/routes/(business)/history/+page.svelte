@@ -1,5 +1,8 @@
 <script lang="ts">
   import { invalidateAll } from "$app/navigation";
+  import { cubicOut } from "svelte/easing";
+  import { fade, fly } from "svelte/transition";
+  import { motion } from "$lib/client/motion";
   import Alert from "$lib/components/Alert.svelte";
   import Button from "$lib/components/Button.svelte";
   import Card from "$lib/components/Card.svelte";
@@ -94,7 +97,7 @@
 </svelte:head>
 
 <div class="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-0">
-  <div class="hidden flex-wrap items-center justify-between gap-3 lg:flex">
+  <div class="rise hidden flex-wrap items-center justify-between gap-3 lg:flex">
     <h2 class="text-base font-semibold text-ink">History</h2>
 
     <div class="flex flex-wrap items-center gap-2">
@@ -118,7 +121,7 @@
   <!-- The same two controls on a phone, sized for it. The tab strip that used
 	     to sit here offered an "Active" list that was always empty — active
 	     deliveries live on the dashboard, which is one tap away. -->
-  <div class="flex items-center gap-2 lg:hidden">
+  <div class="rise flex items-center gap-2 lg:hidden">
     <div class="w-36 shrink-0">
       <SelectMenu
         bind:value={statusFilter}
@@ -157,7 +160,9 @@
     </div>
   {/snippet}
 
-  <div class="flex flex-1 flex-col gap-3 lg:hidden">
+  <!-- The list rises as one block; per-card entrances would replay on every
+       filter keystroke, which re-creates the whole each. -->
+  <div class="rise flex flex-1 flex-col gap-3 lg:hidden" style="--rise-delay: 90ms">
     {#if filtered.length === 0}
       {@render emptyState()}
     {:else}
@@ -193,7 +198,7 @@
   <!-- Same table as the dashboard's active list: no card around it, an eyebrow
 	     header rule, and dashed separators between rows. Two lists of the same
 	     thing that are styled differently read as two different kinds of record. -->
-  <div class="hidden lg:block">
+  <div class="rise hidden lg:block" style="--rise-delay: 90ms">
     {#if filtered.length === 0}
       {@render emptyState()}
     {:else}
@@ -258,10 +263,13 @@
 </div>
 
 {#if selected}
+  <!-- Created on open, so this is Svelte's job rather than the CSS classes' —
+       and a panel that slides in should slide back out. -->
   <div
     class="fixed inset-0 z-40 flex justify-end bg-overlay"
     role="dialog"
     aria-modal="true"
+    transition:fade={motion({ duration: 180 })}
   >
     <button
       type="button"
@@ -271,6 +279,7 @@
     ></button>
     <aside
       class="relative z-10 flex h-full w-full max-w-md flex-col border-l border-border bg-surface p-6 shadow-lg"
+      transition:fly={motion({ x: 32, duration: 260, easing: cubicOut })}
     >
       <div class="mb-6 flex items-start justify-between gap-3">
         <div>

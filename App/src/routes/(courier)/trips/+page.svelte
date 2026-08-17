@@ -108,7 +108,7 @@
      repeat all three at the cost of a third of the viewport. What is left is
      what only it has — the rider's numbers, and what they have carried. -->
 <div class="flex flex-1 flex-col gap-4 bg-bg p-4">
-  <div class="grid grid-cols-2 gap-3">
+  <div class="rise grid grid-cols-2 gap-3">
     <div class="rounded-lg border border-border bg-surface p-4 shadow-xs">
       <p class="text-eyebrow text-ink-tertiary">Trips</p>
       <p class="font-mono-data mt-2 text-2xl font-bold text-ink">{totalTrips}</p>
@@ -139,7 +139,10 @@
     </div>
   </div>
 
-  <div class="flex flex-1 flex-col gap-3">
+  <!-- The whole history block rises together: rating a trip calls
+       `invalidateAll`, which re-keys the each, and per-card entrances would
+       replay the entire list on every submit. -->
+  <div class="rise flex flex-1 flex-col gap-3" style="--rise-delay: 90ms">
     <h2 class="text-base font-semibold text-ink">History</h2>
 
     {#if data.historyTrips.length === 0}
