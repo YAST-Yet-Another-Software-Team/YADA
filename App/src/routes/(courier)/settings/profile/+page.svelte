@@ -10,6 +10,8 @@
 	import { messageOf } from '$auth/errors';
 	import { ProfilePhotoError, readProfilePhoto } from '$lib/client/images/profile-photo';
 	import { initials } from '$lib/shared/text';
+	import { maskPhone, normalisePhone } from '$lib/shared/phone';
+	import { maskPlate, normalisePlate } from '$lib/shared/plate';
 	import IconCamera from '~icons/mdi/camera-outline';
 
 	let {
@@ -28,14 +30,14 @@
 
 	let activeTab = $state('profile');
 	let name = $state(currentUser?.name ?? '');
-	let phone = $state(currentUser?.phone ?? '');
+	let phone = $state(maskPhone(currentUser?.phone ?? ''));
 	let email = $state(currentUser?.email ?? '');
 	// Lives on `courier_profiles`, not the account, so it saves through the
 	// courier profile endpoint alongside the Better Auth call below. Seeded once,
 	// like the fields above it: a later reload of `data` must not overwrite what
 	// the rider is in the middle of typing.
 	// svelte-ignore state_referenced_locally
-	let plate = $state(data.courierProfile.plateNumber ?? '');
+	let plate = $state(maskPlate(data.courierProfile.plateNumber ?? ''));
 	let currentPassword = $state('');
 	let newPassword = $state('');
 	let confirmPassword = $state('');
@@ -85,14 +87,22 @@
 		}
 	}
 
-	const savedPlate = $derived(data.courierProfile.plateNumber ?? '');
+	// Through the same rule as the field, because a plate saved before the format
+	// existed is stored unshaped — `GT4521-20` against a field reading
+	// `GT 4521-20` is the same plate, and must not read as an edit.
+	const savedPlate = $derived(normalisePlate(data.courierProfile.plateNumber) ?? '');
 
+	// Both fields are compared as they are *stored*, not as they are shown. The
+	// grouping means a field nobody touched no longer matches the column it came
+	// from, and Save would sit lit for the whole visit. `normalisePlate` is also
+	// the real rule — this used to re-implement half of it, without the
+	// whitespace collapse, so `GT  4521-20` read as dirty forever.
 	const canSaveProfile = $derived(
 		ready &&
 			name.trim().length > 0 &&
 			(name.trim() !== (session.user?.name ?? '') ||
-				phone.trim() !== (session.user?.phone ?? '') ||
-				plate.trim().toUpperCase() !== savedPlate)
+				normalisePhone(phone) !== (session.user?.phone ?? '') ||
+				(normalisePlate(plate) ?? '') !== savedPlate)
 	);
 
 	const canSavePassword = $derived(
@@ -108,7 +118,10 @@
 		}
 
 		try {
-			await session.updateProfile({ name: name.trim(), phone: phone.trim() });
+			// Normalised here rather than server-side: this posts to Better Auth's
+			// own update endpoint, which never runs the `phoneNumber` schema, so
+			// the grouping would otherwise be stored verbatim.
+			await session.updateProfile({ name: name.trim(), phone: normalisePhone(phone) });
 
 			// The plate is not part of the account, so it takes a second call.
 			// Errors from it are shown rather than swallowed: a rider who thinks
@@ -116,7 +129,9 @@
 			const response = await fetch('/api/courier/profile', {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ plateNumber: plate.trim() })
+				// `normalisePlate` returns null for a cleared field; the endpoint
+				// reads an empty string as "clear this", so that is what it gets.
+				body: JSON.stringify({ plateNumber: normalisePlate(plate) ?? '' })
 			});
 
 			const payload = await response.json().catch(() => null);
@@ -225,7 +240,15 @@
 
 				<div class="space-y-3 rounded-lg bg-surface p-4 shadow-sm">
 					<Input label="Full name" type="text" placeholder="Your name" bind:value={name} />
-					<Input label="Phone number" type="tel" placeholder="024 000 0000" bind:value={phone} />
+					<Input
+						label="Phone number"
+						type="tel"
+						placeholder="024 123 4567"
+						autocomplete="tel"
+						inputmode="tel"
+						format={maskPhone}
+						bind:value={phone}
+					/>
 					<Input label="Email" type="email" bind:value={email} disabled />
 					<p class="text-xs text-ink-tertiary">
 						Email can’t be changed here. Contact support if you need to update it.
@@ -234,6 +257,9 @@
 						label="Number plate"
 						type="text"
 						placeholder="GT 4521-20"
+						autocapitalize="characters"
+						maxlength={16}
+						format={maskPlate}
 						bind:value={plate}
 					/>
 					<p class="text-xs text-ink-tertiary">

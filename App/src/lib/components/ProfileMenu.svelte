@@ -8,6 +8,7 @@
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import { getSession } from '$auth/session.svelte';
 	import { initials } from '$lib/shared/text';
+	import { formatPhone } from '$lib/shared/phone';
 	import IconAccount from '~icons/mdi/account-cog-outline';
 	import IconMapMarker from '~icons/mdi/map-marker-outline';
 	import IconLock from '~icons/mdi/lock-outline';
@@ -21,7 +22,7 @@
 	const displayName = $derived(user?.name || 'YADA user');
 	const isCourier = $derived(user?.role === 'courier');
 	const workspace = $derived(isCourier ? 'Courier workspace' : 'Business workspace');
-	const email = $derived(user?.email || user?.phone || 'No contact on file');
+	const email = $derived(user?.email || formatPhone(user?.phone) || 'No contact on file');
 
 	/**
 	 * A courier's account screens are tabs of one settings page, so linking at

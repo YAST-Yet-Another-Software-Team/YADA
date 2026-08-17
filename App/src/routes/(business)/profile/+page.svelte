@@ -15,6 +15,7 @@
 	import { messageOf } from '$auth/errors';
 	import { ProfilePhotoError, readProfilePhoto } from '$lib/client/images/profile-photo';
 	import { initials } from '$lib/shared/text';
+	import { maskPhone, normalisePhone } from '$lib/shared/phone';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 	import IconCamera from '~icons/mdi/camera-outline';
 	import IconMapMarker from '~icons/mdi/map-marker-outline';
@@ -69,14 +70,17 @@
 	// svelte-ignore state_referenced_locally
 	let name = $state(session.user?.name ?? '');
 	// svelte-ignore state_referenced_locally
-	let phone = $state(session.user?.phone ?? '');
+	let phone = $state(maskPhone(session.user?.phone ?? ''));
 	const email = $derived(user?.email ?? '');
 
 	let profileError = $state('');
 	let profileSaved = $state(false);
 
 	const nameChanged = $derived(name.trim() !== (user?.name ?? ''));
-	const phoneChanged = $derived(phone.trim() !== (user?.phone ?? ''));
+	// Compared as it is stored, not as it is shown: the field now reads
+	// `+233 24 123 4567` and the account holds `+233241234567`, so a literal
+	// comparison would call an untouched number changed and never disarm Save.
+	const phoneChanged = $derived(normalisePhone(phone) !== (user?.phone ?? ''));
 	const canSaveProfile = $derived(name.trim().length >= 2 && (nameChanged || phoneChanged));
 
 	async function saveProfile() {
@@ -91,7 +95,10 @@
 		const renaming = nameChanged;
 
 		try {
-			await session.updateProfile({ name: name.trim(), phone: phone.trim() });
+			// Normalised here rather than server-side: this posts to Better Auth's
+			// own update endpoint, which never runs the `phoneNumber` schema, so
+			// the grouping would otherwise be stored verbatim.
+			await session.updateProfile({ name: name.trim(), phone: normalisePhone(phone) });
 
 			// The trading name is stamped on the dispatch row as well — it is what
 			// labels this business on a courier's map — so a rename that stopped at
@@ -363,7 +370,15 @@
 				</div>
 
 				<Input label="Business name" type="text" placeholder="Favorie Kitchen" bind:value={name} />
-				<Input label="Phone number" type="tel" placeholder="024 123 4567" bind:value={phone} />
+				<Input
+					label="Phone number"
+					type="tel"
+					placeholder="024 123 4567"
+					autocomplete="tel"
+					inputmode="tel"
+					format={maskPhone}
+					bind:value={phone}
+				/>
 				<div>
 					<Input label="Email" type="email" value={email} disabled />
 					<p class="mt-1.5 text-xs text-ink-tertiary">

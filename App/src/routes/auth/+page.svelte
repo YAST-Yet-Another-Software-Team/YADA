@@ -15,6 +15,8 @@
     ProfilePhotoError,
     readProfilePhoto,
   } from "$lib/client/images/profile-photo";
+  import { maskPhone } from "$lib/shared/phone";
+  import { maskPlate } from "$lib/shared/plate";
   import type { PageProps } from "./$types";
 
   type Role = "business" | "courier";
@@ -59,10 +61,12 @@
   let name = $state(form?.name ?? "");
   // svelte-ignore state_referenced_locally
   let email = $state(form?.email ?? "");
+  // Restored through the same mask the field applies, so a round trip comes
+  // back grouped rather than as the raw string the action echoed.
   // svelte-ignore state_referenced_locally
-  let phone = $state(form?.phone ?? "");
+  let phone = $state(maskPhone(form?.phone ?? ""));
   // svelte-ignore state_referenced_locally
-  let plate = $state(form?.plate ?? "");
+  let plate = $state(maskPlate(form?.plate ?? ""));
   let password = $state("");
 
   let submitting = $state(false);
@@ -586,6 +590,12 @@
                           required
                           bind:value={email}
                         />
+                        <!-- No `maxlength`. It was 10, which fitted `0241234567`
+                             and nothing else — not the `+233…` the field now
+                             writes as you type, and not the spaced spelling on
+                             the placeholder, both of which the server has always
+                             accepted. The mask is the length rule now: it stops
+                             taking digits at nine. -->
                         <Input
                           label="Phone number"
                           type="tel"
@@ -594,8 +604,7 @@
                           autocomplete="tel"
                           inputmode="tel"
                           required
-                          minlength={10}
-                          maxlength={10}
+                          format={maskPhone}
                           bind:value={phone}
                         />
                         <Input
@@ -625,6 +634,7 @@
                             autocapitalize="characters"
                             maxlength={16}
                             required
+                            format={maskPlate}
                             bind:value={plate}
                           />
                           <p class="text-xs leading-relaxed text-ink-secondary">

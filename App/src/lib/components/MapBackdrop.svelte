@@ -3,7 +3,13 @@
   import RacingHelmetIcon from '~icons/mdi/racing-helmet';
   import ShopIcon from '~icons/solar/shop-bold';
 
-  type MapMarkerRole = 'pickup' | 'dropoff' | 'rider' | 'business' | 'search';
+  /**
+   * There is no `pickup`. Every map now names the origin of a delivery for what
+   * it is — the business — so the counter is one glyph across the dashboard,
+   * tracking, the request form and the rider's screens, rather than a red pin
+   * here and a shopfront there.
+   */
+  type MapMarkerRole = 'dropoff' | 'rider' | 'business' | 'search';
 
   type MapMarker = {
     id: string;
@@ -20,13 +26,22 @@
      * just motion in the corner of a rider's eye.
      */
     pulse?: boolean;
+    /**
+     * Which way this party is travelling, 0–360° clockwise from north.
+     *
+     * Only a rider has one — a counter does not face anywhere — and only while
+     * they are moving. `null` while it is unknown, which draws no pointer at
+     * all: a marker aimed at north because nothing better was known would be a
+     * confident lie about the one thing it is there to say.
+     */
+    heading?: number | null;
   };
 
   /**
-   * The two roles that are a *who* rather than a *where*. Pickup, dropoff and
-   * search are points on a route and stay as dropped pins; a courier and a
-   * business are parties, so they get a glyph that says which one you're
-   * looking at without reading the tooltip.
+   * The two roles that are a *who* rather than a *where*. Dropoff and search
+   * are points on a route and stay as dropped pins; a courier and a business
+   * are parties, so they get a glyph that says which one you're looking at
+   * without reading the tooltip.
    */
   const ROLE_ICONS: Partial<Record<MapMarkerRole, Component>> = {
     rider: RacingHelmetIcon,
@@ -41,6 +56,26 @@
     rider: 26,
     business: 24
   };
+
+  /** The roles that can be facing somewhere. A shopfront cannot. */
+  const ROLE_HAS_HEADING: Partial<Record<MapMarkerRole, boolean>> = {
+    rider: true
+  };
+
+  /**
+   * How far the direction pointer's tip sits from the centre of the glyph it
+   * orbits, in pixels.
+   *
+   * Has to clear half the glyph (13px of a 26px helmet) *plus* the pointer's
+   * own height, or the wedge laps over the helmet at east and west — where the
+   * icon is widest — while looking fine at north and south. 24 leaves a couple
+   * of pixels of air all the way round.
+   */
+  const POINTER_ORBIT_PX = 24;
+
+  /** Pointer size — small enough to be a hint, big enough to have a direction. */
+  const POINTER_W = 11;
+  const POINTER_H = 9;
 </script>
 
 <script lang="ts">
@@ -122,13 +157,22 @@
   /**
    * One rendered marker, kept so the next update can move it rather than
    * rebuild it. `signature` covers everything that decides the *content* — the
-   * position is excluded on purpose, because moving is the common case and the
-   * whole point of holding these.
+   * position and the heading are excluded on purpose, because changing is the
+   * common case for both and the whole point of holding these.
    */
   type RenderedMarker = {
     marker: google.maps.marker.AdvancedMarkerElement;
     icons: Record<string, unknown>[];
     signature: string;
+    /** The layer the direction pointer hangs off, or null for a marker with none. */
+    rotor: HTMLElement | null;
+    /**
+     * The angle currently on the element, *unwrapped* — it accumulates past 360
+     * and below 0 rather than resetting. A rider crossing north goes 350° → 10°,
+     * and a transition between those two numbers spins the pointer 340° the
+     * wrong way round; carrying the total means every turn takes the short way.
+     */
+    angle: number;
   };
 
   let rendered = new Map<string, RenderedMarker>();
@@ -176,11 +220,14 @@
   let mapsLibrary: google.maps.MapsLibrary | null = null;
   let stopThemeWatch: (() => void) | null = null;
 
+  /**
+   * One lookup, no per-shape special cases: which hue a role gets is decided in
+   * `MAP_ROLE_COLORS` and nowhere else, so the dashboard, tracking and the
+   * request map cannot drift apart. This used to force every glyph role to
+   * primary here as well, which quietly outranked the table and made two of its
+   * entries unreachable.
+   */
   function markerColor(marker: MapMarker) {
-    // The glyph roles are red whatever they are: the shape says which party
-    // you're looking at, so the colour is free to do the one job a minimap
-    // icon's colour has — be findable in a glance across the whole map.
-    if (marker.role && ROLE_ICONS[marker.role]) return MAP_COLORS.primary;
     if (marker.role) return MAP_ROLE_COLORS[marker.role];
     return marker.accent ? MAP_COLORS.primary : MAP_COLORS.secondary;
   }
@@ -524,8 +571,86 @@
       marker.accent ? 'accent' : '',
       marker.stale ? 'stale' : '',
       marker.pulse ? 'pulse' : '',
+      // Heading is absent for the same reason position is: it changes with
+      // every fix, and rebuilding the marker to turn it would unmount and
+      // remount the glyph a second at a time. It is applied to the element that
+      // is already on screen instead — see `applyHeading`.
       theme
     ].join('|');
+  }
+
+  /**
+   * The pointer that says which way a rider is going.
+   *
+   * A wedge orbiting the helmet rather than a rotation of it: the helmet is
+   * drawn side-on, so turning it to face north would leave a rider lying on
+   * their back. Keeping the glyph upright and moving a pointer around it is the
+   * arrangement every navigation app settles on, and it separates the two
+   * questions the marker answers — *who* is that, and *where are they headed*.
+   *
+   * Built as a zero-size box pinned to the centre of the glyph: rotating a box
+   * with no dimensions turns its contents about that centre, so the pointer
+   * swings around the helmet without any trigonometry here.
+   */
+  function directionPointer(color: string) {
+    const rotor = document.createElement('div');
+    rotor.style.position = 'absolute';
+    rotor.style.left = '50%';
+    rotor.style.top = '50%';
+    rotor.style.width = '0';
+    rotor.style.height = '0';
+    rotor.style.pointerEvents = 'none';
+    // Hidden until the first heading lands, so a rider whose direction is not
+    // known yet is a plain helmet rather than one pointed arbitrarily north.
+    rotor.style.opacity = '0';
+    rotor.style.transition = 'transform 500ms ease-out, opacity 250ms linear';
+
+    const namespace = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(namespace, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${POINTER_W} ${POINTER_H}`);
+    svg.setAttribute('width', `${POINTER_W}`);
+    svg.setAttribute('height', `${POINTER_H}`);
+    svg.style.position = 'absolute';
+    svg.style.left = `${-POINTER_W / 2}px`;
+    svg.style.top = `${-POINTER_ORBIT_PX}px`;
+    svg.style.display = 'block';
+
+    // Same outline treatment as the glyph it orbits — filled in the marker's
+    // colour, hairlined in the surface behind it, stroke painted first so the
+    // outline sits outside the shape rather than eating into it.
+    const wedge = document.createElementNS(namespace, 'path');
+    wedge.setAttribute('d', `M${POINTER_W / 2} 0 L${POINTER_W} ${POINTER_H} L0 ${POINTER_H} Z`);
+    wedge.setAttribute('fill', color);
+    wedge.setAttribute('stroke', MAP_SURFACE[theme]);
+    wedge.setAttribute('stroke-width', '2');
+    wedge.setAttribute('stroke-linejoin', 'round');
+    wedge.setAttribute('paint-order', 'stroke');
+
+    svg.appendChild(wedge);
+    rotor.appendChild(svg);
+
+    return rotor;
+  }
+
+  /**
+   * Turn a marker that is already on screen.
+   *
+   * The angle accumulates rather than being written straight through: see
+   * `RenderedMarker.angle` for why 350° → 10° must not be a 340° turn.
+   */
+  function applyHeading(entry: RenderedMarker, heading: number | null | undefined) {
+    if (!entry.rotor) return;
+
+    if (heading == null || !Number.isFinite(heading)) {
+      entry.rotor.style.opacity = '0';
+      return;
+    }
+
+    const delta = (((heading - entry.angle) % 360) + 540) % 360 - 180;
+
+    entry.angle += delta;
+    entry.rotor.style.opacity = '1';
+    entry.rotor.style.transform = `rotate(${entry.angle}deg)`;
   }
 
   /**
@@ -571,71 +696,97 @@
       element.style.boxSizing = 'content-box';
     }
 
-    if (!marker.pulse) return element;
+    const steerable = Boolean(marker.role && ROLE_HAS_HEADING[marker.role]);
 
-    // Marker content is built imperatively, outside the template, so component
-    // CSS can't reach it — the rings are animated through the Web Animations
-    // API instead of a keyframes rule. Two of them, half a cycle apart, so the
-    // pulse reads as continuous rather than as a blink.
+    if (!marker.pulse && !steerable) return { content: element, rotor: null };
+
+    // Anything layered around the glyph needs something to be positioned
+    // against, and both the rings and the pointer are measured from its centre.
     const host = document.createElement('div');
     host.style.position = 'relative';
     host.style.display = 'flex';
     host.style.alignItems = 'center';
     host.style.justifyContent = 'center';
 
-    for (const delay of [0, 1200]) {
-      const ring = document.createElement('div');
-      ring.style.position = 'absolute';
-      ring.style.width = `${size}px`;
-      ring.style.height = `${size}px`;
-      ring.style.borderRadius = '50%';
-      ring.style.border = `2px solid ${color}`;
-      ring.style.pointerEvents = 'none';
-      ring.animate(
-        [
-          { transform: 'scale(1)', opacity: 0.75 },
-          { transform: 'scale(3.4)', opacity: 0 }
-        ],
-        { duration: 2400, iterations: Infinity, delay, easing: 'ease-out' }
-      );
-      host.appendChild(ring);
+    if (marker.pulse) {
+      // Marker content is built imperatively, outside the template, so component
+      // CSS can't reach it — the rings are animated through the Web Animations
+      // API instead of a keyframes rule. Two of them, half a cycle apart, so the
+      // pulse reads as continuous rather than as a blink.
+      for (const delay of [0, 1200]) {
+        const ring = document.createElement('div');
+        ring.style.position = 'absolute';
+        ring.style.width = `${size}px`;
+        ring.style.height = `${size}px`;
+        ring.style.borderRadius = '50%';
+        ring.style.border = `2px solid ${color}`;
+        ring.style.pointerEvents = 'none';
+        ring.animate(
+          [
+            { transform: 'scale(1)', opacity: 0.75 },
+            { transform: 'scale(3.4)', opacity: 0 }
+          ],
+          { duration: 2400, iterations: Infinity, delay, easing: 'ease-out' }
+        );
+        host.appendChild(ring);
+      }
     }
 
     host.appendChild(element);
-    return host;
+
+    const rotor = steerable ? directionPointer(color) : null;
+    if (rotor) host.appendChild(rotor);
+
+    return { content: host, rotor };
   }
 
   /** Build one marker's DOM and the Svelte roots that live inside it. */
   function buildMarker(marker: MapMarker, api: google.maps.MarkerLibrary): RenderedMarker {
     const color = markerColor(marker);
-    const isPin = marker.role === 'search' || marker.role === 'dropoff' || marker.role === 'pickup';
+    const isPin = marker.role === 'search' || marker.role === 'dropoff';
     const icons: Record<string, unknown>[] = [];
 
-    // PinElement extends HTMLElement, so it is its own content.
-    const content: HTMLElement = isPin
-      ? new api.PinElement({
-          background: color,
-          borderColor: MAP_SURFACE[theme],
-          glyphColor: MAP_SURFACE[theme],
-          scale: 1.2
-        })
+    // PinElement extends HTMLElement, so it is its own content — and it is a
+    // dropped pin, which never faces anywhere.
+    const built = isPin
+      ? {
+          content: new api.PinElement({
+            background: color,
+            borderColor: MAP_SURFACE[theme],
+            glyphColor: MAP_SURFACE[theme],
+            scale: 1.2
+          }) as unknown as HTMLElement,
+          rotor: null
+        }
       : markerContent(marker, color, icons);
 
     // AdvancedMarkerElement has no opacity option — it takes a DOM element,
     // so staleness is expressed on the element itself.
-    content.style.opacity = marker.stale ? '0.45' : '1';
+    built.content.style.opacity = marker.stale ? '0.45' : '1';
 
-    return {
+    const entry: RenderedMarker = {
       marker: new api.AdvancedMarkerElement({
         map,
         position: { lat: marker.lat, lng: marker.lng },
         title: marker.label,
         zIndex: marker.role === 'search' || marker.role === 'dropoff' ? 999 : 10,
-        content
+        content: built.content
       }),
       icons,
-      signature: markerSignature(marker)
+      signature: markerSignature(marker),
+      rotor: built.rotor,
+      angle: marker.heading ?? 0
     };
+
+    // Straight onto the element, with no transition to play: a marker being
+    // built for the first time should arrive already pointing the right way
+    // rather than swinging round from north as it appears.
+    if (entry.rotor && marker.heading != null) {
+      entry.rotor.style.opacity = '1';
+      entry.rotor.style.transform = `rotate(${entry.angle}deg)`;
+    }
+
+    return entry;
   }
 
   /**
@@ -663,6 +814,7 @@
 
       if (existing && existing.signature === markerSignature(marker)) {
         existing.marker.position = { lat: marker.lat, lng: marker.lng };
+        applyHeading(existing, marker.heading);
         continue;
       }
 

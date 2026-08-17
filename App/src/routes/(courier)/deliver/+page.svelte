@@ -42,6 +42,7 @@
   const maps = getMapsConfig();
 
   let riderPoint = $state<LatLng | null>(null);
+  let riderHeading = $state<number | null>(null);
   let routePath = $state<LatLng[]>([]);
   let etaText = $state('Calculating…');
   let locationUnavailable = $state(false);
@@ -119,6 +120,7 @@
       enabled: true,
       onUpdate: (point) => {
         riderPoint = { lat: point.lat, lng: point.lng };
+        riderHeading = point.heading;
         locationUnavailable = point.stale;
 
         // Only redraw when there's no route yet or the courier has left the one
@@ -162,8 +164,11 @@
           id: 'pickup',
           lat: pickupPoint.lat,
           lng: pickupPoint.lng,
-          label: 'Pickup',
-          role: 'pickup'
+          // Collected already, so this is a waypoint behind the rider rather
+          // than a destination — but it is still the same shop, and it should
+          // not turn back into an anonymous pin now the parcel is aboard.
+          label: data.trip.businessName,
+          role: 'business'
         },
         {
           id: 'dropoff',
@@ -180,6 +185,7 @@
                 lng: riderPoint.lng,
                 label: 'You',
                 role: 'rider' as const,
+                heading: riderHeading,
                 stale: locationUnavailable
               }
             ]

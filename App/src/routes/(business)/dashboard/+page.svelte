@@ -58,6 +58,23 @@
   );
 
   /**
+   * Where the parcel is collected: the trip's own pickup, and the saved profile
+   * only as a fallback. The trip is the record of where this delivery actually
+   * started — a shop that has since moved its address would otherwise redraw
+   * its history at the new one.
+   */
+  const pickupPoint = $derived(
+    selected?.pickupLat != null && selected?.pickupLng != null
+      ? { lat: selected.pickupLat, lng: selected.pickupLng }
+      : data.dashboard.businessProfile
+        ? {
+            lat: data.dashboard.businessProfile.lat,
+            lng: data.dashboard.businessProfile.lng,
+          }
+        : null,
+  );
+
+  /**
    * Withdrawing stays available until the rider reaches the counter — the same
    * rule `POST /api/trips/cancel` enforces, and the same one the tracking
    * screen applies. Once they have arrived, this panel is a view, not a
@@ -347,40 +364,39 @@
       </div>
 
       <div class="relative min-h-0 flex-1">
+        <!-- The same two markers, in the same colours, as tracking and the
+             request map: the counter as a red shopfront glyph, the destination
+             as an orange pin. This panel used to draw the counter *twice* — an
+             `hq` glyph from the profile and a red "Pickup" pin from the trip,
+             a few metres apart and claiming to be different places. It also
+             centred on the destination alone, which pushed the counter off
+             screen on anything but a short hop; `fitIds` frames the pair, the
+             way every other map on the job does.
+
+             No `routeLabel`: there is no route line on this map, and the dashed
+             segment it drew across the placeholder implied one. -->
         <MapBackdrop
-          routeLabel={selected.status === "en_route"}
-          center={selected.dropoffLat != null && selected.dropoffLng != null
-            ? { lat: selected.dropoffLat, lng: selected.dropoffLng }
-            : data.dashboard.businessProfile
-              ? {
-                  lat: data.dashboard.businessProfile.lat,
-                  lng: data.dashboard.businessProfile.lng,
-                }
-              : null}
+          center={pickupPoint ??
+            (selected.dropoffLat != null && selected.dropoffLng != null
+              ? { lat: selected.dropoffLat, lng: selected.dropoffLng }
+              : null)}
+          fitIds={["pickup", "dropoff"]}
           markers={[
-            ...(data.dashboard.businessProfile
+            ...(pickupPoint
               ? [
                   {
-                    id: "hq",
-                    lat: data.dashboard.businessProfile.lat,
-                    lng: data.dashboard.businessProfile.lng,
-                    label: data.dashboard.businessProfile.businessName,
+                    id: "pickup",
+                    lat: pickupPoint.lat,
+                    lng: pickupPoint.lng,
+                    label:
+                      data.dashboard.businessProfile?.businessName ??
+                      selected.pickup ??
+                      "Pickup",
                     role: "business" as const,
                     // Same signal as the tracking map: the counter radiates
                     // while its request is still ringing riders, and stills
                     // once someone accepts or the window closes with nobody.
                     pulse: matching,
-                  },
-                ]
-              : []),
-            ...(selected.pickupLat != null && selected.pickupLng != null
-              ? [
-                  {
-                    id: "pickup",
-                    lat: selected.pickupLat,
-                    lng: selected.pickupLng,
-                    label: "Pickup",
-                    role: "pickup" as const,
                   },
                 ]
               : []),

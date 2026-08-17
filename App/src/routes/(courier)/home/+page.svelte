@@ -57,6 +57,9 @@
 	let refreshTimer: ReturnType<typeof setInterval> | undefined;
 	let tickTimer: ReturnType<typeof setInterval> | undefined;
 	let deviceCenter = $state<{ lat: number; lng: number } | null>(null);
+	// Only the reporter's watch knows this: the plain device watcher below is a
+	// position feed, and works out no direction of its own.
+	let deviceHeading = $state<number | null>(null);
 	let stopDeviceWatcher: (() => void) | null = null;
 
 	onMount(() => {
@@ -105,6 +108,7 @@
 			enabled: true,
 			onUpdate: (point) => {
 				deviceCenter = { lat: point.lat, lng: point.lng };
+				deviceHeading = point.heading;
 			},
 			onError: () => {}
 		});
@@ -255,7 +259,8 @@
 								lat: deviceCenter.lat,
 								lng: deviceCenter.lng,
 								label: 'You',
-								role: 'rider' as const
+								role: 'rider' as const,
+								heading: deviceHeading
 							}
 						]
 					: []),
@@ -265,8 +270,11 @@
 								id: 'pickup',
 								lat: pickupPoint.lat,
 								lng: pickupPoint.lng,
-								label: 'Pickup',
-								role: 'pickup' as const
+								// The shopfront glyph and the shop's name: the same landmark the
+								// pickup and deliver screens show, so it does not change
+								// appearance as the rider moves through the job.
+								label: heroTrip.businessName,
+								role: 'business' as const
 							},
 							...(dropoffPoint
 								? [
