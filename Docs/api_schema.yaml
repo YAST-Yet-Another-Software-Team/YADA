@@ -1,0 +1,781 @@
+openapi: 3.1.0
+info:
+  title: YADA API
+  version: 0.1.0
+  summary: API schema for YADA courier dispatch workflows
+  description: |
+    This schema documents the current server endpoints implemented under App/src/routes/api.
+
+    Authentication is session-cookie based (Better Auth via SvelteKit locals).
+servers:
+  - url: http://localhost:5173
+    description: Local development
+  - url: http://localhost:5174
+    description: Local development (auto-fallback port)
+tags:
+  - name: System
+  - name: Trips
+  - name: Business
+  - name: Courier
+security:
+  - cookieAuth: []
+paths:
+  /api/health:
+    get:
+      tags: [System]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Service is reachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/trips:
+    get:
+      tags: [Trips]
+      summary: Get a single trip by id (participant-only)
+      parameters:
+        - in: query
+          name: id
+          required: true
+          description: UUID of the trip
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Trip payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTripResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '404':
+          $ref: '#/components/responses/ApiError404'
+    post:
+      tags: [Trips]
+      summary: Create a delivery request (business only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTripRequest'
+      responses:
+        '200':
+          description: Trip created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTripResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '403':
+          $ref: '#/components/responses/ApiError403'
+        '409':
+          $ref: '#/components/responses/ApiError409'
+        '422':
+          $ref: '#/components/responses/ApiError422'
+        '502':
+          $ref: '#/components/responses/ApiError502'
+
+  /api/trips/cancel:
+    post:
+      tags: [Trips, Business]
+      summary: Cancel an unclaimed request (business only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripIdRequest'
+      responses:
+        '200':
+          description: Request cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripStatusResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '403':
+          $ref: '#/components/responses/ApiError403'
+        '404':
+          $ref: '#/components/responses/ApiError404'
+        '409':
+          $ref: '#/components/responses/ApiError409'
+
+  /api/trips/confirm-pickup:
+    post:
+      tags: [Trips, Business]
+      summary: Confirm courier pickup handoff (business only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripIdRequest'
+      responses:
+        '200':
+          description: Pickup confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripStatusResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '403':
+          $ref: '#/components/responses/ApiError403'
+        '404':
+          $ref: '#/components/responses/ApiError404'
+        '409':
+          $ref: '#/components/responses/ApiError409'
+
+  /api/trips/rate:
+    post:
+      tags: [Trips, Business]
+      summary: Rate courier for a completed trip (business only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RateTripRequest'
+      responses:
+        '200':
+          description: Rating recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateTripResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '403':
+          $ref: '#/components/responses/ApiError403'
+        '404':
+          $ref: '#/components/responses/ApiError404'
+        '409':
+          $ref: '#/components/responses/ApiError409'
+
+  /api/trips/retry:
+    post:
+      tags: [Trips, Business]
+      summary: Restart request dispatch timer after timeout (business only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripIdRequest'
+      responses:
+        '200':
+          description: Dispatch timer reset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripIdResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '403':
+          $ref: '#/components/responses/ApiError403'
+        '404':
+          $ref: '#/components/responses/ApiError404'
+        '409':
+          $ref: '#/components/responses/ApiError409'
+
+  /api/business/profile:
+    put:
+      tags: [Business]
+      summary: Set or update business dispatch address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessProfileRequest'
+      responses:
+        '200':
+          description: Address persisted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessProfileResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '403':
+          $ref: '#/components/responses/ApiError403'
+        '422':
+          $ref: '#/components/responses/ApiError422'
+
+  /api/location:
+    post:
+      tags: [Courier]
+      summary: Report courier location and optional active trip context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationUpdateRequest'
+      responses:
+        '200':
+          description: Location accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationUpdateResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '403':
+          $ref: '#/components/responses/ApiError403'
+
+  /api/courier/availability:
+    post:
+      tags: [Courier]
+      summary: Set courier online/offline availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourierAvailabilityRequest'
+      responses:
+        '200':
+          description: Availability updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourierAvailabilityResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '403':
+          $ref: '#/components/responses/ApiError403'
+
+  /api/courier/accept-trip:
+    post:
+      tags: [Courier, Trips]
+      summary: Accept an unassigned requested trip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripIdRequest'
+      responses:
+        '200':
+          description: Trip accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripIdResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '403':
+          $ref: '#/components/responses/ApiError403'
+        '404':
+          $ref: '#/components/responses/ApiError404'
+        '409':
+          $ref: '#/components/responses/ApiError409'
+
+  /api/courier/decline-trip:
+    post:
+      tags: [Courier, Trips]
+      summary: Decline an unassigned requested trip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripIdRequest'
+      responses:
+        '200':
+          description: Trip declined for this courier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripIdResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '403':
+          $ref: '#/components/responses/ApiError403'
+        '404':
+          $ref: '#/components/responses/ApiError404'
+
+  /api/courier/trip-status:
+    post:
+      tags: [Courier, Trips]
+      summary: Move courier-owned trip to in_progress or completed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourierTripStatusRequest'
+      responses:
+        '200':
+          description: Status transition applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripStatusResponse'
+        '400':
+          $ref: '#/components/responses/ApiError400'
+        '401':
+          $ref: '#/components/responses/ApiError401'
+        '403':
+          $ref: '#/components/responses/ApiError403'
+        '404':
+          $ref: '#/components/responses/ApiError404'
+        '409':
+          $ref: '#/components/responses/ApiError409'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: Better Auth session cookie
+
+  responses:
+    ApiError400:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ApiError401:
+      description: Not authenticated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ApiError403:
+      description: Authenticated but wrong role
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ApiError404:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ApiError409:
+      description: Conflict with current trip state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ApiError422:
+      description: Semantic validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ApiError502:
+      description: Upstream/service unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+  schemas:
+    ApiError:
+      type: object
+      required: [ok, code, message]
+      properties:
+        ok:
+          type: boolean
+          const: false
+        code:
+          type: string
+        message:
+          type: string
+
+    HealthResponse:
+      type: object
+      required: [ok, service, scope]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        service:
+          type: string
+          const: yada
+        scope:
+          type: string
+          const: api
+
+    TripStatus:
+      type: string
+      enum:
+        - requested
+        - accepted
+        - courier_arriving
+        - arrived
+        - picked_up
+        - in_progress
+        - completed
+        - cancelled
+
+    TripIdRequest:
+      type: object
+      required: [tripId]
+      properties:
+        tripId:
+          type: string
+          format: uuid
+
+    TripIdResponse:
+      type: object
+      required: [ok, tripId]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        tripId:
+          type: string
+          format: uuid
+
+    TripStatusResponse:
+      type: object
+      required: [ok, tripId, status]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        tripId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/TripStatus'
+
+    CourierSummary:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        rating:
+          type: number
+          nullable: true
+        ratingCount:
+          type: integer
+
+    RatingSummary:
+      type: object
+      nullable: true
+      properties:
+        stars:
+          type: integer
+        comment:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CourierLocation:
+      type: object
+      nullable: true
+      required: [lat, lng, recordedAt]
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+        recordedAt:
+          type: string
+          format: date-time
+
+    CreateTripRequest:
+      type: object
+      required: [dropoffAddress, dropoffLat, dropoffLng]
+      properties:
+        dropoffAddress:
+          type: string
+        dropoffLat:
+          type: number
+        dropoffLng:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        estimatedDistanceKm:
+          type: number
+          nullable: true
+        estimatedDurationMinutes:
+          type: number
+          nullable: true
+
+    CreateTripResponse:
+      type: object
+      required: [ok, trip]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        trip:
+          type: object
+          required:
+            - id
+            - status
+            - pickupAddress
+            - dropoffAddress
+            - pickupLat
+            - pickupLng
+            - dropoffLat
+            - dropoffLng
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              $ref: '#/components/schemas/TripStatus'
+            pickupAddress:
+              type: string
+            dropoffAddress:
+              type: string
+            pickupLat:
+              type: number
+            pickupLng:
+              type: number
+            dropoffLat:
+              type: number
+            dropoffLng:
+              type: number
+            estimatedDistanceKm:
+              type: number
+              nullable: true
+            estimatedDurationMinutes:
+              type: number
+              nullable: true
+
+    GetTripResponse:
+      type: object
+      required: [ok, trip]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        trip:
+          type: object
+          required: [id, status, businessId]
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              $ref: '#/components/schemas/TripStatus'
+            businessId:
+              type: string
+            assignedCourierId:
+              type: string
+              nullable: true
+            courier:
+              $ref: '#/components/schemas/CourierSummary'
+            myRating:
+              $ref: '#/components/schemas/RatingSummary'
+            dispatchElapsedSeconds:
+              type: integer
+              nullable: true
+            courierLocation:
+              $ref: '#/components/schemas/CourierLocation'
+            pickupAddress:
+              type: string
+            dropoffAddress:
+              type: string
+            pickupLat:
+              type: number
+              nullable: true
+            pickupLng:
+              type: number
+              nullable: true
+            dropoffLat:
+              type: number
+              nullable: true
+            dropoffLng:
+              type: number
+              nullable: true
+            estimatedDistanceKm:
+              type: number
+              nullable: true
+            estimatedDurationMinutes:
+              type: number
+              nullable: true
+            pickupInZone:
+              type: boolean
+            dropoffInZone:
+              type: boolean
+
+    BusinessProfileRequest:
+      type: object
+      required: [address, lat, lng]
+      properties:
+        address:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+
+    BusinessProfileResponse:
+      type: object
+      required: [ok, profile]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        profile:
+          type: object
+          required: [address, lat, lng]
+          properties:
+            address:
+              type: string
+            lat:
+              type: number
+            lng:
+              type: number
+
+    LocationUpdateRequest:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+        heading:
+          type: number
+          nullable: true
+        tripId:
+          type: string
+          format: uuid
+          nullable: true
+        recordedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    LocationUpdateResponse:
+      type: object
+      required: [ok, location]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        location:
+          type: object
+          required: [courierId, lat, lng, recordedAt]
+          properties:
+            courierId:
+              type: string
+            tripId:
+              type: string
+              format: uuid
+              nullable: true
+            lat:
+              type: number
+            lng:
+              type: number
+            heading:
+              type: number
+              nullable: true
+            recordedAt:
+              type: string
+              format: date-time
+
+    CourierAvailabilityRequest:
+      type: object
+      required: [online]
+      properties:
+        online:
+          type: boolean
+
+    CourierAvailabilityResponse:
+      type: object
+      required: [ok, online]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        online:
+          type: boolean
+
+    CourierTripStatusRequest:
+      type: object
+      required: [tripId, action]
+      properties:
+        tripId:
+          type: string
+          format: uuid
+        action:
+          type: string
+          enum: [start_delivery, complete]
+
+    RateTripRequest:
+      type: object
+      required: [tripId, stars]
+      properties:
+        tripId:
+          type: string
+          format: uuid
+        stars:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+          maxLength: 500
+          nullable: true
+
+    RateTripResponse:
+      type: object
+      required: [ok, tripId, stars, courier]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        tripId:
+          type: string
+          format: uuid
+        stars:
+          type: integer
+        courier:
+          type: object
+          required: [rating, ratingCount]
+          properties:
+            rating:
+              type: number
+            ratingCount:
+              type: integer
