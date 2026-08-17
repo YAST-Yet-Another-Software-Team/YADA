@@ -60,8 +60,12 @@ export function formatPlate(value: string | null | undefined) {
   const digits = rest.replace(/\D/g, '');
   if (digits.length < 1 || digits.length > SERIAL_DIGITS + YEAR_DIGITS) return raw;
 
-  // Too few to be a serial *and* a year — a part-filled plate, printed as it is.
-  if (digits.length <= YEAR_DIGITS) return `${letters} ${digits}`;
+  // Four digits or fewer are all serial. They *could* be split into a serial
+  // and a year, but doing so invents a hyphen and a registration year out of
+  // digits nobody offered: `GT4521` came back as `GT 45-21`, which is a
+  // different plate. A year only exists here when there are more digits than a
+  // serial can hold.
+  if (digits.length <= SERIAL_DIGITS) return `${letters} ${digits}`;
 
   return `${letters} ${digits.slice(0, -YEAR_DIGITS)}-${digits.slice(-YEAR_DIGITS)}`;
 }
@@ -107,9 +111,20 @@ export function maskPlate(raw: string) {
   const cut = upper.lastIndexOf('-');
   const typedSerial = cut >= 0 ? upper.slice(0, cut).replace(/\D/g, '') : '';
   const theirs = typedSerial.length > 0;
+  const typedYear = theirs ? upper.slice(cut + 1).replace(/\D/g, '') : '';
+
+  // Their split has to fit the shape, or it is not a shape we can hold them to.
+  // Truncating instead — which is what this did — *ate a digit they had typed*:
+  // pasting `GR 12345-2` came back `GR 1234-2`, one character short and wrong,
+  // with nothing on screen to say so. A year of three digits is the same story
+  // from the other end, and `formatPlate` would refuse to read back what the
+  // mask had emitted.
+  if (theirs && (typedSerial.length > SERIAL_DIGITS || typedYear.length > YEAR_DIGITS)) {
+    return upper;
+  }
 
   const [serial, year] = theirs
-    ? [typedSerial.slice(0, SERIAL_DIGITS), upper.slice(cut + 1).replace(/\D/g, '')]
+    ? [typedSerial, typedYear]
     : [rest.slice(0, SERIAL_DIGITS), rest.slice(SERIAL_DIGITS)];
 
   if (year.length > 0) return `${letters} ${serial}-${year}`;

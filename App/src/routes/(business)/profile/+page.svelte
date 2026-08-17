@@ -15,7 +15,7 @@
 	import { messageOf } from '$auth/errors';
 	import { ProfilePhotoError, readProfilePhoto } from '$lib/client/images/profile-photo';
 	import { initials } from '$lib/shared/text';
-	import { maskPhone, normalisePhone } from '$lib/shared/phone';
+	import { formatPhone, maskPhone, normalisePhone } from '$lib/shared/phone';
 	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
 	import IconCamera from '~icons/mdi/camera-outline';
 	import IconMapMarker from '~icons/mdi/map-marker-outline';
@@ -70,7 +70,7 @@
 	// svelte-ignore state_referenced_locally
 	let name = $state(session.user?.name ?? '');
 	// svelte-ignore state_referenced_locally
-	let phone = $state(maskPhone(session.user?.phone ?? ''));
+	let phone = $state(formatPhone(session.user?.phone ?? ''));
 	const email = $derived(user?.email ?? '');
 
 	let profileError = $state('');

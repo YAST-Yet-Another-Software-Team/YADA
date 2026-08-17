@@ -12,6 +12,21 @@
  * cannot resolve `$lib` / `$env` aliases.
  */
 
+/**
+ * The runtime's own `fetch`, taken once at import.
+ *
+ * In dev, SvelteKit swaps `globalThis.fetch` for a wrapper for the duration of
+ * every SSR render, to catch components that fetch while rendering. The calls
+ * below are not that: they are socket handshakes and room joins, which happen
+ * on their own schedule and only *coincide* with a render — but because the
+ * wrapper is installed on a global, a handshake landing inside that window was
+ * enough to print "Avoid calling `fetch` eagerly during server-side rendering"
+ * against code that does nothing of the sort. Both entry points import this
+ * module at start-up, long before any render can patch anything, so the
+ * reference captured here is the real one.
+ */
+const fetchDirect = globalThis.fetch.bind(globalThis);
+
 /** @typedef {{ id: string, role: string }} SocketUser */
 
 /**
@@ -25,7 +40,7 @@ async function resolveSessionUser(appOrigin, cookie) {
   if (!cookie) return null;
 
   try {
-    const response = await fetch(new URL('/api/auth/get-session', appOrigin), {
+    const response = await fetchDirect(new URL('/api/auth/get-session', appOrigin), {
       headers: { cookie }
     });
     if (!response.ok) return null;
@@ -53,7 +68,7 @@ async function isTripParticipant(appOrigin, cookie, tripId) {
     const url = new URL('/api/trips', appOrigin);
     url.searchParams.set('id', tripId);
 
-    const response = await fetch(url, { headers: { cookie } });
+    const response = await fetchDirect(url, { headers: { cookie } });
     if (!response.ok) return false;
 
     const payload = await response.json().catch(() => null);

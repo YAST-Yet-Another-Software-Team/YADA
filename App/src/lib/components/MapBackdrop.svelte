@@ -504,6 +504,14 @@
     routePolyline = null;
     hintPolyline?.setMap(null);
     hintPolyline = null;
+    // The memo keys go with the lines they describe. Leaving them set meant
+    // `syncPolylines` compared the *new* map's empty state against the old
+    // map's key, decided nothing had changed, and drew no route at all — so a
+    // courier who changed theme mid-delivery (or whose phone rolled into dark
+    // mode at sunset) lost the red line and did not get it back until they left
+    // the route. `lastCenteredKey` is reset in `buildMap` for the same reason.
+    routeKey = '';
+    hintKey = '';
     // A rebuilt map has framed nothing yet, and the viewer's suspension went
     // with the camera it applied to.
     framedCount = 0;
@@ -522,7 +530,6 @@
       return;
     }
 
-    theme = resolveTheme();
     mapState = 'loading';
 
     try {
@@ -539,8 +546,12 @@
       markerApi = markerLibrary;
       mapsLibrary = mapsLibraryResult;
 
-      buildMap();
-
+      // Watch first, then read, then build — in that order, and all of it
+      // *after* the loader has settled. The theme used to be read before the
+      // await: a viewer who hit the toggle while the Maps SDK was still coming
+      // down got a map built to the old theme, and the watcher then seeded
+      // itself with the *new* one, so it saw no change to report and the
+      // basemap stayed wrong until they toggled twice or reloaded.
       stopThemeWatch = watchResolvedTheme((next) => {
         theme = next;
 
@@ -551,6 +562,9 @@
         teardownMap();
         buildMap();
       });
+
+      theme = resolveTheme();
+      buildMap();
     } catch (error) {
       console.error('Unable to load Google Maps.', error);
       mapState = 'error';

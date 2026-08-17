@@ -37,7 +37,7 @@
     placeholder = '',
     type = 'text',
     disabled = false,
-    id = `input-${Math.random().toString(36).slice(2, 9)}`,
+    id = undefined,
     inputRef = $bindable(null),
     autocomplete = undefined,
     icon,
@@ -63,6 +63,18 @@
      */
     format?: (raw: string) => string;
   } & HTMLInputAttributes = $props();
+
+  /**
+   * The id the label points at.
+   *
+   * `$props.id()` rather than the random string this used to default to: that
+   * one was drawn once on the server and again in the browser, so every field
+   * shipped a `<label for>` aimed at an id that no longer existed after
+   * hydration. This one is derived from the component's place in the tree and
+   * is the same on both sides.
+   */
+  const generatedId = $props.id();
+  const fieldId = $derived(id ?? generatedId);
 
   function reformat(element: HTMLInputElement, raw: string, caret: number) {
     if (!format) return;
@@ -106,15 +118,18 @@
   }
 </script>
 
-<label class="flex w-full flex-col gap-1.5" for={id}>
+<label class="flex w-full flex-col gap-1.5" for={fieldId}>
   {#if label}
     <span class="text-sm font-semibold text-ink">{label}</span>
   {/if}
   <div
     class="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2.5 transition focus-within:border-md focus-within:border-primary focus-within:outline focus-within:outline-3 focus-within:outline-focus"
   >
+    {#if icon}
+      <span class="shrink-0 text-ink-tertiary">{@render icon()}</span>
+    {/if}
     <input
-      {id}
+      id={fieldId}
       {type}
       {placeholder}
       {disabled}

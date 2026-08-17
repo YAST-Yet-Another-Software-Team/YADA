@@ -10,8 +10,8 @@
 	import { messageOf } from '$auth/errors';
 	import { ProfilePhotoError, readProfilePhoto } from '$lib/client/images/profile-photo';
 	import { initials } from '$lib/shared/text';
-	import { maskPhone, normalisePhone } from '$lib/shared/phone';
-	import { maskPlate, normalisePlate } from '$lib/shared/plate';
+	import { formatPhone, maskPhone, normalisePhone } from '$lib/shared/phone';
+	import { formatPlate, maskPlate, normalisePlate } from '$lib/shared/plate';
 	import IconCamera from '~icons/mdi/camera-outline';
 
 	let {
@@ -30,14 +30,14 @@
 
 	let activeTab = $state('profile');
 	let name = $state(currentUser?.name ?? '');
-	let phone = $state(maskPhone(currentUser?.phone ?? ''));
+	let phone = $state(formatPhone(currentUser?.phone ?? ''));
 	let email = $state(currentUser?.email ?? '');
 	// Lives on `courier_profiles`, not the account, so it saves through the
 	// courier profile endpoint alongside the Better Auth call below. Seeded once,
 	// like the fields above it: a later reload of `data` must not overwrite what
 	// the rider is in the middle of typing.
 	// svelte-ignore state_referenced_locally
-	let plate = $state(maskPlate(data.courierProfile.plateNumber ?? ''));
+	let plate = $state(formatPlate(data.courierProfile.plateNumber ?? ''));
 	let currentPassword = $state('');
 	let newPassword = $state('');
 	let confirmPassword = $state('');

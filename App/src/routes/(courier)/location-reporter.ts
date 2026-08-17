@@ -73,7 +73,13 @@ export function startCourierLocationReporter(options: {
     }
   }
 
-  if (!options.enabled || typeof navigator === 'undefined' || !navigator.geolocation) {
+  // Turned off by the caller is not the same as unavailable, and only the
+  // second is worth telling anyone about: `onError` is what raises "Location
+  // unavailable — showing last known position" on the rider's screen, and a
+  // reporter that was deliberately never started has nothing to apologise for.
+  if (!options.enabled) return stop;
+
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
     options.onError?.('unavailable');
     return stop;
   }
@@ -112,8 +118,14 @@ export function startCourierLocationReporter(options: {
         // keep UI on last known
       });
     },
-    () => {
-      options.onError?.('denied');
+    (error) => {
+      // The browser says which of the three it is, and they are not the same
+      // thing: a refused permission stays refused, while a timeout or a lost
+      // signal is a tunnel or a stairwell and the next fix may well arrive.
+      // Reporting every one of them as `denied` threw that away, and left the
+      // `unavailable` half of this callback's own union unreachable except
+      // when the API is missing altogether.
+      options.onError?.(error.code === error.PERMISSION_DENIED ? 'denied' : 'unavailable');
       if (lastPoint) {
         options.onUpdate?.({
           ...lastPoint,

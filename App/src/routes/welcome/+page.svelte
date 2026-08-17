@@ -10,8 +10,8 @@
 	} from '$lib/client/images/profile-photo';
 	import IconAccount from '~icons/mdi/account-outline';
 	import IconCheck from '~icons/mdi/check-bold';
-	import { maskPhone } from '$lib/shared/phone';
-	import { maskPlate } from '$lib/shared/plate';
+	import { formatPhone, maskPhone } from '$lib/shared/phone';
+	import { formatPlate, maskPlate } from '$lib/shared/plate';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -33,9 +33,9 @@
 	// as `+233241234567`, and showing that under a placeholder teaching
 	// `024 123 4567` made the two look like different things.
 	// svelte-ignore state_referenced_locally
-	let phone = $state(maskPhone(form?.phone ?? data.account.phone));
+	let phone = $state(formatPhone(form?.phone ?? data.account.phone));
 	// svelte-ignore state_referenced_locally
-	let plate = $state(maskPlate(form?.plate ?? data.account.plate));
+	let plate = $state(formatPlate(form?.plate ?? data.account.plate));
 
 	let submitting = $state(false);
 
