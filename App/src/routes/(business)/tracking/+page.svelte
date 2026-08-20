@@ -9,6 +9,7 @@
 	import IconButton from '$lib/components/IconButton.svelte';
 	import RatingStars from '$lib/components/RatingStars.svelte';
 	import StatusPill from '$lib/components/StatusPill.svelte';
+	import ClosedAccountTag from '$lib/components/ClosedAccountTag.svelte';
 	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
 	import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
 	import type { LatLng } from '$lib/utils/types';
@@ -774,6 +775,9 @@
 			<div class="min-w-0 flex-1">
 				<p class="truncate text-sm font-semibold text-ink">
 					{trip?.courier?.name ?? 'No rider yet'}
+					{#if trip?.courier?.isDeleted}
+						<ClosedAccountTag compact />
+					{/if}
 				</p>
 				<p class="text-sm text-ink-secondary">{statusLabel}</p>
 				{#if trip?.courier}

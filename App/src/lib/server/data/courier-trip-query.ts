@@ -39,6 +39,7 @@ const tripColumns = {
   notes: deliveryRequests.notes,
   businessName: users.name,
   businessPhone: users.phoneNumber,
+  businessDeletedAt: users.deletedAt,
   businessRating: businessProfiles.rating,
   businessRatingCount: businessProfiles.ratingCount
 };
@@ -108,6 +109,7 @@ export function toCourierRequest(row: TripRow): CourierRequest {
     dropoffLng: asNumber(row.dropoffLongitude),
     notes: row.notes,
     requestedAt: row.requestedAt.toISOString(),
+    businessDeleted: row.businessDeletedAt != null,
     businessRating: {
       // Null unless somebody has actually rated them: the cached column
       // defaults to 0.00, and showing that as a score would brand every new

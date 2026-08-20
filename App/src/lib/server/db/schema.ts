@@ -40,6 +40,20 @@ export const users = pgTable('users', {
   image: text('image'),
   phoneNumber: text('phone_number').unique(),
   role: userRoleEnum('role').notNull().default('business'),
+  /**
+   * When the person closed their account, or null while it is open.
+   *
+   * Closing is a soft delete on purpose. `delivery_requests.business_id`
+   * cascades, so removing the row would erase every delivery that business
+   * raised — including the courier's side of them and the ratings on them. The
+   * row therefore stays and keeps its `name`, so history can still say who sent
+   * a parcel, while `deleteOwnAccount` strips the parts that make an account an
+   * account: credentials, sessions, email, phone and photo.
+   *
+   * Nothing may treat a non-null value as merely cosmetic — a closed account
+   * has no way back in, and screens that name the person must mark them closed.
+   */
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 });

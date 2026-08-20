@@ -92,6 +92,13 @@
       "when": 1784750157314,
       "tag": "0012_courier_profile_unique_user",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784750157315,
+      "tag": "0013_soft_delete_users",
+      "breakpoints": true
     }
   ]
 }

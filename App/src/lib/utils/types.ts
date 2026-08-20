@@ -156,6 +156,12 @@ export type CourierRequest = {
    * present on the offer itself, which is where a rider decides.
    */
   businessRating: { average: number | null; count: number };
+  /**
+   * The sender has since closed their account. The name stays — a delivery that
+   * cannot say who sent it is not a record — but the screen must say so, because
+   * the phone number is gone and nobody is going to answer it.
+   */
+  businessDeleted: boolean;
 };
 
 /**
@@ -194,6 +200,8 @@ export type CourierSummary = {
   rating: number | null;
   /** How many ratings stand behind the average. 4.9★ over 200 trips ≠ one 5★. */
   ratingCount: number;
+  /** This rider has closed their account. Their name stays on past deliveries. */
+  isDeleted: boolean;
 };
 
 /**

@@ -4,6 +4,7 @@
   import Button from '$lib/components/Button.svelte';
   import Card from '$lib/components/Card.svelte';
   import RatingStars from '$lib/components/RatingStars.svelte';
+  import ClosedAccountTag from '$lib/components/ClosedAccountTag.svelte';
   import StatusPill from '$lib/components/StatusPill.svelte';
   import { toTripStage } from '$lib/shared/trip-status';
   import type { TripStatus } from '$lib/utils/types';
@@ -13,6 +14,7 @@
   type HistoryTrip = {
     id: string;
     businessName: string;
+    businessDeleted: boolean;
     pickupAddress: string;
     dropoffAddress: string;
     completedAt: string | null;
@@ -161,7 +163,10 @@
                 #{trip.id.slice(0, 8).toUpperCase()}
               </p>
               <p class="truncate text-sm font-semibold text-ink">{trip.dropoffAddress}</p>
-              <p class="truncate text-sm text-ink-secondary">{trip.businessName}</p>
+              <p class="truncate text-sm text-ink-secondary">
+                {trip.businessName}
+                {#if trip.businessDeleted}<ClosedAccountTag compact />{/if}
+              </p>
               <p class="text-xs text-ink-tertiary">{when(trip)}</p>
             </div>
             <StatusPill status={toTripStage(trip.status)} />

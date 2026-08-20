@@ -31,6 +31,10 @@ repository root.
 - [x] Google OAuth, including carrying the chosen role across the redirect in the signed OAuth state
 - [x] `/welcome` completion flow for accounts that arrive missing a phone number, photo or plate
 - [x] Profile photos, avatar-grade (~256 px data URLs — there is no object storage yet)
+- [x] Close your own account, from Settings (courier) or Profile (business). A *soft*
+      delete: credentials, sessions, email, phone and photo go, the name stays so past
+      deliveries can still say who was on them, and the account is refused while a
+      delivery is still in flight
 
 **Business**
 - [x] Dashboard board of live and recent deliveries
@@ -66,7 +70,8 @@ repository root.
 
 ### Next
 
-- [ ] Apply migrations `0011` (business ratings) and `0012` (courier profile uniqueness)
+- [ ] Apply migrations `0011` (business ratings), `0012` (courier profile uniqueness)
+      and `0013` (account soft delete)
 - [ ] Retune polling before real usage — tracking 4 s → 8 s, and pause every poll on `visibilitychange`
 - [ ] Enable Google sign-in by configuring the OAuth credentials (the button is built and disabled until then)
 - [ ] Tune the provisional constants against field data: the 150 m proximity radii, the
