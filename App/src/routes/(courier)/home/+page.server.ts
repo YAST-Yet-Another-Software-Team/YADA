@@ -1,4 +1,4 @@
-import { getCourierHomeData } from '$lib/server/data/courier';
+import { getCourierHomeData } from '$lib/server/data/courier-trips';
 
 export async function load({ parent }) {
 	const { user } = await parent();

@@ -4,6 +4,7 @@ import { initials } from '$lib/shared/text';
 import type { CourierSummary, LatLng } from '$lib/utils/types';
 
 import { db } from '../db';
+import { toCoordinateColumn } from '../db/columns';
 import { businessProfiles, courierProfiles, users } from '../db/schema';
 
 /**
@@ -19,11 +20,6 @@ export type BusinessAddress = {
   lat: number;
   lng: number;
 };
-
-/** `numeric(10, 6)` columns — the scale the schema stores coordinates at. */
-function toCoordinateColumn(value: number) {
-  return value.toFixed(6);
-}
 
 export async function getBusinessAddress(userId: string): Promise<BusinessAddress | null> {
   const [row] = await db

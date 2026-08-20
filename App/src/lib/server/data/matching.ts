@@ -6,19 +6,19 @@ import { haversineKm } from '$lib/shared/geo/service-area';
 import type { LatLng } from '$lib/utils/types';
 
 import { db } from '../db';
-import { courierProfiles, users } from '../db/schema';
+import { courierProfiles } from '../db/schema';
 
 export { MAX_MATCH_RADIUS_KM };
 
 /**
- * The rubric that will decide who a trip is offered to.
+ * The rubric that decides who a trip is offered to, and when.
  *
  * SRS 3.2: dispatch goes to the highest-ranked courier by proximity/ETA and
- * rating, cascading down the list on decline or timeout. That dispatcher isn't
- * built yet — today's board shows every open request to every online courier —
- * but the *ranking* is this module, written now so the ratings being collected
- * have a consumer with defined semantics, and so the matcher, when it lands,
- * imports a function rather than an argument about weights.
+ * rating, cascading down the list on decline or timeout. This module is the
+ * ranking half of that; the dispatcher that applies it is `ringingRequestRows`
+ * in `./courier`, which asks `offerWindow` when each courier's alert opens and
+ * `courierMatchScore` how to order what is already ringing. Neither runs on a
+ * schedule — both are pure functions of elapsed time, evaluated on every poll.
  *
  * All numbers here are PROVISIONAL and expected to move with field data. What
  * should not move is the shape: a score in [0, 1], monotone in closeness and in
@@ -189,70 +189,4 @@ export async function nearbyCouriers(
 			...courier,
 			minutesAway: minutesAway(distanceKm)
 		}));
-}
-
-export type RankedCourier = {
-  courierId: string;
-  name: string;
-  distanceKm: number;
-  rating: number;
-  ratingCount: number;
-  score: number;
-};
-
-/**
- * The candidates for a pickup, best first: active couriers with a fresh
- * location inside the match radius, scored by the rubric above.
- *
- * This is the function the dispatcher calls when it exists. `active` is the
- * profile flag, not the client-side online toggle — wiring the toggle through
- * to the server is part of the matcher's work, not the rubric's.
- */
-export async function rankCouriersForPickup(
-  pickup: LatLng,
-  options?: { limit?: number }
-): Promise<RankedCourier[]> {
-  const freshAfter = new Date(Date.now() - MATCH_LOCATION_FRESH_MS);
-
-  const rows = await db
-    .select({
-      courierId: courierProfiles.userId,
-      name: users.name,
-      lat: courierProfiles.currentLatitude,
-      lng: courierProfiles.currentLongitude,
-      rating: courierProfiles.rating,
-      ratingCount: courierProfiles.ratingCount
-    })
-    .from(courierProfiles)
-    .innerJoin(users, eq(courierProfiles.userId, users.id))
-    .where(
-      and(
-        eq(courierProfiles.active, true),
-        isNotNull(courierProfiles.currentLatitude),
-        isNotNull(courierProfiles.currentLongitude),
-        gt(courierProfiles.lastLocationAt, freshAfter)
-      )
-    );
-
-  return rows
-    .map((row) => {
-      const distanceKm = haversineKm(pickup, {
-        lat: Number(row.lat),
-        lng: Number(row.lng)
-      });
-      const rating = Number(row.rating);
-      const ratingCount = row.ratingCount;
-
-      return {
-        courierId: row.courierId,
-        name: row.name,
-        distanceKm,
-        rating,
-        ratingCount,
-        score: courierMatchScore({ distanceKm, rating, ratingCount })
-      };
-    })
-    .filter((candidate) => candidate.distanceKm <= MAX_MATCH_RADIUS_KM)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, options?.limit ?? 10);
 }

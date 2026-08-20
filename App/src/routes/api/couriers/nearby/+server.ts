@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { RequestHandler } from './$types';
 
 import { env } from '$env/dynamic/private';
-import { apiError } from '$lib/server/api-guard';
+import { apiRoute } from '$lib/server/api-guard';
 import { getBusinessAddress } from '$lib/server/data/business';
 import { nearbyCouriers } from '$lib/server/data/matching';
 import { NEARBY_MINUTES, NEARBY_RADIUS_KM } from '$lib/shared/geo/nearby';
@@ -36,11 +36,7 @@ function refFor(courierId: string) {
  * about *its own* shop, and taking a point off the wire would turn this into a
  * "who is near this arbitrary spot" endpoint for anyone with an account.
  */
-export const GET: RequestHandler = async ({ locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
-	if (user.role !== 'business') return apiError(403, 'denied', 'Business account required.');
-
+export const GET: RequestHandler = apiRoute({ role: 'business' }, async (_event, user) => {
 	const business = await getBusinessAddress(user.id);
 	if (!business) {
 		// Not an error: a business that hasn't set its address yet simply has no
@@ -59,4 +55,4 @@ export const GET: RequestHandler = async ({ locals }) => {
 		minutes: NEARBY_MINUTES,
 		radiusKm: NEARBY_RADIUS_KM
 	});
-};
+});

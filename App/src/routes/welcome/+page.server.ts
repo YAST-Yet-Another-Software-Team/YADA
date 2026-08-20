@@ -6,7 +6,7 @@ import {
 	completeAccount,
 	isDuplicatePhone
 } from '$lib/server/data/account';
-import { getCourierProfile, saveCourierProfile } from '$lib/server/data/courier';
+import { getCourierProfile, saveCourierProfile } from '$lib/server/data/courier-profile';
 import { photoDataUrl } from '$lib/server/validation/photo';
 import { phoneNumber } from '$lib/server/validation/phone';
 import { plateNumber } from '$lib/server/validation/plate';

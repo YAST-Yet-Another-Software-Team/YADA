@@ -2,8 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { and, eq, inArray } from 'drizzle-orm';
 
-import { apiError } from '$lib/server/api-guard';
+import { apiError, apiRoute, readJsonBody } from '$lib/server/api-guard';
+import { MATCH_LOCATION_FRESH_MS } from '$lib/server/data/matching';
+import { applyTripChange } from '$lib/server/data/trip-transition';
 import { db } from '$lib/server/db';
+import { toCoordinateColumn } from '$lib/server/db/columns';
 import { courierProfiles, deliveryRequests } from '$lib/server/db/schema';
 import { recordStatusChange, recordTripEvent } from '$lib/server/data/trip-events';
 import { geoErrorMessage } from '$lib/shared/geo/errors';
@@ -20,25 +23,48 @@ type LocationBody = {
 	recordedAt?: string;
 };
 
-export const POST: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
-	if (user.role !== 'courier') return apiError(403, 'denied', 'Courier account required.');
+/**
+ * When the fix was taken, as the client reports it — but never taken on trust.
+ *
+ * `last_location_at` is the column dispatch reads to decide whether a courier
+ * is locatable at all, and the one both handover confirmations gate on. A
+ * client free to name its own time could therefore keep a long-stale position
+ * permanently "fresh" by posting a future timestamp, and go on being ringed for
+ * deliveries from wherever it last felt like being.
+ *
+ * So the value is only honoured when it is plausible: parseable, not in the
+ * future, and no older than the window anything downstream would believe. Every
+ * other case — including the unparseable string that used to reach the
+ * timestamp column and turn the whole request into a 500 — falls back to the
+ * server's clock, which is the one thing here a caller cannot influence. A fix
+ * timed on arrival is at worst a few seconds out.
+ */
+function toRecordedAt(value: unknown) {
+	const now = Date.now();
+	if (typeof value !== 'string') return new Date(now);
 
-	const body = (await request.json()) as LocationBody;
+	const reported = new Date(value).getTime();
+	if (Number.isNaN(reported)) return new Date(now);
+	if (reported > now || now - reported > MATCH_LOCATION_FRESH_MS) return new Date(now);
+
+	return new Date(reported);
+}
+
+export const POST: RequestHandler = apiRoute({ role: 'courier' }, async ({ request }, user) => {
+	const body = (await readJsonBody<LocationBody>(request)) ?? {};
 	const lat = Number(body.lat);
 	const lng = Number(body.lng);
 	if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
 		return apiError(400, 'invalid_request', geoErrorMessage('invalid_request'));
 	}
 
-	const recordedAt = body.recordedAt ? new Date(body.recordedAt) : new Date();
+	const recordedAt = toRecordedAt(body.recordedAt);
 
 	await db
 		.update(courierProfiles)
 		.set({
-			currentLatitude: lat.toFixed(6),
-			currentLongitude: lng.toFixed(6),
+			currentLatitude: toCoordinateColumn(lat),
+			currentLongitude: toCoordinateColumn(lng),
 			lastLocationAt: recordedAt,
 			updatedAt: new Date()
 		})
@@ -91,16 +117,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					PICKUP_PROXIMITY_KM
 				)
 			) {
-				await db
-					.update(deliveryRequests)
-					.set({ status: 'courier_arriving' })
-					.where(eq(deliveryRequests.id, trip.id));
+				// Conditional, like every other transition: two fixes arriving together
+				// would otherwise both write the arrival and both log it.
+				const arrived = await applyTripChange(
+					trip.id,
+					[
+						eq(deliveryRequests.assignedCourierId, user.id),
+						eq(deliveryRequests.status, trip.status)
+					],
+					{ status: 'courier_arriving' }
+				);
 
-				await recordStatusChange(trip.id, user.id, {
-					from: trip.status,
-					to: 'courier_arriving',
-					action: 'reached_pickup'
-				});
+				if (arrived) {
+					await recordStatusChange(trip.id, user.id, {
+						from: trip.status,
+						to: 'courier_arriving',
+						action: 'reached_pickup'
+					});
+				}
 			}
 		}
 	}
@@ -122,4 +156,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	return json({ ok: true, location: payload });
-};
+});

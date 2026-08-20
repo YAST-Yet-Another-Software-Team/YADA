@@ -2,12 +2,12 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { and, eq } from 'drizzle-orm';
 
-import { apiError } from '$lib/server/api-guard';
+import { apiError, apiRoute, invalidTripId, readTripId } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
 import { deliveryRequests } from '$lib/server/db/schema';
 import { recordStatusChange } from '$lib/server/data/trip-events';
+import { applyTripChange, tripMoved } from '$lib/server/data/trip-transition';
 import { isCancellableByBusiness } from '$lib/shared/trip-status';
-import { isUuid } from '$lib/shared/uuid';
 
 /**
  * Withdraw a delivery request.
@@ -23,17 +23,9 @@ import { isUuid } from '$lib/shared/uuid';
  * tracking screen and anything later that wants a cancel button all reach this
  * same endpoint.
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
-	if (user.role !== 'business') return apiError(403, 'denied', 'Business account required.');
-
-	const body = await request.json().catch(() => null);
-	const tripId = (body as { tripId?: unknown } | null)?.tripId;
-
-	if (!isUuid(tripId)) {
-		return apiError(400, 'invalid_request', 'Trip id required.');
-	}
+export const POST: RequestHandler = apiRoute({ role: 'business' }, async ({ request }, user) => {
+	const tripId = await readTripId(request);
+	if (!tripId) return invalidTripId();
 
 	// Scoped to the caller's own trip, so ownership and lookup are one query.
 	const [trip] = await db
@@ -58,10 +50,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	}
 
-	await db
-		.update(deliveryRequests)
-		.set({ status: 'cancelled' })
-		.where(eq(deliveryRequests.id, tripId));
+	// A courier accepting, or reaching the counter, in the same instant must not
+	// be overwritten by a cancellation whose window had already closed by the
+	// time it was written.
+	const cancelled = await applyTripChange(
+		tripId,
+		[eq(deliveryRequests.businessId, user.id), eq(deliveryRequests.status, trip.status)],
+		{ status: 'cancelled' }
+	);
+
+	if (!cancelled) return tripMoved();
 
 	await recordStatusChange(tripId, user.id, {
 		from: trip.status,
@@ -70,4 +68,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 
 	return json({ ok: true, tripId, status: 'cancelled' });
-};
+});

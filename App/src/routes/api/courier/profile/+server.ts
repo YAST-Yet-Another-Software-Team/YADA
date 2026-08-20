@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
 
-import { apiError } from '$lib/server/api-guard';
-import { getCourierProfile, saveCourierProfile } from '$lib/server/data/courier';
+import { apiError, apiRoute, readJsonBody } from '$lib/server/api-guard';
+import { getCourierProfile, saveCourierProfile } from '$lib/server/data/courier-profile';
 import { plateNumber } from '$lib/server/validation/plate';
 
 /**
@@ -16,12 +16,8 @@ import { plateNumber } from '$lib/server/validation/plate';
  */
 const bodySchema = z.object({ plateNumber });
 
-export const PUT: RequestHandler = async ({ request, locals }) => {
-  const user = locals.user;
-  if (!user) return apiError(401, 'denied', 'Sign in required.');
-  if (user.role !== 'courier') return apiError(403, 'denied', 'Courier account required.');
-
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+export const PUT: RequestHandler = apiRoute({ role: 'courier' }, async ({ request }, user) => {
+  const parsed = bodySchema.safeParse(await readJsonBody(request));
   if (!parsed.success) {
     return apiError(400, 'invalid_request', parsed.error.issues[0]?.message ?? 'Check that plate.');
   }
@@ -33,4 +29,4 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
   const profile = await getCourierProfile(user.id);
 
   return json({ ok: true, profile });
-};
+});

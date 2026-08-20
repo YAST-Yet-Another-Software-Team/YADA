@@ -2,11 +2,12 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { and, eq } from 'drizzle-orm';
 
-import { apiError } from '$lib/server/api-guard';
+import { apiError, apiRoute, readJsonBody } from '$lib/server/api-guard';
 import { courierWithinRange } from '$lib/server/data/courier-location';
 import { db } from '$lib/server/db';
 import { deliveryRequests } from '$lib/server/db/schema';
 import { recordStatusChange } from '$lib/server/data/trip-events';
+import { applyTripChange, tripMoved } from '$lib/server/data/trip-transition';
 import { DELIVERY_PROXIMITY_KM } from '$lib/shared/geo/proximity';
 import type { TripStatus } from '$lib/utils/types';
 import { isUuid } from '$lib/shared/uuid';
@@ -29,12 +30,8 @@ function isTripAction(value: unknown): value is TripAction {
   return typeof value === 'string' && value in NEXT_STATUS;
 }
 
-export const POST: RequestHandler = async ({ request, locals }) => {
-  const user = locals.user;
-  if (!user) return apiError(401, 'denied', 'Sign in required.');
-  if (user.role !== 'courier') return apiError(403, 'denied', 'Courier account required.');
-
-  const body = await request.json();
+export const POST: RequestHandler = apiRoute({ role: 'courier' }, async ({ request }, user) => {
+  const body = await readJsonBody<{ tripId?: unknown; action?: unknown }>(request);
   const tripId = body?.tripId;
   const action = body?.action;
 
@@ -99,12 +96,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const nextStatus = NEXT_STATUS[action];
 
-  await db
-    .update(deliveryRequests)
-    .set(nextStatus === 'completed' ? { status: nextStatus, completedAt: new Date() } : { status: nextStatus })
-    .where(eq(deliveryRequests.id, tripId));
+  // Compare-and-swap on the status the checks above were made against. Between
+  // the read and the write the row can have moved — a double-tapped "Complete",
+  // or the business cancelling in the same instant — and a blind write would
+  // apply a transition whose preconditions no longer hold, then report success.
+  const moved = await applyTripChange(
+    tripId,
+    [eq(deliveryRequests.assignedCourierId, user.id), eq(deliveryRequests.status, trip.status)],
+    nextStatus === 'completed'
+      ? { status: nextStatus, completedAt: new Date() }
+      : { status: nextStatus }
+  );
+
+  if (!moved) return tripMoved();
 
   await recordStatusChange(tripId, user.id, { from: trip.status, to: nextStatus, action });
 
   return json({ ok: true, tripId, status: nextStatus });
-};
+});

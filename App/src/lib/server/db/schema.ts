@@ -124,8 +124,14 @@ export const businessProfiles = pgTable('business_profiles', {
 // ---------------------------------------------------------------------------
 export const courierProfiles = pgTable('courier_profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
+  // Unique, as `business_profiles.user_id` always was: every read of a courier's
+  // profile is a LIMIT 1, so a second row for the same rider would make "their
+  // position", "their rating" and "are they online" answers Postgres picks
+  // rather than facts. It is also what lets `saveCourierProfile` be a real
+  // upsert instead of a SELECT-then-INSERT that races into the duplicate.
   userId: text('user_id')
     .notNull()
+    .unique()
     .references(() => users.id, { onDelete: 'cascade' }),
   vehicleType: text('vehicle_type').notNull(),
   // The plate on the bike that turns up. Every YADA courier rides a motorbike,

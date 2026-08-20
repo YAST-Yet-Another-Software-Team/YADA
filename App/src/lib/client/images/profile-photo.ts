@@ -1,8 +1,8 @@
 /**
  * Turning a chosen photo into something small enough to store on the user row.
  *
- * YADA has no file storage — no bucket, no CDN, and an adapter-node process
- * whose filesystem is not somewhere to put durable uploads. What it does have is
+ * YADA has no file storage — no bucket, no CDN, and a Workers isolate has no
+ * filesystem to put durable uploads on. What it does have is
  * `users.image`, a text column. So the photo is downscaled to a square thumbnail
  * in the browser and carried as a data URL: a few tens of kilobytes, no upload
  * endpoint, no orphaned files to clean up.

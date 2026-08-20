@@ -1,8 +1,5 @@
-import {
-  courierProfileOf,
-  getCourierRating,
-  getCourierTripHistory
-} from '$lib/server/data/courier';
+import { courierProfileOf, getCourierRating } from '$lib/server/data/courier-profile';
+import { getCourierTripHistory } from '$lib/server/data/courier-trips';
 
 export async function load({ parent }) {
   const { user } = await parent();

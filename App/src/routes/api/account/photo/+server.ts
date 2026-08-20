@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-import { apiError } from '$lib/server/api-guard';
+import { apiError, apiRoute, readJsonBody } from '$lib/server/api-guard';
 import { setUserImage } from '$lib/server/data/account';
 import { photoDataUrl } from '$lib/server/validation/photo';
 
@@ -18,11 +18,8 @@ type PhotoBody = {
  * both roles reach the same column through the same rules. Sign-up is the other
  * writer — see `$lib/server/validation/photo` for the shared schema.
  */
-export const PUT: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
-
-	const body = (await request.json().catch(() => null)) as PhotoBody | null;
+export const PUT: RequestHandler = apiRoute({}, async ({ request }, user) => {
+	const body = await readJsonBody<PhotoBody>(request);
 	if (!body || !('image' in body)) {
 		return apiError(400, 'invalid_request', 'No photo was sent.');
 	}
@@ -42,4 +39,4 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 	await setUserImage(user.id, parsed.data);
 
 	return json({ ok: true, image: parsed.data });
-};
+});

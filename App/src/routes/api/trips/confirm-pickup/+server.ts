@@ -2,14 +2,14 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { and, eq } from 'drizzle-orm';
 
-import { apiError } from '$lib/server/api-guard';
+import { apiError, apiRoute, invalidTripId, readTripId } from '$lib/server/api-guard';
 import { courierWithinRange } from '$lib/server/data/courier-location';
 import { db } from '$lib/server/db';
 import { deliveryRequests } from '$lib/server/db/schema';
 import { recordStatusChange } from '$lib/server/data/trip-events';
+import { applyTripChange, tripMoved } from '$lib/server/data/trip-transition';
 import { PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
 import { isPickupPhase } from '$lib/shared/trip-status';
-import { isUuid } from '$lib/shared/uuid';
 
 /**
  * End the pickup phase: the business says the parcel is now with the courier.
@@ -19,17 +19,9 @@ import { isUuid } from '$lib/shared/uuid';
  * mark it from the road. The rider still has to be at the counter for it to be
  * accepted, checked against their last reported position.
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
-	if (user.role !== 'business') return apiError(403, 'denied', 'Business account required.');
-
-	const body = await request.json().catch(() => null);
-	const tripId = (body as { tripId?: unknown } | null)?.tripId;
-
-	if (!isUuid(tripId)) {
-		return apiError(400, 'invalid_request', 'Trip id required.');
-	}
+export const POST: RequestHandler = apiRoute({ role: 'business' }, async ({ request }, user) => {
+	const tripId = await readTripId(request);
+	if (!tripId) return invalidTripId();
 
 	const [trip] = await db
 		.select({
@@ -71,10 +63,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 	}
 
-	await db
-		.update(deliveryRequests)
-		.set({ status: 'picked_up' })
-		.where(eq(deliveryRequests.id, tripId));
+	// The courier is pinned as well as the status: the proximity check above is a
+	// round trip, and a rider who releases the trip during it would otherwise
+	// have a handover written against a delivery they are no longer on.
+	const confirmed = await applyTripChange(
+		tripId,
+		[
+			eq(deliveryRequests.businessId, user.id),
+			eq(deliveryRequests.assignedCourierId, trip.assignedCourierId),
+			eq(deliveryRequests.status, trip.status)
+		],
+		{ status: 'picked_up' }
+	);
+
+	if (!confirmed) return tripMoved();
 
 	await recordStatusChange(tripId, user.id, {
 		from: trip.status,
@@ -83,4 +85,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 
 	return json({ ok: true, tripId, status: 'picked_up' });
-};
+});

@@ -2,11 +2,10 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { and, eq, isNull } from 'drizzle-orm';
 
-import { apiError } from '$lib/server/api-guard';
+import { apiError, apiRoute, invalidTripId, readTripId } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
 import { deliveryRequests, tripDeclines } from '$lib/server/db/schema';
 import { recordTripEvent } from '$lib/server/data/trip-events';
-import { isUuid } from '$lib/shared/uuid';
 
 /**
  * A courier turns an offer down.
@@ -17,16 +16,9 @@ import { isUuid } from '$lib/shared/uuid';
  * killed the request for the business and every other courier, which is the
  * opposite of a cascade.
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
-	if (user.role !== 'courier') return apiError(403, 'denied', 'Courier account required.');
-
-	const body = await request.json();
-	const tripId = body?.tripId;
-	if (!isUuid(tripId)) {
-		return apiError(400, 'invalid_request', 'Trip id required.');
-	}
+export const POST: RequestHandler = apiRoute({ role: 'courier' }, async ({ request }, user) => {
+	const tripId = await readTripId(request);
+	if (!tripId) return invalidTripId();
 
 	const [trip] = await db
 		.select({ id: deliveryRequests.id })
@@ -45,12 +37,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	// Declining twice is the same answer, not an error.
-	await db
-		.insert(tripDeclines)
-		.values({ tripId, courierId: user.id })
-		.onConflictDoNothing();
+	await db.insert(tripDeclines).values({ tripId, courierId: user.id }).onConflictDoNothing();
 
 	await recordTripEvent(tripId, user.id, 'offer_declined', {});
 
 	return json({ ok: true, tripId });
-};
+});

@@ -4,7 +4,7 @@ import type { AuthRole, SessionUser } from '$lib/utils/types';
 
 import { db } from '../db';
 import { users } from '../db/schema';
-import { getCourierProfile } from './courier';
+import { getCourierProfile } from './courier-profile';
 
 /**
  * Set — or clear — the account's profile photo.

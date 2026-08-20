@@ -1,4 +1,4 @@
-import { getCourierProfile } from '$lib/server/data/courier';
+import { getCourierProfile } from '$lib/server/data/courier-profile';
 
 /**
  * The profile block at the top of Settings reads the courier's own row — the

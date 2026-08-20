@@ -2,12 +2,12 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { and, eq } from 'drizzle-orm';
 
-import { apiError } from '$lib/server/api-guard';
+import { apiError, apiRoute, invalidTripId, readTripId } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
 import { deliveryRequests, tripDeclines } from '$lib/server/db/schema';
 import { recordStatusChange } from '$lib/server/data/trip-events';
+import { applyTripChange, tripMoved } from '$lib/server/data/trip-transition';
 import { isReleasableByCourier } from '$lib/shared/trip-status';
-import { isUuid } from '$lib/shared/uuid';
 
 /**
  * A courier lets go of a job they had accepted, before reaching the pickup.
@@ -31,17 +31,9 @@ import { isUuid } from '$lib/shared/uuid';
  * The window closes on arrival: from `courier_arriving` the rider is at the
  * counter, and walking away from that is not something to do through an API.
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
-	if (user.role !== 'courier') return apiError(403, 'denied', 'Courier account required.');
-
-	const body = await request.json().catch(() => null);
-	const tripId = (body as { tripId?: unknown } | null)?.tripId;
-
-	if (!isUuid(tripId)) {
-		return apiError(400, 'invalid_request', 'Trip id required.');
-	}
+export const POST: RequestHandler = apiRoute({ role: 'courier' }, async ({ request }, user) => {
+	const tripId = await readTripId(request);
+	if (!tripId) return invalidTripId();
 
 	// Scoped to the courier's own trip, so the assignment check and the lookup
 	// are the same query.
@@ -65,17 +57,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	}
 
-	await db
-		.update(deliveryRequests)
-		.set({
-			status: 'requested',
-			assignedCourierId: null,
-			dispatchStartedAt: new Date()
-		})
-		.where(eq(deliveryRequests.id, tripId));
+	const released = await applyTripChange(
+		tripId,
+		[
+			eq(deliveryRequests.assignedCourierId, user.id),
+			eq(deliveryRequests.status, trip.status)
+		],
+		{ status: 'requested', assignedCourierId: null, dispatchStartedAt: new Date() }
+	);
+
+	if (!released) return tripMoved();
 
 	// "No" with a memory, the same row `POST /api/courier/decline-trip` writes.
 	// Dropping a job you accepted says at least as much as declining the offer.
+	// Written only once the release actually landed: a decline recorded against
+	// a trip this courier still holds would unring them from their own delivery.
 	await db.insert(tripDeclines).values({ tripId, courierId: user.id }).onConflictDoNothing();
 
 	await recordStatusChange(tripId, user.id, {
@@ -85,4 +81,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 
 	return json({ ok: true, tripId, status: 'requested' });
-};
+});

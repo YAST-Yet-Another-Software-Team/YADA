@@ -1,4 +1,4 @@
-import { getCourierProfile } from '$lib/server/data/courier';
+import { getCourierProfile } from '$lib/server/data/courier-profile';
 
 /** The plate prefill; name and phone come from the session the layout provides. */
 export async function load({ parent }) {

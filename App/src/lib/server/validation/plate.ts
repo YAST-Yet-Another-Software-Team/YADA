@@ -12,7 +12,7 @@ import { z } from 'zod';
  * An empty string is allowed here because it is how the settings form says "I
  * cleared this"; the callers that *require* a plate say so themselves.
  * Normalisation (trim, collapse, uppercase, empty → null) belongs to
- * `normalisePlate` in `$lib/server/data/courier`, not here.
+ * `normalisePlate` in `$lib/server/data/courier-profile`, not here.
  */
 export const plateNumber = z
 	.string()

@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 
 import { courierScreenFor, requireCourierTrip } from '$lib/server/courier-trip';
-import { getCourierTripById } from '$lib/server/data/courier';
+import { getCourierTripById } from '$lib/server/data/courier-trips';
 import { isPickupPhase } from '$lib/shared/trip-status';
 
 export async function load({ parent, url }) {

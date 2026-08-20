@@ -15,5 +15,6 @@ package-lock.json
 pnpm-lock.yaml
 yarn.lock
 *.md
+!README.md
 # Playwright
 test-results

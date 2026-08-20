@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { apiError } from '$lib/server/api-guard';
+import { apiError, apiRoute, readJsonBody } from '$lib/server/api-guard';
 import { db } from '$lib/server/db';
 import { deliveryRequests } from '$lib/server/db/schema';
 import { AlreadyRatedError, rateForTrip, type RatedRole } from '$lib/server/data/ratings';
@@ -83,11 +83,8 @@ function ratingCounterpart(
  * independent, and each side rating the same delivery is two rows, not a
  * conflict. The rated party's cached average updates in the same transaction.
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
-
-	const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+export const POST: RequestHandler = apiRoute({}, async ({ request }, user) => {
+	const parsed = bodySchema.safeParse(await readJsonBody(request));
 	if (!parsed.success) {
 		return apiError(400, 'invalid_request', parsed.error.issues[0].message);
 	}
@@ -151,4 +148,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 		throw error;
 	}
-};
+});

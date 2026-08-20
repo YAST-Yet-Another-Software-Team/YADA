@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
 
-import { apiError, emailUnverified } from '$lib/server/api-guard';
-import { setCourierAvailability } from '$lib/server/data/courier';
+import { apiError, apiRoute, emailUnverified, readJsonBody } from '$lib/server/api-guard';
+import { setCourierAvailability } from '$lib/server/data/courier-profile';
 
 const bodySchema = z.object({ online: z.boolean() });
 
@@ -16,12 +16,8 @@ const bodySchema = z.object({ online: z.boolean() });
  * this flag a courier who just clocked off would keep ringing until it aged
  * out.
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
-	if (user.role !== 'courier') return apiError(403, 'denied', 'Courier account required.');
-
-	const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+export const POST: RequestHandler = apiRoute({ role: 'courier' }, async ({ request }, user) => {
+	const parsed = bodySchema.safeParse(await readJsonBody(request));
 	if (!parsed.success) {
 		return apiError(400, 'invalid_request', 'Send { online: boolean }.');
 	}
@@ -36,4 +32,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	await setCourierAvailability(user.id, parsed.data.online);
 
 	return json({ ok: true, online: parsed.data.online });
-};
+});

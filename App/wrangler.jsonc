@@ -20,7 +20,6 @@
     // Must exactly match the origin the browser uses, or sign-ins appear to
     // succeed and then don't stick.
     "BETTER_AUTH_URL": "https://yada.flaviosobbin04.workers.dev",
-    "SOCKET_CORS_ORIGIN": "https://yada.flaviosobbin04.workers.dev",
     // The From on confirmation and password-reset mail. Must be an address
     // *verified as a sender* in Brevo — it emails you a link to click. Not a
     // domain: this deployment is on a workers.dev subdomain with no DNS of its

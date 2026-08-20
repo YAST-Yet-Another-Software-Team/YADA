@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-import { apiError } from '$lib/server/api-guard';
+import { apiError, apiRoute, readJsonBody } from '$lib/server/api-guard';
 import { getBusinessAddress, saveBusinessAddress } from '$lib/server/data/business';
 import { geoErrorMessage } from '$lib/shared/geo/errors';
 
@@ -27,12 +27,8 @@ const MIN_BUSINESS_NAME = 2;
  * account name lives on `users` — the profile page changes both, and letting
  * them drift means a business whose maps label disagrees with its own header.
  */
-export const PUT: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
-	if (user.role !== 'business') return apiError(403, 'denied', 'Business account required.');
-
-	const body = (await request.json().catch(() => null)) as ProfileBody | null;
+export const PUT: RequestHandler = apiRoute({ role: 'business' }, async ({ request }, user) => {
+	const body = await readJsonBody<ProfileBody>(request);
 
 	const businessName = typeof body?.businessName === 'string' ? body.businessName.trim() : undefined;
 	// Presence, not validity: a caller that sent a broken address should hear
@@ -85,4 +81,4 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 	await saveBusinessAddress(user.id, { businessName: name, address, lat, lng });
 
 	return json({ ok: true, profile: { businessName: name, address, lat, lng } });
-};
+});
