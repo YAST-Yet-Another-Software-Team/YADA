@@ -20,9 +20,13 @@ export class AuthError extends Error {
   /** HTTP status, or `null` for a request that never got a response. */
   readonly status: number | null;
 
-  constructor(message: string, code: string | null = null, status: number | null = null) {
+  constructor(
+    message: string,
+    code: string | null = null,
+    status: number | null = null,
+  ) {
     super(message);
-    this.name = 'AuthError';
+    this.name = "AuthError";
     this.code = code;
     this.status = status;
   }
@@ -43,26 +47,29 @@ export class AuthError extends Error {
 const MESSAGE_BY_CODE: Record<string, string> = {
   // Sign in
   INVALID_EMAIL_OR_PASSWORD: "That email and password don't match an account.",
-  INVALID_EMAIL: 'Enter a valid email address.',
-  EMAIL_NOT_VERIFIED: 'Verify your email address before signing in — check your inbox.',
-  EMAIL_PASSWORD_DISABLED: 'Email sign-in is unavailable right now.',
+  INVALID_EMAIL: "Enter a valid email address.",
+  EMAIL_NOT_VERIFIED:
+    "Verify your email address before signing in — check your inbox.",
+  EMAIL_PASSWORD_DISABLED: "Email sign-in is unavailable right now.",
   FAILED_TO_CREATE_SESSION: "We couldn't start your session. Try again.",
 
   // Sign up
-  USER_ALREADY_EXISTS: 'An account already uses this email. Sign in instead.',
-  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'An account already uses this email. Sign in instead.',
+  USER_ALREADY_EXISTS: "An account already uses this email. Sign in instead.",
+  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL:
+    "An account already uses this email. Sign in instead.",
   FAILED_TO_CREATE_USER: "We couldn't create your account. Try again.",
-  PASSWORD_TOO_SHORT: 'Your password is too short — use at least 8 characters.',
-  PASSWORD_TOO_LONG: 'Your password is too long.',
+  PASSWORD_TOO_SHORT: "Your password is too short — use at least 8 characters.",
+  PASSWORD_TOO_LONG: "Your password is too long.",
 
   // Profile and password changes
-  INVALID_PASSWORD: 'Your current password is incorrect.',
-  CREDENTIAL_ACCOUNT_NOT_FOUND: "This account doesn't use a password. Sign in the way you signed up.",
+  INVALID_PASSWORD: "Your current password is incorrect.",
+  CREDENTIAL_ACCOUNT_NOT_FOUND:
+    "This account doesn't use a password. Sign in the way you signed up.",
   EMAIL_CAN_NOT_BE_UPDATED: "Your email can't be changed here.",
   FIELD_NOT_ALLOWED: "That field can't be changed here.",
-  USER_NOT_FOUND: 'We could not find that account.',
-  SESSION_EXPIRED: 'Your session expired. Sign in again to continue.',
-  SESSION_NOT_FRESH: 'Sign in again to confirm this change.',
+  USER_NOT_FOUND: "We could not find that account.",
+  SESSION_EXPIRED: "Your session expired. Sign in again to continue.",
+  SESSION_NOT_FRESH: "Sign in again to confirm this change.",
 
   // Password reset and email confirmation. Both hand out one-shot tokens, so
   // INVALID_TOKEN and TOKEN_EXPIRED are shared and worded to fit either — a
@@ -71,38 +78,48 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   // RESET_PASSWORD_DISABLED means `sendResetPassword` is missing from the auth
   // config. That is a deployment fault rather than a missing feature now, so
   // the copy says "temporarily" instead of sending people to support.
-  RESET_PASSWORD_DISABLED: 'Password reset is temporarily unavailable. Try again shortly.',
+  RESET_PASSWORD_DISABLED:
+    "Password reset is temporarily unavailable. Try again shortly.",
   VERIFICATION_EMAIL_NOT_ENABLED:
-    'Email confirmation is temporarily unavailable. Try again shortly.',
-  INVALID_TOKEN: 'That link is invalid. Request a new one.',
-  TOKEN_EXPIRED: 'That link has expired. Request a new one.',
+    "Email confirmation is temporarily unavailable. Try again shortly.",
+  INVALID_TOKEN: "That link is invalid. Request a new one.",
+  TOKEN_EXPIRED: "That link has expired. Request a new one.",
   EMAIL_ALREADY_VERIFIED: "That email is already confirmed. You're all set.",
   EMAIL_MISMATCH:
-    'That link was sent to a different account. Sign in as that one, or request a new link.',
+    "That link was sent to a different account. Sign in as that one, or request a new link.",
 
   // Request shape / origin
-  VALIDATION_ERROR: 'Check the details you entered and try again.',
-  MISSING_FIELD: 'Fill in every field and try again.',
-  INVALID_ORIGIN: 'Your browser blocked that request. Reload the page and try again.',
-  INVALID_CALLBACK_URL: 'That link is malformed. Request a new one.',
+  VALIDATION_ERROR: "Check the details you entered and try again.",
+  MISSING_FIELD: "Fill in every field and try again.",
+  INVALID_ORIGIN:
+    "Your browser blocked that request. Reload the page and try again.",
+  INVALID_CALLBACK_URL: "That link is malformed. Request a new one.",
   CROSS_SITE_NAVIGATION_LOGIN_BLOCKED:
-    'Your browser blocked that request. Reload the page and try again.'
+    "Your browser blocked that request. Reload the page and try again.",
 };
 
 /** Copy for a status we got but a code we don't recognise. */
 function messageForStatus(status: number | null) {
   if (status === null) return null;
   if (status === 404) return "That isn't available yet.";
-  if (status === 429) return 'Too many attempts. Wait a moment and try again.';
-  if (status >= 500) return 'Something went wrong on our end. Try again in a moment.';
-  if (status === 401 || status === 403) return 'Those details were not accepted.';
-  if (status >= 400) return 'Check the details you entered and try again.';
+  if (status === 429) return "Too many attempts. Wait a moment and try again.";
+  if (status >= 500)
+    return "Something went wrong on our end. Try again in a moment.";
+  if (status === 401 || status === 403)
+    return "Those details were not accepted.";
+  if (status >= 400) return "Check the details you entered and try again.";
   return null;
 }
 
 /** The reason to show, given whatever the response actually carried. */
-export function authErrorMessage(code: string | null, status: number | null, fallback: string) {
-  return (code && MESSAGE_BY_CODE[code]) || messageForStatus(status) || fallback;
+export function authErrorMessage(
+  code: string | null,
+  status: number | null,
+  fallback: string,
+) {
+  return (
+    (code && MESSAGE_BY_CODE[code]) || messageForStatus(status) || fallback
+  );
 }
 
 /**
@@ -112,7 +129,10 @@ export function authErrorMessage(code: string | null, status: number | null, fal
  * written for a user to read. An unexpected runtime error still reaches the
  * console, but the screen gets the fallback rather than a stack-shaped sentence.
  */
-export function messageOf(error: unknown, fallback = 'Something went wrong. Please try again.') {
+export function messageOf(
+  error: unknown,
+  fallback = "Something went wrong. Please try again.",
+) {
   return error instanceof AuthError ? error.message : fallback;
 }
 
@@ -120,7 +140,7 @@ export function messageOf(error: unknown, fallback = 'Something went wrong. Plea
 export function networkError() {
   return new AuthError(
     "We couldn't reach YADA. Check your connection and try again.",
-    'NETWORK',
-    null
+    "NETWORK",
+    null,
   );
 }

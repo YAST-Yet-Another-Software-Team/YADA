@@ -19,9 +19,9 @@
  * every pin near it.
  */
 
-import type { LatLng } from '$lib/utils/types';
+import type { LatLng } from "$lib/utils/types";
 
-import { haversineKm } from './service-area';
+import { haversineKm } from "./service-area";
 
 export type Landmark = {
   id: string;
@@ -51,197 +51,245 @@ export type Landmark = {
  */
 export const KNUST_LANDMARKS: Landmark[] = [
   // Halls of residence
-  { id: 'unity-hall', name: 'Unity Hall', area: 'KNUST, Kumasi', lat: 6.679531, lng: -1.571859 },
   {
-    id: 'university-hall',
-    name: 'University Hall (Katanga)',
-    area: 'KNUST, Kumasi',
+    id: "unity-hall",
+    name: "Unity Hall",
+    area: "KNUST, Kumasi",
+    lat: 6.679531,
+    lng: -1.571859,
+  },
+  {
+    id: "university-hall",
+    name: "University Hall (Katanga)",
+    area: "KNUST, Kumasi",
     lat: 6.672655,
-    lng: -1.572465
+    lng: -1.572465,
   },
   {
-    id: 'republic-hall',
-    name: 'Republic Hall',
-    area: 'KNUST, Kumasi',
+    id: "republic-hall",
+    name: "Republic Hall",
+    area: "KNUST, Kumasi",
     lat: 6.678166,
-    lng: -1.573595
+    lng: -1.573595,
   },
   {
-    id: 'independence-hall',
-    name: 'Independence Hall',
-    area: 'KNUST, Kumasi',
+    id: "independence-hall",
+    name: "Independence Hall",
+    area: "KNUST, Kumasi",
     lat: 6.677153,
-    lng: -1.57175
+    lng: -1.57175,
   },
   {
-    id: 'queen-elizabeth-hall',
-    name: 'Queen Elizabeth II Hall',
-    area: 'KNUST, Kumasi',
+    id: "queen-elizabeth-hall",
+    name: "Queen Elizabeth II Hall",
+    area: "KNUST, Kumasi",
     lat: 6.676609,
-    lng: -1.574462
+    lng: -1.574462,
   },
-  { id: 'africa-hall', name: 'Africa Hall', area: 'KNUST, Kumasi', lat: 6.680634, lng: -1.575322 },
+  {
+    id: "africa-hall",
+    name: "Africa Hall",
+    area: "KNUST, Kumasi",
+    lat: 6.680634,
+    lng: -1.575322,
+  },
 
   // Campus gates and stops — how riders are actually directed onto campus
   {
-    id: 'ayeduase-gate',
-    name: 'Ayeduase Gate',
-    area: 'KNUST, Kumasi',
+    id: "ayeduase-gate",
+    name: "Ayeduase Gate",
+    area: "KNUST, Kumasi",
     lat: 6.675669,
-    lng: -1.563605
+    lng: -1.563605,
   },
   {
-    id: 'engineering-gate',
-    name: 'Engineering Gate',
-    area: 'KNUST, Kumasi',
+    id: "engineering-gate",
+    name: "Engineering Gate",
+    area: "KNUST, Kumasi",
     lat: 6.673725,
-    lng: -1.563656
+    lng: -1.563656,
   },
   {
-    id: 'brunei-bus-stop',
-    name: 'Brunei Bus Stop',
-    area: 'KNUST, Kumasi',
+    id: "brunei-bus-stop",
+    name: "Brunei Bus Stop",
+    area: "KNUST, Kumasi",
     lat: 6.670416,
-    lng: -1.574197
+    lng: -1.574197,
   },
 
   // Faculties and campus facilities
   {
-    id: 'prempeh-library',
-    name: 'Prempeh II Library',
-    area: 'KNUST, Kumasi',
+    id: "prempeh-library",
+    name: "Prempeh II Library",
+    area: "KNUST, Kumasi",
     lat: 6.675211,
-    lng: -1.572998
+    lng: -1.572998,
   },
   {
-    id: 'paa-joe-stadium',
-    name: 'Paa Joe Stadium',
-    area: 'KNUST, Kumasi',
+    id: "paa-joe-stadium",
+    name: "Paa Joe Stadium",
+    area: "KNUST, Kumasi",
     lat: 6.676925,
-    lng: -1.56962
+    lng: -1.56962,
   },
   {
-    id: 'students-clinic',
+    id: "students-clinic",
     name: "KNUST Students' Clinic",
-    area: 'KNUST, Kumasi',
+    area: "KNUST, Kumasi",
     lat: 6.680229,
-    lng: -1.573312
+    lng: -1.573312,
   },
   {
-    id: 'college-engineering',
-    name: 'College of Engineering',
-    area: 'KNUST, Kumasi',
+    id: "college-engineering",
+    name: "College of Engineering",
+    area: "KNUST, Kumasi",
     lat: 6.673504,
-    lng: -1.565587
+    lng: -1.565587,
   },
   {
-    id: 'college-science',
-    name: 'College of Science',
-    area: 'KNUST, Kumasi',
+    id: "college-science",
+    name: "College of Science",
+    area: "KNUST, Kumasi",
     lat: 6.673205,
-    lng: -1.567129
+    lng: -1.567129,
   },
   {
-    id: 'school-medical-sciences',
-    name: 'School of Medical Sciences',
-    area: 'KNUST, Kumasi',
+    id: "school-medical-sciences",
+    name: "School of Medical Sciences",
+    area: "KNUST, Kumasi",
     lat: 6.672313,
-    lng: -1.568414
+    lng: -1.568414,
   },
   {
-    id: 'knust-business-school',
-    name: 'KNUST School of Business',
-    area: 'KNUST, Kumasi',
+    id: "knust-business-school",
+    name: "KNUST School of Business",
+    area: "KNUST, Kumasi",
     lat: 6.669085,
-    lng: -1.568097
+    lng: -1.568097,
   },
   {
-    id: 'faculty-law',
-    name: 'Faculty of Law',
-    area: 'KNUST, Kumasi',
+    id: "faculty-law",
+    name: "Faculty of Law",
+    area: "KNUST, Kumasi",
     lat: 6.682134,
-    lng: -1.572213
+    lng: -1.572213,
   },
 
   // Ayeduase — where most off-campus hostels and eateries are
   {
-    id: 'ayeduase-junction',
-    name: 'Ayeduase Junction',
-    area: 'Ayeduase, Kumasi',
+    id: "ayeduase-junction",
+    name: "Ayeduase Junction",
+    area: "Ayeduase, Kumasi",
     lat: 6.675924,
-    lng: -1.558901
+    lng: -1.558901,
   },
   {
-    id: 'ayeduase-market',
-    name: 'Ayeduase Market',
-    area: 'Ayeduase, Kumasi',
+    id: "ayeduase-market",
+    name: "Ayeduase Market",
+    area: "Ayeduase, Kumasi",
     lat: 6.675578,
-    lng: -1.557602
+    lng: -1.557602,
   },
   {
-    id: 'ayeduase-health-centre',
-    name: 'Ayeduase Health Centre',
-    area: 'Ayeduase, Kumasi',
+    id: "ayeduase-health-centre",
+    name: "Ayeduase Health Centre",
+    area: "Ayeduase, Kumasi",
     lat: 6.675782,
-    lng: -1.561014
+    lng: -1.561014,
   },
   {
-    id: 'evandy-hostel',
-    name: 'Evandy Hostel',
-    area: 'Ayeduase, Kumasi',
+    id: "evandy-hostel",
+    name: "Evandy Hostel",
+    area: "Ayeduase, Kumasi",
     lat: 6.673409,
-    lng: -1.55465
+    lng: -1.55465,
   },
   {
-    id: 'frontline-hostel',
-    name: 'Frontline Inn Hostel',
-    area: 'Ayeduase, Kumasi',
+    id: "frontline-hostel",
+    name: "Frontline Inn Hostel",
+    area: "Ayeduase, Kumasi",
     lat: 6.672154,
-    lng: -1.562357
+    lng: -1.562357,
   },
 
   // Surrounding neighbourhoods
-  { id: 'kotei', name: 'Kotei', area: 'Kumasi', lat: 6.66732, lng: -1.560085 },
-  { id: 'mass-hostel', name: 'Mass Hostel', area: 'Kotei, Kumasi', lat: 6.668965, lng: -1.562941 },
-  { id: 'bomso', name: 'Bomso', area: 'Kumasi', lat: 6.684532, lng: -1.580019 },
+  { id: "kotei", name: "Kotei", area: "Kumasi", lat: 6.66732, lng: -1.560085 },
   {
-    id: 'tech-hospital',
-    name: 'Tech Hospital (KNUST Hospital)',
-    area: 'Bomso, Kumasi',
+    id: "mass-hostel",
+    name: "Mass Hostel",
+    area: "Kotei, Kumasi",
+    lat: 6.668965,
+    lng: -1.562941,
+  },
+  { id: "bomso", name: "Bomso", area: "Kumasi", lat: 6.684532, lng: -1.580019 },
+  {
+    id: "tech-hospital",
+    name: "Tech Hospital (KNUST Hospital)",
+    area: "Bomso, Kumasi",
     lat: 6.686061,
-    lng: -1.573745
+    lng: -1.573745,
   },
   {
-    id: 'ayigya-market',
-    name: 'Ayigya Market',
-    area: 'Ayigya, Kumasi',
+    id: "ayigya-market",
+    name: "Ayigya Market",
+    area: "Ayigya, Kumasi",
     lat: 6.689764,
-    lng: -1.572667
+    lng: -1.572667,
   },
   {
-    id: 'knust-police',
-    name: 'KNUST Police Station',
-    area: 'Ayigya, Kumasi',
+    id: "knust-police",
+    name: "KNUST Police Station",
+    area: "Ayigya, Kumasi",
     lat: 6.688635,
-    lng: -1.564695
+    lng: -1.564695,
   },
-  { id: 'anloga-market', name: 'Anloga Market', area: 'Kumasi', lat: 6.681728, lng: -1.591926 },
-  { id: 'kentinkrono', name: 'Kentinkrono', area: 'Kumasi', lat: 6.693976, lng: -1.555393 },
-  { id: 'boadi', name: 'Boadi', area: 'Kumasi', lat: 6.692376, lng: -1.548971 },
-  { id: 'deduako', name: 'Deduako', area: 'Kumasi', lat: 6.658715, lng: -1.545618 },
   {
-    id: 'atonsu-market',
-    name: 'Atonsu Market',
-    area: 'Atonsu, Kumasi',
+    id: "anloga-market",
+    name: "Anloga Market",
+    area: "Kumasi",
+    lat: 6.681728,
+    lng: -1.591926,
+  },
+  {
+    id: "kentinkrono",
+    name: "Kentinkrono",
+    area: "Kumasi",
+    lat: 6.693976,
+    lng: -1.555393,
+  },
+  { id: "boadi", name: "Boadi", area: "Kumasi", lat: 6.692376, lng: -1.548971 },
+  {
+    id: "deduako",
+    name: "Deduako",
+    area: "Kumasi",
+    lat: 6.658715,
+    lng: -1.545618,
+  },
+  {
+    id: "atonsu-market",
+    name: "Atonsu Market",
+    area: "Atonsu, Kumasi",
     lat: 6.655128,
-    lng: -1.590499
+    lng: -1.590499,
   },
 
   // Carried over from the original table. No OpenStreetMap feature matched these
   // names, so the coordinates are the ones they shipped with and nobody has
   // checked them — worth confirming on a map before trusting the labels.
-  { id: 'knust-commercial', name: 'KNUST Commercial Area', area: 'Kumasi', lat: 6.6745, lng: -1.5716 },
-  { id: 'ayeduase-new-site', name: 'Ayeduase New Site', area: 'Kumasi', lat: 6.682, lng: -1.56 }
+  {
+    id: "knust-commercial",
+    name: "KNUST Commercial Area",
+    area: "Kumasi",
+    lat: 6.6745,
+    lng: -1.5716,
+  },
+  {
+    id: "ayeduase-new-site",
+    name: "Ayeduase New Site",
+    area: "Kumasi",
+    lat: 6.682,
+    lng: -1.56,
+  },
 ];
 
 /**
@@ -280,8 +328,10 @@ export function describePoint(point: LatLng): string | null {
   const nearest = nearestLandmark(point);
   if (!nearest) return null;
 
-  if (nearest.distanceKm <= LANDMARK_HIT_KM) return landmarkAddress(nearest.landmark);
-  if (nearest.distanceKm <= LANDMARK_NEAR_KM) return `Near ${landmarkAddress(nearest.landmark)}`;
+  if (nearest.distanceKm <= LANDMARK_HIT_KM)
+    return landmarkAddress(nearest.landmark);
+  if (nearest.distanceKm <= LANDMARK_NEAR_KM)
+    return `Near ${landmarkAddress(nearest.landmark)}`;
 
   return null;
 }
@@ -293,7 +343,8 @@ export function searchLandmarks(query: string, limit = 5): Landmark[] {
 
   return KNUST_LANDMARKS.filter(
     (landmark) =>
-      landmark.name.toLowerCase().includes(needle) || landmark.area.toLowerCase().includes(needle)
+      landmark.name.toLowerCase().includes(needle) ||
+      landmark.area.toLowerCase().includes(needle),
   ).slice(0, limit);
 }
 
@@ -303,5 +354,7 @@ export function searchLandmarks(query: string, limit = 5): Landmark[] {
  * Google's own format: 4–6 base-20 characters, a `+`, then 2–3 more.
  */
 export function isPlusCode(address: string) {
-  return /^[23456789CFGHJMPQRVWX]{4,6}\+[23456789CFGHJMPQRVWX]{2,3}\b/i.test(address.trim());
+  return /^[23456789CFGHJMPQRVWX]{4,6}\+[23456789CFGHJMPQRVWX]{2,3}\b/i.test(
+    address.trim(),
+  );
 }

@@ -1,6 +1,6 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-import { MAX_PHOTO_DATA_URL_LENGTH } from '$lib/client/images/profile-photo';
+import { MAX_PHOTO_DATA_URL_LENGTH } from "$lib/client/images/profile-photo";
 
 /**
  * A profile photo as `$lib/client/images/profile-photo` produces it: a small
@@ -17,8 +17,11 @@ import { MAX_PHOTO_DATA_URL_LENGTH } from '$lib/client/images/profile-photo';
  * later). One regex, so they cannot disagree about what is acceptable.
  */
 export const photoDataUrl = z
-	.string()
-	.regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/, {
-		message: "We couldn't accept that photo. Choose a different one."
-	})
-	.max(MAX_PHOTO_DATA_URL_LENGTH, 'That photo is too large. Choose a smaller one.');
+  .string()
+  .regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/, {
+    message: "We couldn't accept that photo. Choose a different one.",
+  })
+  .max(
+    MAX_PHOTO_DATA_URL_LENGTH,
+    "That photo is too large. Choose a smaller one.",
+  );

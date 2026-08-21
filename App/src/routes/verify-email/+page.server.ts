@@ -1,11 +1,11 @@
-import { fail } from '@sveltejs/kit';
+import { fail } from "@sveltejs/kit";
 
-import { auth, VERIFY_EMAIL_CALLBACK } from '$auth/auth.server';
-import { authErrorMessage } from '$auth/errors';
-import { messageForApiError } from '$lib/server/auth-error';
-import { allowSend, sendKey } from '$lib/server/email/throttle';
+import { auth, VERIFY_EMAIL_CALLBACK } from "$auth/auth.server";
+import { authErrorMessage } from "$auth/errors";
+import { messageForApiError } from "$lib/server/auth-error";
+import { allowSend, sendKey } from "$lib/server/email/throttle";
 
-import type { Actions } from './$types';
+import type { Actions } from "./$types";
 
 /**
  * Three ways to arrive:
@@ -19,14 +19,16 @@ import type { Actions } from './$types';
  * genuine confirmation from a bare visit.
  */
 export function load({ url, locals }) {
-  const error = url.searchParams.get('error');
-  const claimed = url.searchParams.get('verified') === '1';
+  const error = url.searchParams.get("error");
+  const claimed = url.searchParams.get("verified") === "1";
 
-  const state = error ? 'failed' : claimed ? 'success' : 'pending';
+  const state = error ? "failed" : claimed ? "success" : "pending";
 
   return {
     state,
-    message: error ? authErrorMessage(error, null, 'That confirmation link is invalid.') : null,
+    message: error
+      ? authErrorMessage(error, null, "That confirmation link is invalid.")
+      : null,
     email: locals.user?.email ?? null,
     // Read fresh from the session rather than trusted from the query: a link
     // clicked twice comes back as a plain success, and this is what lets the
@@ -34,7 +36,7 @@ export function load({ url, locals }) {
     verified: locals.user?.emailVerified === true,
     signedIn: Boolean(locals.user),
     // Decides which workspace the "Continue" button goes back to.
-    role: locals.user?.role ?? null
+    role: locals.user?.role ?? null,
   };
 }
 
@@ -50,24 +52,27 @@ export const actions = {
     const email = locals.user?.email;
 
     if (!email) {
-      return fail(401, { message: 'Sign in first, then ask for a new link.' });
+      return fail(401, { message: "Sign in first, then ask for a new link." });
     }
 
     if (locals.user?.emailVerified) {
-      return { sent: false, message: "That email is already confirmed. You're all set." };
+      return {
+        sent: false,
+        message: "That email is already confirmed. You're all set.",
+      };
     }
 
     // One per address per minute — Better Auth's own limiter guards its HTTP
     // endpoint, but this calls `auth.api.*` in process and never reaches it.
     // A throttled request returns the same thing a sent one does.
-    if (allowSend(sendKey('verify', email))) {
+    if (allowSend(sendKey("verify", email))) {
       try {
         await auth.api.sendVerificationEmail({
           body: { email, callbackURL: VERIFY_EMAIL_CALLBACK },
-          headers: request.headers
+          headers: request.headers,
         });
       } catch (error) {
-        const message = messageForApiError(error, 'Unable to send a new link.');
+        const message = messageForApiError(error, "Unable to send a new link.");
         if (message === null) throw error;
 
         return fail(400, { message });
@@ -75,5 +80,5 @@ export const actions = {
     }
 
     return { sent: true };
-  }
+  },
 } satisfies Actions;

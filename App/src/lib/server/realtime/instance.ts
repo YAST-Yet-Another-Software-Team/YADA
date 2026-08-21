@@ -1,6 +1,6 @@
-import type { Server } from 'socket.io';
+import type { Server } from "socket.io";
 
-const globalKey = '__yada_socket_io__';
+const globalKey = "__yada_socket_io__";
 
 type GlobalIo = typeof globalThis & {
   [globalKey]?: Server | null;

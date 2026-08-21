@@ -4,19 +4,22 @@
  * code can import it without pulling the database in.
  */
 
-import type { TripPhase, TripStage, TripStatus } from '$lib/utils/types';
+import type { TripPhase, TripStage, TripStatus } from "$lib/utils/types";
 
 /** A courier is on the hook for the trip: assigned but not yet finished. */
 export const ACTIVE_TRIP_STATUSES = [
-  'accepted',
-  'courier_arriving',
-  'arrived',
-  'picked_up',
-  'in_progress'
+  "accepted",
+  "courier_arriving",
+  "arrived",
+  "picked_up",
+  "in_progress",
 ] as const satisfies readonly TripStatus[];
 
 /** The trip is over, one way or the other. */
-export const CLOSED_TRIP_STATUSES = ['completed', 'cancelled'] as const satisfies readonly TripStatus[];
+export const CLOSED_TRIP_STATUSES = [
+  "completed",
+  "cancelled",
+] as const satisfies readonly TripStatus[];
 
 /**
  * The pickup phase: a courier is assigned and the parcel is still on the
@@ -24,9 +27,9 @@ export const CLOSED_TRIP_STATUSES = ['completed', 'cancelled'] as const satisfie
  * transition out of this list.
  */
 export const PICKUP_PHASE_STATUSES = [
-  'accepted',
-  'courier_arriving',
-  'arrived'
+  "accepted",
+  "courier_arriving",
+  "arrived",
 ] as const satisfies readonly TripStatus[];
 
 /** Whether the parcel is still on the business's counter. */
@@ -49,14 +52,17 @@ export function isPickupPhase(status: string): boolean {
  * turning down an offer they never accepted is `POST /api/courier/decline-trip`,
  * which is a different thing with a different memory.
  */
-export const CANCELLABLE_STATUSES = ['requested', 'accepted'] as const satisfies readonly TripStatus[];
+export const CANCELLABLE_STATUSES = [
+  "requested",
+  "accepted",
+] as const satisfies readonly TripStatus[];
 
 export function isCancellableByBusiness(status: string): boolean {
   return (CANCELLABLE_STATUSES as readonly string[]).includes(status);
 }
 
 export function isReleasableByCourier(status: string): boolean {
-  return status === 'accepted';
+  return status === "accepted";
 }
 
 /**
@@ -64,7 +70,7 @@ export function isReleasableByCourier(status: string): boolean {
  * stages rather than statuses, and `requested`/`accepted` collapse to these two.
  */
 export function isCancellableStage(stage: TripStage): boolean {
-  return stage === 'searching' || stage === 'assigned';
+  return stage === "searching" || stage === "assigned";
 }
 
 /**
@@ -72,7 +78,7 @@ export function isCancellableStage(stage: TripStage): boolean {
  * parcel is with the courier, even though they haven't set off yet.
  */
 export function toTripPhase(status: string): TripPhase {
-  return isPickupPhase(status) ? 'pickup' : 'delivery';
+  return isPickupPhase(status) ? "pickup" : "delivery";
 }
 
 /**
@@ -85,22 +91,22 @@ export function toTripPhase(status: string): TripPhase {
  */
 export function toTripStage(status: string): TripStage {
   switch (status) {
-    case 'requested':
-      return 'searching';
-    case 'accepted':
-      return 'assigned';
-    case 'courier_arriving':
-    case 'arrived':
-    case 'picked_up':
-      return 'arrived';
-    case 'in_progress':
-      return 'en_route';
-    case 'completed':
-      return 'delivered';
-    case 'cancelled':
-      return 'cancelled';
+    case "requested":
+      return "searching";
+    case "accepted":
+      return "assigned";
+    case "courier_arriving":
+    case "arrived":
+    case "picked_up":
+      return "arrived";
+    case "in_progress":
+      return "en_route";
+    case "completed":
+      return "delivered";
+    case "cancelled":
+      return "cancelled";
     default:
-      return 'searching';
+      return "searching";
   }
 }
 
@@ -111,7 +117,7 @@ export function toTripStage(status: string): TripStage {
  * Home and Orders can't disagree about where "Open active trip" goes.
  */
 export function courierTripHref(trip: { id: string; status: TripStatus }) {
-  const route = trip.status === 'in_progress' ? '/deliver' : '/pickup';
+  const route = trip.status === "in_progress" ? "/deliver" : "/pickup";
   return `${route}?tripId=${encodeURIComponent(trip.id)}`;
 }
 
@@ -124,5 +130,5 @@ export function courierTripHref(trip: { id: string; status: TripStatus }) {
  * confirm the handover, so it has to stay visible as its own state.
  */
 export function toDispatchStage(status: string): TripStage {
-  return status === 'picked_up' ? 'en_route' : toTripStage(status);
+  return status === "picked_up" ? "en_route" : toTripStage(status);
 }

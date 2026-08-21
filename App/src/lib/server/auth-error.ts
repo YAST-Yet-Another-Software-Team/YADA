@@ -1,6 +1,6 @@
-import { APIError } from 'better-auth/api';
+import { APIError } from "better-auth/api";
 
-import { authErrorMessage } from '$auth/errors';
+import { authErrorMessage } from "$auth/errors";
 
 /**
  * Turn a thrown Better Auth error into copy, or `null` if it isn't one.
@@ -18,5 +18,9 @@ export function messageForApiError(error: unknown, fallback: string) {
 
   const body = error.body as { code?: string } | undefined;
 
-  return authErrorMessage(body?.code ?? null, error.statusCode ?? null, fallback);
+  return authErrorMessage(
+    body?.code ?? null,
+    error.statusCode ?? null,
+    fallback,
+  );
 }

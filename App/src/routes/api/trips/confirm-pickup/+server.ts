@@ -1,15 +1,20 @@
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { and, eq } from 'drizzle-orm';
+import { json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { and, eq } from "drizzle-orm";
 
-import { apiError } from '$lib/server/api-guard';
-import { courierWithinRange } from '$lib/server/data/courier-location';
-import { db } from '$lib/server/db';
-import { deliveryRequests } from '$lib/server/db/schema';
-import { recordStatusChange } from '$lib/server/data/trip-events';
-import { PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
-import { isPickupPhase } from '$lib/shared/trip-status';
-import { isUuid } from '$lib/shared/uuid';
+import {
+  apiError,
+  apiRoute,
+  invalidTripId,
+  readTripId,
+} from "$lib/server/api-guard";
+import { courierWithinRange } from "$lib/server/data/courier-location";
+import { db } from "$lib/server/db";
+import { deliveryRequests } from "$lib/server/db/schema";
+import { recordStatusChange } from "$lib/server/data/trip-events";
+import { applyTripChange, tripMoved } from "$lib/server/data/trip-transition";
+import { PICKUP_PROXIMITY_KM } from "$lib/shared/geo/proximity";
+import { isPickupPhase } from "$lib/shared/trip-status";
 
 /**
  * End the pickup phase: the business says the parcel is now with the courier.
@@ -19,68 +24,78 @@ import { isUuid } from '$lib/shared/uuid';
  * mark it from the road. The rider still has to be at the counter for it to be
  * accepted, checked against their last reported position.
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
-	if (user.role !== 'business') return apiError(403, 'denied', 'Business account required.');
+export const POST: RequestHandler = apiRoute(
+  { role: "business" },
+  async ({ request }, user) => {
+    const tripId = await readTripId(request);
+    if (!tripId) return invalidTripId();
 
-	const body = await request.json().catch(() => null);
-	const tripId = (body as { tripId?: unknown } | null)?.tripId;
+    const [trip] = await db
+      .select({
+        status: deliveryRequests.status,
+        assignedCourierId: deliveryRequests.assignedCourierId,
+        pickupLatitude: deliveryRequests.pickupLatitude,
+        pickupLongitude: deliveryRequests.pickupLongitude,
+      })
+      .from(deliveryRequests)
+      .where(
+        and(
+          eq(deliveryRequests.id, tripId),
+          eq(deliveryRequests.businessId, user.id),
+        ),
+      )
+      .limit(1);
 
-	if (!isUuid(tripId)) {
-		return apiError(400, 'invalid_request', 'Trip id required.');
-	}
+    if (!trip) {
+      return apiError(404, "no_results", "Trip not found.");
+    }
 
-	const [trip] = await db
-		.select({
-			status: deliveryRequests.status,
-			assignedCourierId: deliveryRequests.assignedCourierId,
-			pickupLatitude: deliveryRequests.pickupLatitude,
-			pickupLongitude: deliveryRequests.pickupLongitude
-		})
-		.from(deliveryRequests)
-		.where(and(eq(deliveryRequests.id, tripId), eq(deliveryRequests.businessId, user.id)))
-		.limit(1);
+    if (!trip.assignedCourierId || !isPickupPhase(trip.status)) {
+      return apiError(
+        409,
+        "conflict",
+        trip.status === "requested"
+          ? "No rider has accepted this request yet."
+          : "This pickup has already been confirmed.",
+      );
+    }
 
-	if (!trip) {
-		return apiError(404, 'no_results', 'Trip not found.');
-	}
+    // A trip stored without pickup coordinates can't be checked against them.
+    // Everything created since the business address became the origin has both.
+    if (trip.pickupLatitude && trip.pickupLongitude) {
+      const proximity = await courierWithinRange(
+        trip.assignedCourierId,
+        { lat: Number(trip.pickupLatitude), lng: Number(trip.pickupLongitude) },
+        PICKUP_PROXIMITY_KM,
+        "pickup",
+      );
 
-	if (!trip.assignedCourierId || !isPickupPhase(trip.status)) {
-		return apiError(
-			409,
-			'conflict',
-			trip.status === 'requested'
-				? 'No rider has accepted this request yet.'
-				: 'This pickup has already been confirmed.'
-		);
-	}
+      if (!proximity.ok) {
+        return apiError(409, "too_far", proximity.message);
+      }
+    }
 
-	// A trip stored without pickup coordinates can't be checked against them.
-	// Everything created since the business address became the origin has both.
-	if (trip.pickupLatitude && trip.pickupLongitude) {
-		const proximity = await courierWithinRange(
-			trip.assignedCourierId,
-			{ lat: Number(trip.pickupLatitude), lng: Number(trip.pickupLongitude) },
-			PICKUP_PROXIMITY_KM,
-			'pickup'
-		);
+    // The courier is pinned as well as the status: the proximity check above is a
+    // round trip, and a rider who releases the trip during it would otherwise
+    // have a handover written against a delivery they are no longer on.
+    const confirmed = await applyTripChange(
+      tripId,
+      [
+        eq(deliveryRequests.businessId, user.id),
+        eq(deliveryRequests.assignedCourierId, trip.assignedCourierId),
+        eq(deliveryRequests.status, trip.status),
+      ],
+      { status: "picked_up" },
+    );
 
-		if (!proximity.ok) {
-			return apiError(409, 'too_far', proximity.message);
-		}
-	}
+    if (!confirmed) return tripMoved();
 
-	await db
-		.update(deliveryRequests)
-		.set({ status: 'picked_up' })
-		.where(eq(deliveryRequests.id, tripId));
+    await recordStatusChange(tripId, user.id, {
+      from: trip.status,
+      to: "picked_up",
+      action: "confirm_pickup",
+    });
 
-	await recordStatusChange(tripId, user.id, {
-		from: trip.status,
-		to: 'picked_up',
-		action: 'confirm_pickup'
-	});
-
-	return json({ ok: true, tripId, status: 'picked_up' });
-};
+    return json({ ok: true, tripId, status: "picked_up" });
+  },
+);

@@ -21,7 +21,7 @@
 /** Minutes between accepting a ride and completing it; null unless both happened. */
 export function rideMinutes(
   acceptedAt: string | Date | null | undefined,
-  completedAt: string | Date | null | undefined
+  completedAt: string | Date | null | undefined,
 ) {
   if (!acceptedAt || !completedAt) return null;
 
@@ -49,13 +49,13 @@ export function formatRideTime(minutes: number | null | undefined) {
   if (total < 60) return `${total} min`;
 
   const hours = Math.floor(total / 60);
-  return `${hours} h ${String(total % 60).padStart(2, '0')}`;
+  return `${hours} h ${String(total % 60).padStart(2, "0")}`;
 }
 
 /** The two steps together, for the common case of formatting straight from a row. */
 export function formatRideTimeBetween(
   acceptedAt: string | Date | null | undefined,
-  completedAt: string | Date | null | undefined
+  completedAt: string | Date | null | undefined,
 ) {
   return formatRideTime(rideMinutes(acceptedAt, completedAt));
 }

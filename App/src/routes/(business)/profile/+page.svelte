@@ -7,6 +7,7 @@
 	import Alert from '$lib/components/Alert.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import DeleteAccountCard from '$lib/components/DeleteAccountCard.svelte';
 	import Input from '$lib/components/Input.svelte';
 	import RatingBadge from '$lib/components/RatingBadge.svelte';
 	import Tabs from '$lib/components/Tabs.svelte';
@@ -403,6 +404,12 @@
 					</Button>
 				</div>
 			</form>
+		</div>
+		<!-- Last thing on the account tab. This and the courier Settings screen are
+		     the only two routes to closing an account; both go through the same
+		     card and the same self-only endpoint. -->
+		<div in:fly={motion({ y: 10, duration: 260, easing: cubicOut })}>
+			<DeleteAccountCard email={user?.email ?? null} />
 		</div>
 	{:else if activeTab === 'location'}
 		<div

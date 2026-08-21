@@ -1,10 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // A SEPARATE Worker from the Google build on `deployment`, deliberately.
-  // Both stacks stay deployed side by side so the OSM one can be compared
-  // against the Google one on the same database and the same accounts. Do not
-  // rename this to `yada` on this branch — that would overwrite the other
-  // deployment rather than sit beside it.
+  // This stack IS the deployment now. It began as `yada-osm`, a second Worker
+  // running beside the Google build so the two could be compared on the same
+  // database and the same accounts; `116c6db` ended that comparison and took
+  // over the `yada` name and origin. The comment that used to sit here still
+  // warned against exactly that rename, which was true right up until it wasn't.
   "name": "yada",
   "main": ".svelte-kit/cloudflare/_worker.js",
   "compatibility_date": "2026-08-04",
@@ -25,7 +25,6 @@
     // Must exactly match the origin the browser uses, or sign-ins appear to
     // succeed and then don't stick. This is the OSM origin, not the Google one.
     "BETTER_AUTH_URL": "https://yada.flaviosobbin04.workers.dev",
-    "SOCKET_CORS_ORIGIN": "https://yada.flaviosobbin04.workers.dev",
     // MapLibre style document. OpenFreeMap serves OSM tiles with no key, no
     // quota and no sign-up; swap for a Protomaps or self-hosted style URL to
     // change the cartography. Blank it and the map falls back to the grid

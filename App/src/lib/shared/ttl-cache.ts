@@ -14,7 +14,11 @@ export class TtlCache<T> {
   private readonly maxEntries: number;
   private readonly persistKey?: string;
 
-  constructor(options?: { ttlMs?: number; maxEntries?: number; persistKey?: string }) {
+  constructor(options?: {
+    ttlMs?: number;
+    maxEntries?: number;
+    persistKey?: string;
+  }) {
     this.ttlMs = options?.ttlMs ?? 1000 * 60 * 60 * 6;
     this.maxEntries = options?.maxEntries ?? 200;
     this.persistKey = options?.persistKey;
@@ -48,7 +52,7 @@ export class TtlCache<T> {
   }
 
   private get storage() {
-    if (!this.persistKey || typeof localStorage === 'undefined') return null;
+    if (!this.persistKey || typeof localStorage === "undefined") return null;
     return localStorage;
   }
 
@@ -63,7 +67,11 @@ export class TtlCache<T> {
       for (const [key, entry] of JSON.parse(raw) as Array<[string, Entry<T>]>) {
         // Skip anything that isn't in the current entry shape — a persisted
         // cache from an older build would otherwise be read back as a value.
-        if (entry && typeof entry.cachedAt === 'number' && entry.value !== undefined) {
+        if (
+          entry &&
+          typeof entry.cachedAt === "number" &&
+          entry.value !== undefined
+        ) {
           this.store.set(key, entry);
         }
       }
@@ -77,7 +85,10 @@ export class TtlCache<T> {
     if (!storage) return;
 
     try {
-      storage.setItem(this.persistKey!, JSON.stringify([...this.store.entries()]));
+      storage.setItem(
+        this.persistKey!,
+        JSON.stringify([...this.store.entries()]),
+      );
     } catch {
       // Over quota, or storage disabled. The cache still works in memory.
     }

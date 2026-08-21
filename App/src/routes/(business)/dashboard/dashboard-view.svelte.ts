@@ -1,6 +1,6 @@
-export type DashboardView = 'table' | 'board';
+export type DashboardView = "table" | "board";
 
-const STORAGE_KEY = 'yada.dashboardView';
+const STORAGE_KEY = "yada.dashboardView";
 
 /**
  * Persistence for this one preference.
@@ -12,9 +12,9 @@ const STORAGE_KEY = 'yada.dashboardView';
  */
 function readView(): DashboardView {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'board' ? 'board' : 'table';
+    return localStorage.getItem(STORAGE_KEY) === "board" ? "board" : "table";
   } catch {
-    return 'table';
+    return "table";
   }
 }
 
@@ -35,7 +35,7 @@ function writeView(view: DashboardView) {
  * this, so it's owned directly rather than passed through context.
  */
 export class DashboardViewPreference {
-  #view = $state<DashboardView>('table');
+  #view = $state<DashboardView>("table");
 
   get current() {
     return this.#view;

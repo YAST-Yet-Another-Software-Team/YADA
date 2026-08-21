@@ -1,5 +1,13 @@
 <script lang="ts">
 	import SettingsSubpage from '$lib/components/SettingsSubpage.svelte';
+	import { getSoundAlerts } from '$lib/client/sound-alerts.svelte';
+
+	/**
+	 * The alert bell — the one row here that is actually wired to anything. The
+	 * three below it are still UI only: they describe push notifications, which
+	 * need a service worker this app doesn't have yet.
+	 */
+	const alerts = getSoundAlerts();
 
 	let offers = $state(true);
 	let status = $state(true);
@@ -12,6 +20,20 @@
 
 <SettingsSubpage title="Notification Settings">
 	<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
+		<label class="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
+			<span>
+				<span class="block text-base font-medium text-ink">Alert sound</span>
+				<span class="mt-0.5 block text-xs text-ink-tertiary">
+					Ring a bell when a delivery comes in
+				</span>
+			</span>
+			<input
+				type="checkbox"
+				class="toggle"
+				checked={alerts.enabled}
+				onchange={(event) => alerts.set(event.currentTarget.checked)}
+			/>
+		</label>
 		<label class="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
 			<span>
 				<span class="block text-base font-medium text-ink">Delivery offers</span>

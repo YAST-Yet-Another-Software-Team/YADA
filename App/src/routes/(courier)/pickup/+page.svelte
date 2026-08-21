@@ -4,6 +4,7 @@
   import MapBackdrop from '$lib/components/MapBackdrop.svelte';
   import Alert from '$lib/components/Alert.svelte';
   import Button from '$lib/components/Button.svelte';
+  import ClosedAccountTag from '$lib/components/ClosedAccountTag.svelte';
   import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
   import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
   import { isReleasableByCourier } from '$lib/shared/trip-status';
@@ -25,6 +26,7 @@
         id: string;
         status: TripStatus;
         businessName: string;
+        businessDeleted: boolean;
         businessPhone: string | null;
         pickupAddress: string;
         dropoffAddress: string;
@@ -280,7 +282,10 @@
     {/if}
 
     <div>
-      <p class="font-semibold text-ink">{data.trip.businessName}</p>
+      <p class="font-semibold text-ink">
+        {data.trip.businessName}
+        {#if data.trip.businessDeleted}<ClosedAccountTag compact />{/if}
+      </p>
       <p class="text-sm text-ink-secondary">
         {data.trip.pickupAddress}
         <span class="font-mono-data text-ink-tertiary">· {shortId}</span>

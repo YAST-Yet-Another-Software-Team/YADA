@@ -1,6 +1,8 @@
-import { getContext, setContext } from 'svelte';
+import { getContext, setContext } from "svelte";
 
-const STORAGE_KEY = 'yada.courierOnline';
+import { unlockAudio } from "$lib/client/sound";
+
+const STORAGE_KEY = "yada.courierOnline";
 
 /**
  * Persistence for this one flag.
@@ -12,7 +14,7 @@ const STORAGE_KEY = 'yada.courierOnline';
  */
 function readOnline(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'true';
+    return localStorage.getItem(STORAGE_KEY) === "true";
   } catch {
     return false;
   }
@@ -20,7 +22,7 @@ function readOnline(): boolean {
 
 function writeOnline(online: boolean) {
   try {
-    localStorage.setItem(STORAGE_KEY, online ? 'true' : 'false');
+    localStorage.setItem(STORAGE_KEY, online ? "true" : "false");
   } catch {
     // Absent, disabled, or over quota.
   }
@@ -36,7 +38,7 @@ function writeOnline(online: boolean) {
  */
 export class CourierOnline {
   #online = $state(false);
-  #error = $state('');
+  #error = $state("");
 
   get online() {
     return this.#online;
@@ -60,8 +62,14 @@ export class CourierOnline {
     // that the server agrees.
     const previous = this.#online;
     this.#online = online;
-    this.#error = '';
+    this.#error = "";
     writeOnline(online);
+
+    // Clocking on is a tap, and a tap is what a browser wants before it will
+    // let anything make a sound. It is also the moment the rider asks to be
+    // rung, so it is the right place to make sure the bell can actually sound —
+    // iOS in particular suspends an idle audio context again after a while.
+    if (online) unlockAudio();
 
     // The server has to know too: dispatch rings by availability, and going
     // offline must stop the ringing at once — a location fix stays fresh for
@@ -74,14 +82,16 @@ export class CourierOnline {
     // A network failure is different: the request may well have landed, and
     // the stored value still describes what the rider asked for.
     try {
-      const response = await fetch('/api/courier/availability', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ online })
+      const response = await fetch("/api/courier/availability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ online }),
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string;
+        } | null;
 
         this.#online = previous;
         writeOnline(previous);
@@ -104,7 +114,7 @@ export class CourierOnline {
   }
 }
 
-const COURIER_ONLINE_KEY = Symbol('yada.courierOnline');
+const COURIER_ONLINE_KEY = Symbol("yada.courierOnline");
 
 /** Provide the flag for the courier workspace. Called once, by its layout. */
 export function createCourierOnline() {
@@ -116,7 +126,9 @@ export function getCourierOnline(): CourierOnline {
   const online = getContext<CourierOnline | undefined>(COURIER_ONLINE_KEY);
 
   if (!online) {
-    throw new Error('getCourierOnline() was called outside the courier layout, which provides it.');
+    throw new Error(
+      "getCourierOnline() was called outside the courier layout, which provides it.",
+    );
   }
 
   return online;

@@ -9,12 +9,14 @@
 	import IconButton from '$lib/components/IconButton.svelte';
 	import RatingStars from '$lib/components/RatingStars.svelte';
 	import StatusPill from '$lib/components/StatusPill.svelte';
+	import ClosedAccountTag from '$lib/components/ClosedAccountTag.svelte';
 	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
 	import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
 	import { createHeadingTracker } from '$lib/shared/geo/heading';
 	import type { LatLng } from '$lib/utils/types';
 	import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
+	import { getSoundAlerts } from '$lib/client/sound-alerts.svelte';
 	import {
 		isRealtimeEnabled,
 		joinTripRoom,
@@ -24,6 +26,8 @@
 		setRealtimeEnabled
 	} from '../realtime';
 	import IconChevronLeft from '~icons/mdi/chevron-left';
+	import IconBell from '~icons/mdi/bell-outline';
+	import IconBellOff from '~icons/mdi/bell-off-outline';
 	import IconPhone from '~icons/mdi/phone';
 	import IconMessage from '~icons/mdi/message-text-outline';
 	import IconArrowRight from '~icons/mdi/arrow-right';
@@ -54,6 +58,8 @@
 		/** A rider took this and let it go again before reaching the counter. */
 		releasedByCourier?: boolean;
 	};
+
+	const alerts = getSoundAlerts();
 
 	const POLL_MS = 4000;
 
@@ -213,6 +219,30 @@
 		}
 	}
 
+	/**
+	 * The three moments in a delivery worth interrupting someone for: a rider took
+	 * it, a rider is at the counter, and the parcel has landed. Everything else on
+	 * this screen is a detail of a journey already under way.
+	 *
+	 * `previous` is null on the very first read, which is what keeps merely opening
+	 * the screen on a trip already in progress silent — a bell on every page load
+	 * teaches people to ignore the bell.
+	 *
+	 * `arrived` rides along with `courier_arriving`: nothing writes it any more,
+	 * but rows from before the pickup phase was split still carry it.
+	 */
+	const ANNOUNCED_STATUSES = new Set<TripStatus>([
+		'accepted',
+		'courier_arriving',
+		'arrived',
+		'completed'
+	]);
+
+	function announceStatusChange(previous: TripStatus | null, next: TripStatus) {
+		if (!previous || previous === next) return;
+		if (ANNOUNCED_STATUSES.has(next)) alerts.notify();
+	}
+
 	async function loadTrip(tripId: string) {
 		try {
 			const response = await fetch(`/api/trips?id=${encodeURIComponent(tripId)}`);
@@ -222,6 +252,11 @@
 				loadError = payload?.message ?? 'We could not find that request.';
 				return false;
 			}
+
+			// Read before the assignment below overwrites it. Svelte re-renders from
+			// whatever the current status is; nothing anywhere else notices the
+			// moment it *changed*, which is the only thing worth a sound.
+			const previousStatus = trip?.status ?? null;
 
 			trip = {
 				id: payload.trip.id,
@@ -244,6 +279,8 @@
 			dispatchElapsedBase = payload.trip.dispatchElapsedSeconds ?? null;
 			dispatchFetchedAt = Date.now();
 			loadError = '';
+
+			announceStatusChange(previousStatus, trip.status);
 
 			// The stored fix is the rider's last known position — exactly what the map
 			// needs at the moment of a match. With a socket listening it is only a
@@ -659,6 +696,23 @@
 			</IconButton>
 		</div>
 
+		<!-- The only off switch for the alert bell on this side: the business
+		     workspace has no settings screen, and a sound someone cannot silence
+		     from where they hear it is one they will silence at the operating
+		     system instead — losing every other alert with it. -->
+		<div class="absolute right-4 top-4 z-10">
+			<IconButton
+				ariaLabel={alerts.enabled ? 'Mute delivery alerts' : 'Unmute delivery alerts'}
+				onclick={() => alerts.set(!alerts.enabled)}
+			>
+				{#if alerts.enabled}
+					<IconBell class="h-5 w-5" aria-hidden="true" />
+				{:else}
+					<IconBellOff class="h-5 w-5" aria-hidden="true" />
+				{/if}
+			</IconButton>
+		</div>
+
 		<!-- Focus follows the job. While the request is open the destination is the
 		     only thing to look at; the moment a rider takes it the map frames the
 		     rider *and* this counter together, because what the sender is watching
@@ -778,6 +832,9 @@
 			<div class="min-w-0 flex-1">
 				<p class="truncate text-sm font-semibold text-ink">
 					{trip?.courier?.name ?? 'No rider yet'}
+					{#if trip?.courier?.isDeleted}
+						<ClosedAccountTag compact />
+					{/if}
 				</p>
 				<p class="text-sm text-ink-secondary">{statusLabel}</p>
 				{#if trip?.courier}

@@ -1,4 +1,4 @@
-import type { EmailMessage, EmailTransport } from './types';
+import type { EmailMessage, EmailTransport } from "./types";
 
 /**
  * The development transport: print the mail instead of sending it.
@@ -14,24 +14,24 @@ import type { EmailMessage, EmailTransport } from './types';
  */
 export function consoleTransport(): EmailTransport {
   return {
-    name: 'console',
+    name: "console",
 
     async send(message: EmailMessage) {
       console.info(
         [
-          '',
-          '┌─ email (console transport — nothing was sent) ─────────────',
+          "",
+          "┌─ email (console transport — nothing was sent) ─────────────",
           `│ To:      ${message.to.name ? `${message.to.name} <${message.to.email}>` : message.to.email}`,
           `│ Subject: ${message.subject}`,
-          '├────────────────────────────────────────────────────────────',
+          "├────────────────────────────────────────────────────────────",
           message.text
-            .split('\n')
+            .split("\n")
             .map((line) => `│ ${line}`)
-            .join('\n'),
-          '└────────────────────────────────────────────────────────────',
-          ''
-        ].join('\n')
+            .join("\n"),
+          "└────────────────────────────────────────────────────────────",
+          "",
+        ].join("\n"),
       );
-    }
+    },
   };
 }

@@ -1,6 +1,6 @@
-import type { CachedGeocode } from '$lib/utils/types';
+import type { CachedGeocode } from "$lib/utils/types";
 
-import { TtlCache } from '../ttl-cache';
+import { TtlCache } from "../ttl-cache";
 
 /** Coordinates rounded to ~1 m, for callers that need the point itself. */
 export function roundCoord(value: number) {
@@ -8,7 +8,7 @@ export function roundCoord(value: number) {
 }
 
 function normalizeAddress(address: string) {
-  return address.trim().toLowerCase().replace(/\s+/g, ' ');
+  return address.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 /**
@@ -48,6 +48,6 @@ export function createClientGeocodeCache() {
   return new TtlCache<CachedGeocode>({
     ttlMs: 1000 * 60 * 60 * 24 * 30,
     maxEntries: 500,
-    persistKey: 'yada:geocode-cache-v3'
+    persistKey: "yada:geocode-cache-v3",
   });
 }

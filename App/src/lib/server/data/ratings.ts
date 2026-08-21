@@ -1,28 +1,29 @@
-import { and, avg, count, eq, inArray } from 'drizzle-orm';
+import { and, avg, count, eq, inArray } from "drizzle-orm";
 
-import { db } from '../db';
-import { businessProfiles, courierProfiles, tripRatings } from '../db/schema';
+import { db } from "../db";
+import { businessProfiles, courierProfiles, tripRatings } from "../db/schema";
 
 /** The second rating of the same trip by the same rater. A conflict, not an update. */
 export class AlreadyRatedError extends Error {
   constructor() {
     super("You've already rated this delivery.");
-    this.name = 'AlreadyRatedError';
+    this.name = "AlreadyRatedError";
   }
 }
 
 /** Postgres unique-violation, whether drizzle hands the pg error over bare or wrapped. */
 function isUniqueViolation(error: unknown) {
   const code =
-    (error as { code?: string })?.code ?? (error as { cause?: { code?: string } })?.cause?.code;
-  return code === '23505';
+    (error as { code?: string })?.code ??
+    (error as { cause?: { code?: string } })?.cause?.code;
+  return code === "23505";
 }
 
 /**
  * Which side of a trip is being scored. Decides only which profile table holds
  * the cached average — the `trip_ratings` row itself is identical either way.
  */
-export type RatedRole = 'courier' | 'business';
+export type RatedRole = "courier" | "business";
 
 /**
  * Record one party's verdict on the other and refresh the rated party's cached
@@ -56,7 +57,7 @@ export async function rateForTrip(input: {
         raterId: input.raterId,
         ratedId: input.ratedId,
         stars: input.stars,
-        comment: input.comment
+        comment: input.comment,
       });
 
       const [aggregate] = await tx
@@ -68,14 +69,14 @@ export async function rateForTrip(input: {
       const cache = {
         rating: average.toFixed(2),
         ratingCount: aggregate.total,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       // Both profile tables carry the same two columns for the same reason, so
       // the only branch is the table. A rated party with no profile row simply
       // updates nothing: the rating is still recorded, and the aggregate above
       // remains the source of truth the cache is rebuilt from.
-      if (input.ratedRole === 'courier') {
+      if (input.ratedRole === "courier") {
         await tx
           .update(courierProfiles)
           .set(cache)
@@ -105,7 +106,12 @@ export async function ratingsByRaterFor(raterId: string, tripIds: string[]) {
   const rows = await db
     .select({ tripId: tripRatings.tripId, stars: tripRatings.stars })
     .from(tripRatings)
-    .where(and(eq(tripRatings.raterId, raterId), inArray(tripRatings.tripId, tripIds)));
+    .where(
+      and(
+        eq(tripRatings.raterId, raterId),
+        inArray(tripRatings.tripId, tripIds),
+      ),
+    );
 
   return new Map(rows.map((row) => [row.tripId, row.stars]));
 }
@@ -115,7 +121,9 @@ export async function ratingByRaterForTrip(raterId: string, tripId: string) {
   const [row] = await db
     .select({ stars: tripRatings.stars })
     .from(tripRatings)
-    .where(and(eq(tripRatings.raterId, raterId), eq(tripRatings.tripId, tripId)))
+    .where(
+      and(eq(tripRatings.raterId, raterId), eq(tripRatings.tripId, tripId)),
+    )
     .limit(1);
 
   return row?.stars ?? null;

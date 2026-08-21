@@ -1,9 +1,9 @@
-import { json } from '@sveltejs/kit';
+import { json } from "@sveltejs/kit";
 
 export function GET() {
   return json({
     ok: true,
-    service: 'yada',
-    scope: 'api'
+    service: "yada",
+    scope: "api",
   });
 }

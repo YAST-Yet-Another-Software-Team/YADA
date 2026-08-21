@@ -14,28 +14,42 @@ import { expect, test } from "@playwright/test";
  * a true end-to-end pass possible. Worth doing, not worth blocking on.
  */
 
-test("an expired confirmation link explains itself and offers another", async ({ page }) => {
+test("an expired confirmation link explains itself and offers another", async ({
+  page,
+}) => {
   await page.goto("/verify-email?verified=1&error=TOKEN_EXPIRED");
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/doesn't work/i);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    /doesn't work/i,
+  );
   await expect(page.getByText(/expired/i)).toBeVisible();
 });
 
 test("a confirmed email says so", async ({ page }) => {
   await page.goto("/verify-email?verified=1");
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/confirmed/i);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    /confirmed/i,
+  );
 });
 
-test("reset-password without a token is a dead end, not a form", async ({ page }) => {
+test("reset-password without a token is a dead end, not a form", async ({
+  page,
+}) => {
   await page.goto("/reset-password");
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/doesn't work/i);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    /doesn't work/i,
+  );
   await expect(page.locator('input[name="password"]')).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /request a new link/i })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /request a new link/i }),
+  ).toBeVisible();
 });
 
-test("a junk reset token is rejected rather than redirecting to sign-in", async ({ page }) => {
+test("a junk reset token is rejected rather than redirecting to sign-in", async ({
+  page,
+}) => {
   await page.goto("/reset-password?token=not-a-real-token");
 
   await page.locator('input[name="password"]').fill("a-long-enough-password");
@@ -48,7 +62,9 @@ test("a junk reset token is rejected rather than redirecting to sign-in", async 
   await expect(page.getByRole("alert")).toBeVisible();
 });
 
-test("mismatched passwords are caught before the token is spent", async ({ page }) => {
+test("mismatched passwords are caught before the token is spent", async ({
+  page,
+}) => {
   await page.goto("/reset-password?token=not-a-real-token");
 
   await page.locator('input[name="password"]').fill("a-long-enough-password");
@@ -58,7 +74,9 @@ test("mismatched passwords are caught before the token is spent", async ({ page 
   await expect(page.getByRole("alert")).toContainText(/don't match/i);
 });
 
-test("a reset request answers the same for an address with no account", async ({ page }) => {
+test("a reset request answers the same for an address with no account", async ({
+  page,
+}) => {
   await page.goto("/auth?mode=reset");
 
   const nobody = `nobody-${Date.now()}@example.com`;
@@ -67,6 +85,10 @@ test("a reset request answers the same for an address with no account", async ({
 
   // The neutral answer, verbatim: anything that distinguished "sent" from "no
   // such account" would turn this form into an account-enumeration oracle.
-  await expect(page.getByRole("heading", { level: 2 })).toHaveText(/check your email/i);
-  await expect(page.getByText(new RegExp(`if an account exists for ${nobody}`, "i"))).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText(
+    /check your email/i,
+  );
+  await expect(
+    page.getByText(new RegExp(`if an account exists for ${nobody}`, "i")),
+  ).toBeVisible();
 });

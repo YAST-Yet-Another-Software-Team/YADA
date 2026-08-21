@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { tripEvents } from '../db/schema';
+import { db } from "../db";
+import { tripEvents } from "../db/schema";
 
 /**
  * Append to a trip's audit trail.
@@ -11,13 +11,13 @@ export function recordTripEvent(
   tripId: string,
   actorId: string | null,
   eventType: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
 ) {
   return db.insert(tripEvents).values({
     tripId,
     actorId,
     eventType,
-    payload: JSON.stringify(payload)
+    payload: JSON.stringify(payload),
   });
 }
 
@@ -25,7 +25,7 @@ export function recordTripEvent(
 export function recordStatusChange(
   tripId: string,
   actorId: string | null,
-  change: { from: string; to: string; action?: string }
+  change: { from: string; to: string; action?: string },
 ) {
-  return recordTripEvent(tripId, actorId, 'status_change', change);
+  return recordTripEvent(tripId, actorId, "status_change", change);
 }

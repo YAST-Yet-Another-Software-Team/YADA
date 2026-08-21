@@ -1,10 +1,10 @@
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from "@sveltejs/kit";
 
 /**
  * The Workers `ExecutionContext.waitUntil`, when there is one.
  *
- * Under adapter-node — dev, and the Socket.IO build — `platform` is undefined
- * and callers fall back to their own behaviour.
+ * Under `vite dev`, which runs on Node, `platform` is undefined and callers fall
+ * back to their own behaviour.
  *
  * This lives here rather than in hooks.server because both the hook and the
  * Better Auth config need it, and hooks.server imports the auth config: a
@@ -28,7 +28,10 @@ export function waitUntilFor(event: RequestEvent) {
  * failure has already been logged where it happened, and an unhandled
  * rejection crossing the runtime boundary is its own problem.
  */
-export function runInBackground(event: RequestEvent | null, promise: Promise<unknown>) {
+export function runInBackground(
+  event: RequestEvent | null,
+  promise: Promise<unknown>,
+) {
   const settled = promise.catch(() => {});
   const waitUntil = event ? waitUntilFor(event) : undefined;
 

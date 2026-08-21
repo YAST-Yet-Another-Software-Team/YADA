@@ -28,5 +28,5 @@ export const NEARBY_RADIUS_KM = (NEARBY_MINUTES / 60) * URBAN_MOTORBIKE_KMH;
 
 /** Straight-line distance as minutes, for the "≈4 min away" on a marker. */
 export function minutesAway(distanceKm: number) {
-	return Math.max(1, Math.round((distanceKm / URBAN_MOTORBIKE_KMH) * 60));
+  return Math.max(1, Math.round((distanceKm / URBAN_MOTORBIKE_KMH) * 60));
 }

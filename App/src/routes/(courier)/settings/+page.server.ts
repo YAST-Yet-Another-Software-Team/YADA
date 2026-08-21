@@ -1,11 +1,11 @@
-import { getCourierProfile } from '$lib/server/data/courier';
+import { getCourierProfile } from "$lib/server/data/courier-profile";
 
 /**
  * The profile block at the top of Settings reads the courier's own row — the
  * plate lives there rather than on the account, so the session can't supply it.
  */
 export async function load({ parent }) {
-	const { user } = await parent();
+  const { user } = await parent();
 
-	return { courierProfile: await getCourierProfile(user.id) };
+  return { courierProfile: await getCourierProfile(user.id) };
 }

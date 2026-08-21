@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import DeleteAccountCard from '$lib/components/DeleteAccountCard.svelte';
 	import { getSession } from '$auth/session.svelte';
 	import { initials } from '$lib/shared/text';
 	import { formatPhone } from '$lib/shared/phone';
@@ -243,6 +244,11 @@
 		<form method="POST" action="/auth?/signout" class="mt-auto pt-2" onsubmit={forgetShift}>
 			<Button type="submit" variant="outline" fullWidth>Sign out</Button>
 		</form>
+
+		<!-- Last on the screen, below signing out: the order is the point. The
+		     only route to closing an account is this card, on a settings screen
+		     behind the workspace gate. -->
+		<DeleteAccountCard email={user?.email ?? null} />
 	</div>
 </div>
 

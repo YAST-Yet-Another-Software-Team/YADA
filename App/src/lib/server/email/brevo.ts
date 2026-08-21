@@ -1,6 +1,6 @@
-import type { EmailAddress, EmailMessage, EmailTransport } from './types';
+import type { EmailAddress, EmailMessage, EmailTransport } from "./types";
 
-const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
+const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 
 /**
  * Give up rather than hold a Worker open. The send is dispatched through
@@ -21,34 +21,39 @@ const TIMEOUT_MS = 8000;
  * Deliberately not the `@getbrevo/brevo` SDK: it is built on axios, which
  * needs Node's http stack and does not run on workerd.
  */
-export function brevoTransport(apiKey: string, from: EmailAddress): EmailTransport {
+export function brevoTransport(
+  apiKey: string,
+  from: EmailAddress,
+): EmailTransport {
   return {
-    name: 'brevo',
+    name: "brevo",
 
     async send(message: EmailMessage) {
       const response = await fetch(BREVO_ENDPOINT, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'api-key': apiKey,
-          accept: 'application/json',
-          'content-type': 'application/json'
+          "api-key": apiKey,
+          accept: "application/json",
+          "content-type": "application/json",
         },
         body: JSON.stringify({
           sender: { email: from.email, name: from.name },
           to: [{ email: message.to.email, name: message.to.name }],
           subject: message.subject,
           htmlContent: message.html,
-          textContent: message.text
+          textContent: message.text,
         }),
-        signal: AbortSignal.timeout(TIMEOUT_MS)
+        signal: AbortSignal.timeout(TIMEOUT_MS),
       });
 
       if (!response.ok) {
         // Brevo puts the useful part in the body — an unverified sender and a
         // bad key both come back as 401 with different messages.
-        const detail = await response.text().catch(() => '');
-        throw new Error(`Brevo responded ${response.status}: ${detail.slice(0, 400)}`);
+        const detail = await response.text().catch(() => "");
+        throw new Error(
+          `Brevo responded ${response.status}: ${detail.slice(0, 400)}`,
+        );
       }
-    }
+    },
   };
 }
