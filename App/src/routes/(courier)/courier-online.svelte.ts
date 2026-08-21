@@ -1,5 +1,7 @@
 import { getContext, setContext } from "svelte";
 
+import { unlockAudio } from "$lib/client/sound";
+
 const STORAGE_KEY = "yada.courierOnline";
 
 /**
@@ -62,6 +64,12 @@ export class CourierOnline {
     this.#online = online;
     this.#error = "";
     writeOnline(online);
+
+    // Clocking on is a tap, and a tap is what a browser wants before it will
+    // let anything make a sound. It is also the moment the rider asks to be
+    // rung, so it is the right place to make sure the bell can actually sound —
+    // iOS in particular suspends an idle audio context again after a while.
+    if (online) unlockAudio();
 
     // The server has to know too: dispatch rings by availability, and going
     // offline must stop the ringing at once — a location fix stays fresh for

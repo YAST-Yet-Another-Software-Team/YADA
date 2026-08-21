@@ -72,6 +72,9 @@ repository root.
 - [x] Cloudflare Workers deployment — the only target
 - [x] Live rider position over Socket.IO in `vite dev`; deployment polls `GET /api/trips`
 - [x] Light/dark theme
+- [x] Bell alerts — couriers when a request rings them, businesses when a rider is
+      assigned, reaches the counter and reaches the drop-off. Synthesised in Web Audio,
+      so there is no audio asset; silenced from courier Settings or the tracking screen
 
 ### Next
 
@@ -225,6 +228,12 @@ their parcel moved.
 - **Authenticated `/api` routes are wrapped in `apiRoute`**, which handles the
   session, the workspace role and the email gate. Per-route authorisation is a
   question about a _row_ and stays in the query that loads it.
+- **A deleted route export is invisible to `svelte-check` and to `npm run build`.**
+  `GET /api/trips` was lost to a bad refactor and shipped, answering `405` in
+  production while the business tracking screen quietly broke.
+  `src/routes/api/routes.e2e.ts` now asserts every endpoint answers `401` rather than
+  `405` for a signed-out caller — run it before trusting a refactor that touched
+  route files.
 - `$lib/shared` cannot import `$lib/server`, and components cannot import either
   one's server half. `$lib/utils/types.ts` is the neutral ground.
 - Roles are set server-side only. `role` is `input: false` in the Better Auth

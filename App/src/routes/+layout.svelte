@@ -5,6 +5,8 @@
   import { prefersReducedMotion } from 'svelte/motion';
   import { createSession } from '$auth/session.svelte';
   import { createMapsConfig } from '$lib/client/maps/maps-config.svelte';
+  import { createSoundAlerts } from '$lib/client/sound-alerts.svelte';
+  import { unlockAudio } from '$lib/client/sound';
   import type { LayoutServerData } from './$types';
 
   let { data, children }: { data: LayoutServerData; children: Snippet } = $props();
@@ -18,10 +20,42 @@
   // svelte-ignore state_referenced_locally
   const maps = createMapsConfig(data.googleMapsApiKey, data.googleMapsMapId);
 
+  // Both workspaces ring — couriers for a new offer, businesses for the points
+  // of a delivery — so the preference is provided from the root rather than
+  // either group's layout.
+  const alerts = createSoundAlerts();
+
   // And keep both in step if a later navigation reruns the layout load.
   $effect(() => {
     session.hydrate(data.user);
     maps.hydrate(data.googleMapsApiKey, data.googleMapsMapId);
+  });
+
+  /**
+   * Take the first gesture on the page as permission to make noise.
+   *
+   * Browsers will not play audio until someone has interacted with the document,
+   * and the alerts that matter are the ones nobody asked for — a rider is not
+   * clicking anything at the moment a request starts ringing them. So the
+   * context is opened on whatever the first tap or keypress happens to be, and
+   * the listener removes itself immediately afterwards.
+   */
+  $effect(() => {
+    alerts.hydrate();
+
+    const unlock = () => {
+      unlockAudio();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
   });
 
   /**

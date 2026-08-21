@@ -10,7 +10,7 @@ import {
 import { getCourierFix } from "$lib/server/data/courier-location";
 import { ratingByRaterForTrip } from "$lib/server/data/ratings";
 import { db } from "$lib/server/db";
-import { toCoordinateColumn } from "$lib/server/db/columns";
+import { asNumber, toCoordinateColumn } from "$lib/server/db/columns";
 import { deliveryRequests, tripEvents } from "$lib/server/db/schema";
 import { containsPoint } from "$lib/shared/geo/service-area";
 import { GeoError, geoErrorMessage } from "$lib/shared/geo/errors";
@@ -179,3 +179,122 @@ export const POST: RequestHandler = apiRoute(
     }
   },
 );
+
+/**
+ * One trip, for whoever is on it.
+ *
+ * The tracking screen polls this every few seconds and the courier screens read
+ * it too, so it is the single place that decides what each side of a delivery is
+ * allowed to know about it.
+ */
+export const GET: RequestHandler = apiRoute({}, async ({ url }, user) => {
+  const tripId = url.searchParams.get("id");
+  if (!isUuid(tripId)) {
+    return apiError(400, "invalid_request", geoErrorMessage("invalid_request"));
+  }
+
+  const [trip] = await db
+    .select()
+    .from(deliveryRequests)
+    .where(eq(deliveryRequests.id, tripId))
+    .limit(1);
+
+  // Scope the trip to its participants — a valid session alone must not grant
+  // read access to another business's delivery, addresses included. 404 rather
+  // than 403, so a miss doesn't confirm the id exists.
+  const isParticipant =
+    trip?.businessId === user.id || trip?.assignedCourierId === user.id;
+  if (!trip || !isParticipant) {
+    return apiError(404, "no_results", "Trip not found.");
+  }
+
+  // Whoever is carrying the parcel, named from the account rather than left to
+  // the tracking screen to invent. Absent until someone accepts.
+  //
+  // Their last stored position rides along so the tracking map can focus on the
+  // rider the moment a match happens. Live updates arrive over the socket where
+  // there is one, but the first is however long the courier's next fix is away —
+  // without this a freshly matched business watches an empty map until then.
+  const courier = trip.assignedCourierId
+    ? await getCourierSummary(trip.assignedCourierId)
+    : null;
+  const courierFix = trip.assignedCourierId
+    ? await getCourierFix(trip.assignedCourierId)
+    : null;
+
+  // Whether *this viewer* has already rated the trip, so their screen offers the
+  // stars once and shows them read-only ever after. Asked for either participant
+  // now that both directions exist — the row is keyed by rater, so the business's
+  // verdict and the rider's are separate answers and neither can be mistaken for
+  // the other.
+  const myRating =
+    trip.status === "completed"
+      ? await ratingByRaterForTrip(user.id, trip.id)
+      : null;
+
+  const pickupLat = asNumber(trip.pickupLatitude);
+  const pickupLng = asNumber(trip.pickupLongitude);
+  const dropoffLat = asNumber(trip.dropoffLatitude);
+  const dropoffLng = asNumber(trip.dropoffLongitude);
+
+  // The order record is the sender's own, and the rider has no business knowing
+  // what the parcel is worth — they are carrying it either way, and a value on
+  // their screen is a reason to be robbed for it. Both fields stay on the
+  // business's side of this response.
+  const isBusiness = user.id === trip.businessId;
+
+  return json({
+    ok: true,
+    trip: {
+      id: trip.id,
+      status: trip.status,
+      businessId: trip.businessId,
+      assignedCourierId: trip.assignedCourierId,
+      courier,
+      myRating,
+      orderName: isBusiness ? trip.orderName : null,
+      orderPrice: isBusiness ? asNumber(trip.orderPrice) : null,
+      /**
+       * A rider took this and then dropped it before reaching the counter, so it
+       * is out ringing again. Inferred rather than stored: `accepted_at` survives
+       * the release and the next acceptance overwrites it, so a searching trip
+       * that has one is a trip that lost a rider.
+       */
+      releasedByCourier:
+        isBusiness && trip.status === "requested" && trip.acceptedAt !== null,
+      // Elapsed rather than the timestamp, so the tracking screen's ring display
+      // doesn't inherit the browser's clock skew.
+      dispatchElapsedSeconds:
+        trip.status === "requested"
+          ? Math.floor((Date.now() - trip.dispatchStartedAt.getTime()) / 1000)
+          : null,
+      courierLocation: courierFix
+        ? {
+            lat: courierFix.point.lat,
+            lng: courierFix.point.lng,
+            recordedAt: courierFix.recordedAt.toISOString(),
+          }
+        : null,
+      pickupAddress: trip.pickupAddress,
+      dropoffAddress: trip.dropoffAddress,
+      // When the parcel actually landed, for the completion screen. ISO rather
+      // than a formatted string: the client knows the viewer's locale and
+      // timezone, and the server does not.
+      completedAt: trip.completedAt ? trip.completedAt.toISOString() : null,
+      pickupLat,
+      pickupLng,
+      dropoffLat,
+      dropoffLng,
+      estimatedDistanceKm: asNumber(trip.estimatedDistanceKm),
+      estimatedDurationMinutes: asNumber(trip.estimatedDurationMinutes),
+      pickupInZone:
+        pickupLat != null && pickupLng != null
+          ? containsPoint({ lat: pickupLat, lng: pickupLng })
+          : false,
+      dropoffInZone:
+        dropoffLat != null && dropoffLng != null
+          ? containsPoint({ lat: dropoffLat, lng: dropoffLng })
+          : false,
+    },
+  });
+});
