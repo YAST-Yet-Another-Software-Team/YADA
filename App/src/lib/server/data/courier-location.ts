@@ -1,14 +1,14 @@
-import { eq } from 'drizzle-orm';
+import { eq } from "drizzle-orm";
 
 import {
   isWithinRange,
   LOCATION_FRESHNESS_MS,
-  metresBetween
-} from '$lib/shared/geo/proximity';
-import type { LatLng } from '$lib/utils/types';
+  metresBetween,
+} from "$lib/shared/geo/proximity";
+import type { LatLng } from "$lib/utils/types";
 
-import { db } from '../db';
-import { courierProfiles } from '../db/schema';
+import { db } from "../db";
+import { courierProfiles } from "../db/schema";
 
 /** The courier's last stored fix, or null if they have never reported one. */
 export async function getCourierFix(courierId: string) {
@@ -16,7 +16,7 @@ export async function getCourierFix(courierId: string) {
     .select({
       lat: courierProfiles.currentLatitude,
       lng: courierProfiles.currentLongitude,
-      recordedAt: courierProfiles.lastLocationAt
+      recordedAt: courierProfiles.lastLocationAt,
     })
     .from(courierProfiles)
     .where(eq(courierProfiles.userId, courierId))
@@ -26,7 +26,7 @@ export async function getCourierFix(courierId: string) {
 
   return {
     point: { lat: Number(profile.lat), lng: Number(profile.lng) },
-    recordedAt: profile.recordedAt
+    recordedAt: profile.recordedAt,
   };
 }
 
@@ -43,27 +43,30 @@ export async function courierWithinRange(
   courierId: string,
   target: LatLng,
   radiusKm: number,
-  place: string
+  place: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const fix = await getCourierFix(courierId);
 
   // Worded without a subject: the same refusal is read by the business
   // confirming a pickup and by the courier confirming a delivery.
   if (!fix) {
-    return { ok: false, message: `No rider location yet, so the ${place} can't be confirmed.` };
+    return {
+      ok: false,
+      message: `No rider location yet, so the ${place} can't be confirmed.`,
+    };
   }
 
   if (Date.now() - fix.recordedAt.getTime() > LOCATION_FRESHNESS_MS) {
     return {
       ok: false,
-      message: `The last rider location is too old to confirm the ${place}. Check location is on and try again.`
+      message: `The last rider location is too old to confirm the ${place}. Check location is on and try again.`,
     };
   }
 
   if (!isWithinRange(fix.point, target, radiusKm)) {
     return {
       ok: false,
-      message: `The last rider location is ${metresBetween(fix.point, target)} m from the ${place} — too far to confirm.`
+      message: `The last rider location is ${metresBetween(fix.point, target)} m from the ${place} — too far to confirm.`,
     };
   }
 

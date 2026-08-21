@@ -1,23 +1,29 @@
-import type { LatLng } from '$lib/utils/types';
+import type { LatLng } from "$lib/utils/types";
 
-import zone from './kumasi-knust-zone.json';
+import zone from "./kumasi-knust-zone.json";
 
 export const KUMASI_CENTER: LatLng = {
   lat: zone.properties.center.lat,
-  lng: zone.properties.center.lng
+  lng: zone.properties.center.lng,
 };
 
 export const KUMASI_DEFAULT_ZOOM = zone.properties.defaultZoom;
 
 /** Polygon ring as [lng, lat][] from GeoJSON. */
-const ZONE_RING: Array<[number, number]> = zone.geometry.coordinates[0] as Array<[number, number]>;
+const ZONE_RING: Array<[number, number]> = zone.geometry
+  .coordinates[0] as Array<[number, number]>;
 
 export function getZonePolygonPath(): LatLng[] {
   return ZONE_RING.map(([lng, lat]) => ({ lat, lng }));
 }
 
 /** The zone's bounding box, used to bias address searches towards Kumasi. */
-export function getZoneBounds(): { south: number; west: number; north: number; east: number } {
+export function getZoneBounds(): {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+} {
   let south = Infinity;
   let north = -Infinity;
   let west = Infinity;
@@ -43,7 +49,8 @@ export function containsPoint(point: LatLng): boolean {
     const [xi, yi] = ZONE_RING[i];
     const [xj, yj] = ZONE_RING[j];
     const intersect =
-      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi + Number.EPSILON) + xi;
+      yi > y !== yj > y &&
+      x < ((xj - xi) * (y - yi)) / (yj - yi + Number.EPSILON) + xi;
     if (intersect) inside = !inside;
   }
 
@@ -63,7 +70,8 @@ export function haversineKm(a: LatLng, b: LatLng): number {
   const lat1 = toRad(a.lat);
   const lat2 = toRad(b.lat);
   const h =
-    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
@@ -88,6 +96,9 @@ function pointToSegmentKm(p: LatLng, a: LatLng, b: LatLng): number {
   const dx = x2 - x1;
   const dy = y2 - y1;
   if (dx === 0 && dy === 0) return haversineKm(p, a);
-  const t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)));
+  const t = Math.max(
+    0,
+    Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)),
+  );
   return haversineKm(p, { lat: y1 + t * dy, lng: x1 + t * dx });
 }

@@ -11,10 +11,10 @@ type Result = { ok: true; tripId: string } | { ok: false; message: string };
 
 export async function acceptOffer(tripId: string): Promise<Result> {
   try {
-    const response = await fetch('/api/courier/accept-trip', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tripId })
+    const response = await fetch("/api/courier/accept-trip", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tripId }),
     });
 
     const payload = await response.json().catch(() => null);
@@ -23,38 +23,50 @@ export async function acceptOffer(tripId: string): Promise<Result> {
     // offer and one of them loses. The server's message says so; inventing our
     // own here would make it sound like their app broke.
     if (!response.ok || !payload?.ok) {
-      return { ok: false, message: payload?.message ?? 'That request is no longer available.' };
+      return {
+        ok: false,
+        message: payload?.message ?? "That request is no longer available.",
+      };
     }
 
     return { ok: true, tripId: payload.tripId ?? tripId };
   } catch {
-    return { ok: false, message: 'Could not accept — check your connection and try again.' };
+    return {
+      ok: false,
+      message: "Could not accept — check your connection and try again.",
+    };
   }
 }
 
 export async function declineOffer(tripId: string): Promise<Result> {
   try {
-    const response = await fetch('/api/courier/decline-trip', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tripId })
+    const response = await fetch("/api/courier/decline-trip", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tripId }),
     });
 
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      return { ok: false, message: payload?.message ?? 'Could not decline that request.' };
+      return {
+        ok: false,
+        message: payload?.message ?? "Could not decline that request.",
+      };
     }
 
     return { ok: true, tripId };
   } catch {
-    return { ok: false, message: 'Could not decline — check your connection and try again.' };
+    return {
+      ok: false,
+      message: "Could not decline — check your connection and try again.",
+    };
   }
 }
 
 /** `0:12`, the way a countdown is read. */
 export function countdownLabel(seconds: number) {
   const safe = Math.max(0, Math.floor(seconds));
-  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, '0')}`;
+  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
 }
 
 /** Distance the way a rider says it: metres up close, kilometres beyond. */

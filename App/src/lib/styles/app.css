@@ -3,10 +3,10 @@
    nothing below and nothing in a component should introduce a literal colour.
    tailwind.config.ts exposes every token here as a utility class; reach for the
    class first and `var(--token)` only inside a `<style>` block. */
-@import url('../../../../Design System/tokens/colors.css');
-@import url('../../../../Design System/tokens/typography.css');
-@import url('../../../../Design System/tokens/spacing.css');
-@import url('../../../../Design System/tokens/base.css');
+@import url("../../../../Design System/tokens/colors.css");
+@import url("../../../../Design System/tokens/typography.css");
+@import url("../../../../Design System/tokens/spacing.css");
+@import url("../../../../Design System/tokens/base.css");
 
 @tailwind base;
 @tailwind components;
@@ -29,7 +29,10 @@
      downward. Same warm shadow hue as --shadow-xs, negative Y. A shadow that
      works by darkening is invisible against a dark page, so the dark half
      leans on opacity instead of hue. */
-  --shadow-nav: light-dark(0 -2px 10px oklch(20% 0.02 30 / 0.06), 0 -2px 10px oklch(0% 0 0 / 0.45));
+  --shadow-nav: light-dark(
+    0 -2px 10px oklch(20% 0.02 30 / 0.06),
+    0 -2px 10px oklch(0% 0 0 / 0.45)
+  );
 
   /* The page behind the phone-width column. Deliberately a step darker than
      --color-bg in light mode so the column reads as a device against a desk;
@@ -41,7 +44,7 @@
      These are the one place the light and dark ramps must move in *opposite*
      directions: a wash over white gets darker, a wash over near-black gets
      lighter. Every other surface token can mirror; these cannot. */
-  --color-wash:        light-dark(var(--neutral-100), var(--neutral-800));
+  --color-wash: light-dark(var(--neutral-100), var(--neutral-800));
   --color-wash-strong: light-dark(var(--neutral-200), var(--neutral-700));
 }
 
@@ -65,12 +68,12 @@
    Each override is declared twice on purpose: an engine that doesn't parse
    `only` drops that whole declaration, and without the plain one before it the
    rule would be empty and the picker would silently stop working there. */
-:root[data-theme='light'] {
+:root[data-theme="light"] {
   color-scheme: light;
   color-scheme: only light;
 }
 
-:root[data-theme='dark'] {
+:root[data-theme="dark"] {
   color-scheme: dark;
   color-scheme: only dark;
 }
@@ -81,7 +84,7 @@ body {
 }
 
 html {
-  scroll-behavior: smooth;  
+  scroll-behavior: smooth;
 }
 
 body {

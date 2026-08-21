@@ -1,4 +1,4 @@
-import { TtlCache } from '$lib/shared/ttl-cache';
+import { TtlCache } from "$lib/shared/ttl-cache";
 
 /**
  * One send per address per minute, for the two endpoints a stranger can aim at
@@ -35,6 +35,6 @@ export function allowSend(key: string): boolean {
 }
 
 /** Namespaced so a reset and a verification don't throttle each other. */
-export function sendKey(kind: 'verify' | 'reset', email: string) {
+export function sendKey(kind: "verify" | "reset", email: string) {
   return `${kind}:${email.trim().toLowerCase()}`;
 }

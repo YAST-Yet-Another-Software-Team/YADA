@@ -14,11 +14,15 @@
  * difference between one charge and one per letter typed.
  */
 
-import { GeoError, geoErrorMessage, mapGoogleStatusToGeoError } from '$lib/shared/geo/errors';
-import { getZoneBounds } from '$lib/shared/geo/service-area';
-import type { CachedGeocode } from '$lib/utils/types';
+import {
+  GeoError,
+  geoErrorMessage,
+  mapGoogleStatusToGeoError,
+} from "$lib/shared/geo/errors";
+import { getZoneBounds } from "$lib/shared/geo/service-area";
+import type { CachedGeocode } from "$lib/utils/types";
 
-import { loadGoogleMapsPlaces } from './google-maps-loader';
+import { loadGoogleMapsPlaces } from "./google-maps-loader";
 
 export type PlaceSuggestion = {
   id: string;
@@ -35,7 +39,8 @@ type PlaceLike = {
   formattedAddress?: string;
   displayName?: string | { text?: string };
   id?: string;
-  location?: { lat: () => number; lng: () => number } | { lat: number; lng: number };
+  location?:
+    { lat: () => number; lng: () => number } | { lat: number; lng: number };
 };
 
 type PlacePrediction = {
@@ -49,7 +54,9 @@ type PlacePrediction = {
 type PlacesNamespace = {
   AutocompleteSessionToken?: new () => unknown;
   AutocompleteSuggestion?: {
-    fetchAutocompleteSuggestions: (request: Record<string, unknown>) => Promise<{
+    fetchAutocompleteSuggestions: (
+      request: Record<string, unknown>,
+    ) => Promise<{
       suggestions?: Array<{ placePrediction?: PlacePrediction }>;
     }>;
   };
@@ -62,7 +69,8 @@ let placesReady = false;
 let sessionToken: unknown = null;
 
 async function places(apiKey: string): Promise<PlacesNamespace> {
-  if (!apiKey) throw new GeoError('unavailable', geoErrorMessage('unavailable'));
+  if (!apiKey)
+    throw new GeoError("unavailable", geoErrorMessage("unavailable"));
 
   if (!placesReady) {
     await loadGoogleMapsPlaces(apiKey);
@@ -73,7 +81,7 @@ async function places(apiKey: string): Promise<PlacesNamespace> {
 }
 
 function textOf(value: { text?: string } | string | undefined) {
-  return typeof value === 'string' ? value : (value?.text ?? '');
+  return typeof value === "string" ? value : (value?.text ?? "");
 }
 
 /**
@@ -96,7 +104,7 @@ async function ensureSession(api: PlacesNamespace) {
  */
 export async function fetchPlaceSuggestions(
   apiKey: string,
-  query: string
+  query: string,
 ): Promise<PlaceSuggestion[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
@@ -107,31 +115,33 @@ export async function fetchPlaceSuggestions(
   await ensureSession(api);
 
   const zone = getZoneBounds();
-  const { suggestions } = await api.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-    input: trimmed,
-    includedRegionCodes: ['gh'],
-    language: 'en',
-    sessionToken: sessionToken ?? undefined,
-    locationBias: {
-      west: zone.west,
-      south: zone.south,
-      east: zone.east,
-      north: zone.north
-    }
-  });
+  const { suggestions } =
+    await api.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+      input: trimmed,
+      includedRegionCodes: ["gh"],
+      language: "en",
+      sessionToken: sessionToken ?? undefined,
+      locationBias: {
+        west: zone.west,
+        south: zone.south,
+        east: zone.east,
+        north: zone.north,
+      },
+    });
 
   return (suggestions ?? [])
     .map((item, index): PlaceSuggestion | null => {
       const prediction = item.placePrediction;
       if (!prediction) return null;
 
-      const main = textOf(prediction.mainText) || textOf(prediction.text) || trimmed;
+      const main =
+        textOf(prediction.mainText) || textOf(prediction.text) || trimmed;
 
       return {
         id: prediction.placeId ?? `suggestion-${index}`,
         mainText: main,
         secondaryText: textOf(prediction.secondaryText),
-        prediction
+        prediction,
       };
     })
     .filter((item): item is PlaceSuggestion => item != null)
@@ -139,19 +149,23 @@ export async function fetchPlaceSuggestions(
 }
 
 /** Turn a chosen prediction into the coordinate the delivery actually needs. */
-export async function resolveSuggestion(suggestion: PlaceSuggestion): Promise<CachedGeocode> {
+export async function resolveSuggestion(
+  suggestion: PlaceSuggestion,
+): Promise<CachedGeocode> {
   let place: PlaceLike;
 
   try {
     place = await Promise.resolve(suggestion.prediction.toPlace());
-    if (typeof place.fetchFields === 'function') {
-      await place.fetchFields({ fields: ['formattedAddress', 'location', 'displayName', 'id'] });
+    if (typeof place.fetchFields === "function") {
+      await place.fetchFields({
+        fields: ["formattedAddress", "location", "displayName", "id"],
+      });
     }
   } catch (error) {
     const status = (error as { code?: string })?.code;
     throw status
       ? mapGoogleStatusToGeoError(status)
-      : new GeoError('unavailable', geoErrorMessage('unavailable'));
+      : new GeoError("unavailable", geoErrorMessage("unavailable"));
   } finally {
     // The lookup closes the session whether or not it succeeded; a token is only
     // good for one resolution either way.
@@ -159,15 +173,17 @@ export async function resolveSuggestion(suggestion: PlaceSuggestion): Promise<Ca
   }
 
   const location = place.location;
-  if (!location) throw mapGoogleStatusToGeoError('ZERO_RESULTS');
+  if (!location) throw mapGoogleStatusToGeoError("ZERO_RESULTS");
 
   const displayName =
-    typeof place.displayName === 'string' ? place.displayName : place.displayName?.text;
+    typeof place.displayName === "string"
+      ? place.displayName
+      : place.displayName?.text;
 
   return {
     address: place.formattedAddress ?? displayName ?? suggestion.mainText,
-    lat: typeof location.lat === 'function' ? location.lat() : location.lat,
-    lng: typeof location.lng === 'function' ? location.lng() : location.lng,
-    placeId: place.id ?? suggestion.id
+    lat: typeof location.lat === "function" ? location.lat() : location.lat,
+    lng: typeof location.lng === "function" ? location.lng() : location.lng,
+    placeId: place.id ?? suggestion.id,
   };
 }

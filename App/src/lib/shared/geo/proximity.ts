@@ -10,9 +10,9 @@
  * tighter one hides a button the server would have accepted.
  */
 
-import type { LatLng } from '$lib/utils/types';
+import type { LatLng } from "$lib/utils/types";
 
-import { haversineKm } from './service-area';
+import { haversineKm } from "./service-area";
 
 /**
  * PROVISIONAL — both radii are estimates pending field tests around KNUST.

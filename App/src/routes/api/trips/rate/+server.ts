@@ -1,13 +1,17 @@
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { eq } from 'drizzle-orm';
-import { z } from 'zod';
+import { json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
 
-import { apiError } from '$lib/server/api-guard';
-import { db } from '$lib/server/db';
-import { deliveryRequests } from '$lib/server/db/schema';
-import { AlreadyRatedError, rateForTrip, type RatedRole } from '$lib/server/data/ratings';
-import { recordTripEvent } from '$lib/server/data/trip-events';
+import { apiError, apiRoute, readJsonBody } from "$lib/server/api-guard";
+import { db } from "$lib/server/db";
+import { deliveryRequests } from "$lib/server/db/schema";
+import {
+  AlreadyRatedError,
+  rateForTrip,
+  type RatedRole,
+} from "$lib/server/data/ratings";
+import { recordTripEvent } from "$lib/server/data/trip-events";
 
 /**
  * Whole stars, one to five, with an optional comment. `int()` because 4.5 from
@@ -15,13 +19,13 @@ import { recordTripEvent } from '$lib/server/data/trip-events';
  * neither produce nor display.
  */
 const bodySchema = z.object({
-	tripId: z.uuid(),
-	stars: z.number().int().min(1).max(5),
-	comment: z
-		.string()
-		.trim()
-		.max(500, 'Keep the comment under 500 characters.')
-		.optional()
+  tripId: z.uuid(),
+  stars: z.number().int().min(1).max(5),
+  comment: z
+    .string()
+    .trim()
+    .max(500, "Keep the comment under 500 characters.")
+    .optional(),
 });
 
 /**
@@ -39,29 +43,29 @@ const bodySchema = z.object({
  * about the caller's own trip and should say what is actually wrong.
  */
 type Counterpart =
-	| { kind: 'ok'; ratedId: string; ratedRole: RatedRole }
-	| { kind: 'not_participant' }
-	| { kind: 'nobody_to_rate' };
+  | { kind: "ok"; ratedId: string; ratedRole: RatedRole }
+  | { kind: "not_participant" }
+  | { kind: "nobody_to_rate" };
 
 function ratingCounterpart(
-	trip: { businessId: string; assignedCourierId: string | null } | undefined,
-	raterId: string
+  trip: { businessId: string; assignedCourierId: string | null } | undefined,
+  raterId: string,
 ): Counterpart {
-	if (!trip) return { kind: 'not_participant' };
+  if (!trip) return { kind: "not_participant" };
 
-	// A trip nobody carried has nobody for the business to rate. The reverse
-	// cannot happen: an unassigned trip has no courier to be the caller.
-	if (raterId === trip.businessId) {
-		return trip.assignedCourierId
-			? { kind: 'ok', ratedId: trip.assignedCourierId, ratedRole: 'courier' }
-			: { kind: 'nobody_to_rate' };
-	}
+  // A trip nobody carried has nobody for the business to rate. The reverse
+  // cannot happen: an unassigned trip has no courier to be the caller.
+  if (raterId === trip.businessId) {
+    return trip.assignedCourierId
+      ? { kind: "ok", ratedId: trip.assignedCourierId, ratedRole: "courier" }
+      : { kind: "nobody_to_rate" };
+  }
 
-	if (raterId === trip.assignedCourierId) {
-		return { kind: 'ok', ratedId: trip.businessId, ratedRole: 'business' };
-	}
+  if (raterId === trip.assignedCourierId) {
+    return { kind: "ok", ratedId: trip.businessId, ratedRole: "business" };
+  }
 
-	return { kind: 'not_participant' };
+  return { kind: "not_participant" };
 }
 
 /**
@@ -83,72 +87,73 @@ function ratingCounterpart(
  * independent, and each side rating the same delivery is two rows, not a
  * conflict. The rated party's cached average updates in the same transaction.
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
-	const user = locals.user;
-	if (!user) return apiError(401, 'denied', 'Sign in required.');
+export const POST: RequestHandler = apiRoute({}, async ({ request }, user) => {
+  const parsed = bodySchema.safeParse(await readJsonBody(request));
+  if (!parsed.success) {
+    return apiError(400, "invalid_request", parsed.error.issues[0].message);
+  }
 
-	const parsed = bodySchema.safeParse(await request.json().catch(() => null));
-	if (!parsed.success) {
-		return apiError(400, 'invalid_request', parsed.error.issues[0].message);
-	}
+  const { tripId, stars, comment } = parsed.data;
 
-	const { tripId, stars, comment } = parsed.data;
+  const [trip] = await db
+    .select({
+      status: deliveryRequests.status,
+      businessId: deliveryRequests.businessId,
+      assignedCourierId: deliveryRequests.assignedCourierId,
+    })
+    .from(deliveryRequests)
+    .where(eq(deliveryRequests.id, tripId))
+    .limit(1);
 
-	const [trip] = await db
-		.select({
-			status: deliveryRequests.status,
-			businessId: deliveryRequests.businessId,
-			assignedCourierId: deliveryRequests.assignedCourierId
-		})
-		.from(deliveryRequests)
-		.where(eq(deliveryRequests.id, tripId))
-		.limit(1);
+  // 404 rather than 403 for a non-participant, matching `GET /api/trips`: a
+  // miss and a trip belonging to someone else must be indistinguishable.
+  const counterpart = ratingCounterpart(trip, user.id);
+  if (counterpart.kind === "not_participant") {
+    return apiError(404, "no_results", "Trip not found.");
+  }
 
-	// 404 rather than 403 for a non-participant, matching `GET /api/trips`: a
-	// miss and a trip belonging to someone else must be indistinguishable.
-	const counterpart = ratingCounterpart(trip, user.id);
-	if (counterpart.kind === 'not_participant') {
-		return apiError(404, 'no_results', 'Trip not found.');
-	}
+  // One still moving hasn't earned a verdict yet, and cancelled trips are
+  // excluded on purpose: a rating is about how a delivery went, and a cancelled
+  // trip is a delivery that didn't.
+  if (trip.status !== "completed") {
+    return apiError(409, "conflict", "Only completed deliveries can be rated.");
+  }
 
-	// One still moving hasn't earned a verdict yet, and cancelled trips are
-	// excluded on purpose: a rating is about how a delivery went, and a cancelled
-	// trip is a delivery that didn't.
-	if (trip.status !== 'completed') {
-		return apiError(409, 'conflict', 'Only completed deliveries can be rated.');
-	}
+  if (counterpart.kind === "nobody_to_rate") {
+    return apiError(409, "conflict", "No rider carried this delivery.");
+  }
 
-	if (counterpart.kind === 'nobody_to_rate') {
-		return apiError(409, 'conflict', 'No rider carried this delivery.');
-	}
+  try {
+    const { average, total } = await rateForTrip({
+      tripId,
+      raterId: user.id,
+      ratedId: counterpart.ratedId,
+      ratedRole: counterpart.ratedRole,
+      stars,
+      comment: comment || null,
+    });
 
-	try {
-		const { average, total } = await rateForTrip({
-			tripId,
-			raterId: user.id,
-			ratedId: counterpart.ratedId,
-			ratedRole: counterpart.ratedRole,
-			stars,
-			comment: comment || null
-		});
+    await recordTripEvent(
+      tripId,
+      user.id,
+      counterpart.ratedRole === "courier" ? "courier_rated" : "business_rated",
+      { stars },
+    );
 
-		await recordTripEvent(
-			tripId,
-			user.id,
-			counterpart.ratedRole === 'courier' ? 'courier_rated' : 'business_rated',
-			{ stars }
-		);
-
-		return json({
-			ok: true,
-			tripId,
-			stars,
-			rated: { role: counterpart.ratedRole, rating: average, ratingCount: total }
-		});
-	} catch (error) {
-		if (error instanceof AlreadyRatedError) {
-			return apiError(409, 'conflict', error.message);
-		}
-		throw error;
-	}
-};
+    return json({
+      ok: true,
+      tripId,
+      stars,
+      rated: {
+        role: counterpart.ratedRole,
+        rating: average,
+        ratingCount: total,
+      },
+    });
+  } catch (error) {
+    if (error instanceof AlreadyRatedError) {
+      return apiError(409, "conflict", error.message);
+    }
+    throw error;
+  }
+});

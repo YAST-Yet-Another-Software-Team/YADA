@@ -1,8 +1,12 @@
-import { GeoError, geoErrorMessage, mapGoogleStatusToGeoError } from '$lib/shared/geo/errors';
-import { getZoneBounds } from '$lib/shared/geo/service-area';
-import type { CachedGeocode, LatLng } from '$lib/utils/types';
+import {
+  GeoError,
+  geoErrorMessage,
+  mapGoogleStatusToGeoError,
+} from "$lib/shared/geo/errors";
+import { getZoneBounds } from "$lib/shared/geo/service-area";
+import type { CachedGeocode, LatLng } from "$lib/utils/types";
 
-import { loadGoogleMapsGeocoding } from './google-maps-loader';
+import { loadGoogleMapsGeocoding } from "./google-maps-loader";
 
 let geocoder: google.maps.Geocoder | null = null;
 
@@ -27,9 +31,12 @@ async function getGeocoder(apiKey: string) {
  * are funnelled through the same `mapGoogleStatusToGeoError` the server used —
  * callers keep rendering the same `GeoError` codes they always did.
  */
-export async function reverseGeocode(apiKey: string, point: LatLng): Promise<CachedGeocode> {
+export async function reverseGeocode(
+  apiKey: string,
+  point: LatLng,
+): Promise<CachedGeocode> {
   if (!apiKey) {
-    throw new GeoError('unavailable', geoErrorMessage('unavailable'));
+    throw new GeoError("unavailable", geoErrorMessage("unavailable"));
   }
 
   const instance = await getGeocoder(apiKey);
@@ -37,23 +44,27 @@ export async function reverseGeocode(apiKey: string, point: LatLng): Promise<Cac
   let results: google.maps.GeocoderResult[];
 
   try {
-    ({ results } = await instance.geocode({ location: { lat: point.lat, lng: point.lng } }));
+    ({ results } = await instance.geocode({
+      location: { lat: point.lat, lng: point.lng },
+    }));
   } catch (error) {
     const status = (error as { code?: string })?.code;
-    throw status ? mapGoogleStatusToGeoError(status) : new GeoError('unavailable', geoErrorMessage('unavailable'));
+    throw status
+      ? mapGoogleStatusToGeoError(status)
+      : new GeoError("unavailable", geoErrorMessage("unavailable"));
   }
 
   const [result] = results;
 
   if (!result) {
-    throw mapGoogleStatusToGeoError('ZERO_RESULTS');
+    throw mapGoogleStatusToGeoError("ZERO_RESULTS");
   }
 
   return {
     address: result.formatted_address,
     lat: result.geometry.location.lat(),
     lng: result.geometry.location.lng(),
-    placeId: result.place_id
+    placeId: result.place_id,
   };
 }
 
@@ -73,9 +84,12 @@ const MAX_FORWARD_RESULTS = 5;
  * resolves to the one down the road rather than an identically named building
  * on another continent.
  */
-export async function forwardGeocode(apiKey: string, query: string): Promise<CachedGeocode[]> {
+export async function forwardGeocode(
+  apiKey: string,
+  query: string,
+): Promise<CachedGeocode[]> {
   if (!apiKey) {
-    throw new GeoError('unavailable', geoErrorMessage('unavailable'));
+    throw new GeoError("unavailable", geoErrorMessage("unavailable"));
   }
 
   const trimmed = query.trim();
@@ -89,30 +103,30 @@ export async function forwardGeocode(apiKey: string, query: string): Promise<Cac
   try {
     ({ results } = await instance.geocode({
       address: trimmed,
-      componentRestrictions: { country: 'gh' },
+      componentRestrictions: { country: "gh" },
       bounds: {
         south: zone.south,
         west: zone.west,
         north: zone.north,
-        east: zone.east
-      }
+        east: zone.east,
+      },
     }));
   } catch (error) {
     const status = (error as { code?: string })?.code;
 
     // A query that matches nothing is an ordinary outcome of typing, not a
     // failure — the caller shows "no matches" rather than an error banner.
-    if (status === 'ZERO_RESULTS') return [];
+    if (status === "ZERO_RESULTS") return [];
 
     throw status
       ? mapGoogleStatusToGeoError(status)
-      : new GeoError('unavailable', geoErrorMessage('unavailable'));
+      : new GeoError("unavailable", geoErrorMessage("unavailable"));
   }
 
   return results.slice(0, MAX_FORWARD_RESULTS).map((result) => ({
     address: result.formatted_address,
     lat: result.geometry.location.lat(),
     lng: result.geometry.location.lng(),
-    placeId: result.place_id
+    placeId: result.place_id,
   }));
 }

@@ -15,20 +15,20 @@
  * theme, and that is earlier than any module can load. If the storage key
  * changes here it must change there too.
  */
-export const THEME_KEY = 'yada.courierTheme';
+export const THEME_KEY = "yada.courierTheme";
 
-export type Theme = 'system' | 'light' | 'dark';
+export type Theme = "system" | "light" | "dark";
 
 export function isTheme(value: unknown): value is Theme {
-  return value === 'system' || value === 'light' || value === 'dark';
+  return value === "system" || value === "light" || value === "dark";
 }
 
 /** Reflect a theme onto <html>. Safe to call before the user has ever chosen. */
 export function applyTheme(theme: Theme) {
   const root = document.documentElement;
 
-  if (theme === 'system') {
-    root.removeAttribute('data-theme');
+  if (theme === "system") {
+    root.removeAttribute("data-theme");
   } else {
     root.dataset.theme = theme;
   }
@@ -38,10 +38,10 @@ export function applyTheme(theme: Theme) {
 export function readTheme(): Theme {
   try {
     const saved = localStorage.getItem(THEME_KEY);
-    return isTheme(saved) ? saved : 'system';
+    return isTheme(saved) ? saved : "system";
   } catch {
     // Private-mode Safari and locked-down embedded webviews throw on access.
-    return 'system';
+    return "system";
   }
 }
 
@@ -62,19 +62,19 @@ export function setTheme(theme: Theme) {
  * it — but anything drawing outside CSS does, because a canvas cannot resolve
  * `system` on its own.
  */
-export type ResolvedTheme = 'light' | 'dark';
+export type ResolvedTheme = "light" | "dark";
 
-const DARK_QUERY = '(prefers-color-scheme: dark)';
+const DARK_QUERY = "(prefers-color-scheme: dark)";
 
 /** Which of the two is on screen right now. Browser only. */
 export function resolveTheme(): ResolvedTheme {
   const override = document.documentElement.dataset.theme;
 
-  if (override === 'light' || override === 'dark') {
+  if (override === "light" || override === "dark") {
     return override;
   }
 
-  return window.matchMedia(DARK_QUERY).matches ? 'dark' : 'light';
+  return window.matchMedia(DARK_QUERY).matches ? "dark" : "light";
 }
 
 /**
@@ -86,7 +86,9 @@ export function resolveTheme(): ResolvedTheme {
  * through one comparison so a change that resolves to the same value — picking
  * "Dark" while the OS was already dark — costs the caller nothing.
  */
-export function watchResolvedTheme(onChange: (theme: ResolvedTheme) => void): () => void {
+export function watchResolvedTheme(
+  onChange: (theme: ResolvedTheme) => void,
+): () => void {
   let current = resolveTheme();
 
   const emit = () => {
@@ -101,16 +103,16 @@ export function watchResolvedTheme(onChange: (theme: ResolvedTheme) => void): ()
   };
 
   const media = window.matchMedia(DARK_QUERY);
-  media.addEventListener('change', emit);
+  media.addEventListener("change", emit);
 
   const observer = new MutationObserver(emit);
   observer.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ['data-theme']
+    attributeFilter: ["data-theme"],
   });
 
   return () => {
-    media.removeEventListener('change', emit);
+    media.removeEventListener("change", emit);
     observer.disconnect();
   };
 }

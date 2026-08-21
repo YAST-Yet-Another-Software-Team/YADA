@@ -18,7 +18,7 @@ export type CourierTab = {
   title: string;
   /** Paths owned by this tab; a nested path (`…/profile`) counts as a match. */
   match: string[];
-  icon: 'home' | 'orders' | 'trips' | 'settings';
+  icon: "home" | "orders" | "trips" | "settings";
 };
 
 /**
@@ -32,32 +32,40 @@ export type CourierTab = {
  * narrower.
  */
 export const COURIER_TABS: CourierTab[] = [
-  { href: '/home', label: 'Home', title: 'Home', match: ['/home'], icon: 'home' },
   {
-    href: '/orders',
-    label: 'Orders',
-    title: 'Orders',
-    match: ['/orders', '/pickup', '/deliver'],
-    icon: 'orders'
+    href: "/home",
+    label: "Home",
+    title: "Home",
+    match: ["/home"],
+    icon: "home",
   },
   {
-    href: '/trips',
-    label: 'Trips',
-    title: 'Trips',
-    match: ['/trips', '/complete'],
-    icon: 'trips'
+    href: "/orders",
+    label: "Orders",
+    title: "Orders",
+    match: ["/orders", "/pickup", "/deliver"],
+    icon: "orders",
   },
   {
-    href: '/settings',
-    label: 'Settings',
-    title: 'Profile & Settings',
-    match: ['/settings'],
-    icon: 'settings'
-  }
+    href: "/trips",
+    label: "Trips",
+    title: "Trips",
+    match: ["/trips", "/complete"],
+    icon: "trips",
+  },
+  {
+    href: "/settings",
+    label: "Settings",
+    title: "Profile & Settings",
+    match: ["/settings"],
+    icon: "settings",
+  },
 ];
 
 function matches(path: string, prefixes: string[]) {
-  return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+  return prefixes.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
 }
 
 export function isTabActive(path: string, tab: CourierTab) {
@@ -68,18 +76,18 @@ export function isTabActive(path: string, tab: CourierTab) {
 export function activeTabIndex(path: string) {
   return Math.max(
     0,
-    COURIER_TABS.findIndex((tab) => isTabActive(path, tab))
+    COURIER_TABS.findIndex((tab) => isTabActive(path, tab)),
   );
 }
 
 /** A trip in progress takes over the screen — no tab bar to navigate away with. */
 export function isFocusedTrip(path: string) {
-  return matches(path, ['/pickup', '/deliver']);
+  return matches(path, ["/pickup", "/deliver"]);
 }
 
 /** Home owns its own scrolling: the map fills the viewport behind the sheet. */
 export function isHome(path: string) {
-  return path === '/home';
+  return path === "/home";
 }
 
 /**
@@ -91,7 +99,7 @@ export function isHome(path: string) {
  * exact-match here is what keeps them from getting two.
  */
 export function headerTitleFor(path: string): string | null {
-  if (path === '/home') return null;
+  if (path === "/home") return null;
 
   return COURIER_TABS.find((tab) => tab.href === path)?.title ?? null;
 }

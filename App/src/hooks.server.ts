@@ -1,11 +1,11 @@
-import { auth, toAuthRole } from '$auth/auth.server';
-import { building } from '$app/environment';
-import type { Handle } from '@sveltejs/kit';
+import { auth, toAuthRole } from "$auth/auth.server";
+import { building } from "$app/environment";
+import type { Handle } from "@sveltejs/kit";
 
-import { withRequestDatabase } from '$lib/server/db';
-import { waitUntilFor } from '$lib/server/platform';
+import { withRequestDatabase } from "$lib/server/db";
+import { waitUntilFor } from "$lib/server/platform";
 
-const AUTH_BASE = '/api/auth';
+const AUTH_BASE = "/api/auth";
 
 function isAuthRequest(pathname: string) {
   return pathname === AUTH_BASE || pathname.startsWith(`${AUTH_BASE}/`);
@@ -32,7 +32,9 @@ export const handle: Handle = async ({ event, resolve }) =>
     }
 
     try {
-      const session = await auth.api.getSession({ headers: event.request.headers });
+      const session = await auth.api.getSession({
+        headers: event.request.headers,
+      });
 
       if (session?.user) {
         // phoneNumber and role arrive as additionalFields, which aren't in the
@@ -44,10 +46,11 @@ export const handle: Handle = async ({ event, resolve }) =>
           id: session.user.id,
           name: session.user.name,
           email: session.user.email ?? null,
-          phone: typeof fields.phoneNumber === 'string' ? fields.phoneNumber : null,
+          phone:
+            typeof fields.phoneNumber === "string" ? fields.phoneNumber : null,
           role: toAuthRole(fields.role),
           image: session.user.image ?? null,
-          emailVerified: session.user.emailVerified === true
+          emailVerified: session.user.emailVerified === true,
         };
       } else {
         event.locals.session = null;

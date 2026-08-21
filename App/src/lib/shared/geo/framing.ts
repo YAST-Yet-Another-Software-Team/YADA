@@ -12,10 +12,15 @@
  * camera; this module only answers questions about points and boxes.
  */
 
-import type { LatLng } from '$lib/utils/types';
+import type { LatLng } from "$lib/utils/types";
 
 /** The same shape `getZoneBounds` returns, so the two are interchangeable. */
-export type Bounds = { south: number; west: number; north: number; east: number };
+export type Bounds = {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+};
 
 /**
  * How long a party may sit off-screen before the camera goes back for them.
@@ -41,19 +46,19 @@ export const FIT_PADDING_PX = 48;
 
 /** The smallest box containing every point, or null if there are none. */
 export function boundsOf(points: LatLng[]): Bounds | null {
-	if (points.length === 0) return null;
+  if (points.length === 0) return null;
 
-	let { lat: south, lng: west } = points[0];
-	let { lat: north, lng: east } = points[0];
+  let { lat: south, lng: west } = points[0];
+  let { lat: north, lng: east } = points[0];
 
-	for (const point of points) {
-		south = Math.min(south, point.lat);
-		north = Math.max(north, point.lat);
-		west = Math.min(west, point.lng);
-		east = Math.max(east, point.lng);
-	}
+  for (const point of points) {
+    south = Math.min(south, point.lat);
+    north = Math.max(north, point.lat);
+    west = Math.min(west, point.lng);
+    east = Math.max(east, point.lng);
+  }
 
-	return { south, west, north, east };
+  return { south, west, north, east };
 }
 
 /**
@@ -67,13 +72,13 @@ export function boundsOf(points: LatLng[]): Bounds | null {
  * answer nobody could reach.
  */
 export function containsAll(bounds: Bounds | null, points: LatLng[]): boolean {
-	if (!bounds) return false;
+  if (!bounds) return false;
 
-	return points.every(
-		(point) =>
-			point.lat >= bounds.south &&
-			point.lat <= bounds.north &&
-			point.lng >= bounds.west &&
-			point.lng <= bounds.east
-	);
+  return points.every(
+    (point) =>
+      point.lat >= bounds.south &&
+      point.lat <= bounds.north &&
+      point.lng >= bounds.west &&
+      point.lng <= bounds.east,
+  );
 }

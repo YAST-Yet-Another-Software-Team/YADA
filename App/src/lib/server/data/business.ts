@@ -1,10 +1,11 @@
-import { eq } from 'drizzle-orm';
+import { eq } from "drizzle-orm";
 
-import { initials } from '$lib/shared/text';
-import type { CourierSummary, LatLng } from '$lib/utils/types';
+import { initials } from "$lib/shared/text";
+import type { CourierSummary, LatLng } from "$lib/utils/types";
 
-import { db } from '../db';
-import { businessProfiles, courierProfiles, users } from '../db/schema';
+import { db } from "../db";
+import { toCoordinateColumn } from "../db/columns";
+import { businessProfiles, courierProfiles, users } from "../db/schema";
 
 /**
  * The business's fixed dispatch address.
@@ -20,12 +21,9 @@ export type BusinessAddress = {
   lng: number;
 };
 
-/** `numeric(10, 6)` columns — the scale the schema stores coordinates at. */
-function toCoordinateColumn(value: number) {
-  return value.toFixed(6);
-}
-
-export async function getBusinessAddress(userId: string): Promise<BusinessAddress | null> {
+export async function getBusinessAddress(
+  userId: string,
+): Promise<BusinessAddress | null> {
   const [row] = await db
     .select()
     .from(businessProfiles)
@@ -38,7 +36,7 @@ export async function getBusinessAddress(userId: string): Promise<BusinessAddres
     businessName: row.businessName,
     address: row.address,
     lat: Number(row.latitude),
-    lng: Number(row.longitude)
+    lng: Number(row.longitude),
   };
 }
 
@@ -52,14 +50,17 @@ export async function getBusinessAddress(userId: string): Promise<BusinessAddres
  */
 export async function getBusinessRating(userId: string) {
   const [row] = await db
-    .select({ rating: businessProfiles.rating, ratingCount: businessProfiles.ratingCount })
+    .select({
+      rating: businessProfiles.rating,
+      ratingCount: businessProfiles.ratingCount,
+    })
     .from(businessProfiles)
     .where(eq(businessProfiles.userId, userId))
     .limit(1);
 
   return {
     average: row && row.ratingCount > 0 ? Number(row.rating) : null,
-    count: row?.ratingCount ?? 0
+    count: row?.ratingCount ?? 0,
   };
 }
 
@@ -71,17 +72,20 @@ export async function getBusinessRating(userId: string) {
  * A courier with no profile row still returns a summary — the name and phone
  * come from the account, and vehicle and rating are simply unknown.
  */
-export async function getCourierSummary(courierId: string): Promise<CourierSummary | null> {
+export async function getCourierSummary(
+  courierId: string,
+): Promise<CourierSummary | null> {
   const [row] = await db
     .select({
       id: users.id,
       name: users.name,
       image: users.image,
+      deletedAt: users.deletedAt,
       phone: users.phoneNumber,
       vehicleType: courierProfiles.vehicleType,
       plateNumber: courierProfiles.plateNumber,
       rating: courierProfiles.rating,
-      ratingCount: courierProfiles.ratingCount
+      ratingCount: courierProfiles.ratingCount,
     })
     .from(users)
     .leftJoin(courierProfiles, eq(courierProfiles.userId, users.id))
@@ -93,15 +97,19 @@ export async function getCourierSummary(courierId: string): Promise<CourierSumma
   return {
     id: row.id,
     name: row.name,
-    initials: initials(row.name, 'C'),
+    initials: initials(row.name, "C"),
     image: row.image,
     phone: row.phone,
     vehicleType: row.vehicleType,
     plateNumber: row.plateNumber,
     // An average over nothing is display noise, not a score — null until the
     // first rating actually exists.
-    rating: row.rating != null && (row.ratingCount ?? 0) > 0 ? Number(row.rating) : null,
-    ratingCount: row.ratingCount ?? 0
+    rating:
+      row.rating != null && (row.ratingCount ?? 0) > 0
+        ? Number(row.rating)
+        : null,
+    ratingCount: row.ratingCount ?? 0,
+    isDeleted: row.deletedAt != null,
   };
 }
 
@@ -114,7 +122,7 @@ export async function getCourierSummary(courierId: string): Promise<CourierSumma
  */
 export async function saveBusinessAddress(
   userId: string,
-  input: { businessName: string; address: string } & LatLng
+  input: { businessName: string; address: string } & LatLng,
 ) {
   await db
     .insert(businessProfiles)
@@ -123,7 +131,7 @@ export async function saveBusinessAddress(
       businessName: input.businessName,
       address: input.address,
       latitude: toCoordinateColumn(input.lat),
-      longitude: toCoordinateColumn(input.lng)
+      longitude: toCoordinateColumn(input.lng),
     })
     .onConflictDoUpdate({
       target: businessProfiles.userId,
@@ -132,7 +140,7 @@ export async function saveBusinessAddress(
         address: input.address,
         latitude: toCoordinateColumn(input.lat),
         longitude: toCoordinateColumn(input.lng),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 }

@@ -2,6 +2,8 @@
 	import type { Snippet } from 'svelte';
 	import { page } from '$app/state';
 	import VerifyEmailBanner from '$lib/components/VerifyEmailBanner.svelte';
+	import { getSoundAlerts } from '$lib/client/sound-alerts.svelte';
+	import type { CourierOffer } from '$lib/utils/types';
 	import CourierTabBar from './CourierTabBar.svelte';
 	import { createCourierOnline } from './courier-online.svelte';
 	import { headerTitleFor, isFocusedTrip, isHome } from './tabs';
@@ -13,6 +15,36 @@
 	const online = createCourierOnline();
 	$effect(() => {
 		online.hydrate();
+	});
+
+	/**
+	 * The bell for a request that has started ringing this rider.
+	 *
+	 * Watched here rather than on Home and Orders, which both render the same
+	 * `pendingRequests`: per-screen detection would ring again every time the
+	 * rider switched tabs while an offer was still open. The layout outlives both,
+	 * so the memory of what has been announced does too.
+	 *
+	 * `page.data` merges the active page's load data, which is how a layout can
+	 * see a page-level payload at all — the tracking screen reads `page.data` the
+	 * same way.
+	 */
+	const alerts = getSoundAlerts();
+	const pendingRequests = $derived(
+		page.data.pendingRequests as CourierOffer[] | undefined
+	);
+
+	$effect(() => {
+		// Only Home and Orders load offers; Trips and Settings leave this
+		// undefined. That is not the same as "no offers are ringing", and reading
+		// it as such would forget everything already announced — so stepping into
+		// Settings and back would ring again for an offer still on screen.
+		if (!pendingRequests) return;
+
+		// `offer.id` is the delivery request's own id and is stable across polls.
+		// `expiresInSeconds` is not — the server recomputes it on every response,
+		// so it cannot tell a new offer from one already on screen.
+		alerts.announceOffers(pendingRequests.map((offer) => offer.id));
 	});
 
 	const path = $derived(page.url.pathname);

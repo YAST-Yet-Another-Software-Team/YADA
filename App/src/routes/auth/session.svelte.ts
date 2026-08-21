@@ -1,19 +1,21 @@
-import { getContext, setContext } from 'svelte';
+import { getContext, setContext } from "svelte";
 
-import type { AuthRole, AuthUser } from '$lib/utils/types';
+import type { AuthRole, AuthUser } from "$lib/utils/types";
 
-import { AuthError, authErrorMessage, networkError } from './errors';
+import { AuthError, authErrorMessage, networkError } from "./errors";
 
 // ---------------------------------------------------------------------------
 // Response plumbing — stateless, so it stays outside the class
 // ---------------------------------------------------------------------------
 
-const AUTH_ROLES: readonly AuthRole[] = ['business', 'courier'];
+const AUTH_ROLES: readonly AuthRole[] = ["business", "courier"];
 
 /** Mirrors toAuthRole() in ./auth.server. The *type* is now shared, but the
  *  runtime narrowing still can't be — that lives in a server-only module. */
 function toRole(value: unknown): AuthRole {
-  return AUTH_ROLES.includes(value as AuthRole) ? (value as AuthRole) : 'business';
+  return AUTH_ROLES.includes(value as AuthRole)
+    ? (value as AuthRole)
+    : "business";
 }
 
 /** A user as Better Auth serialises it, before mapping to our shape. */
@@ -40,7 +42,7 @@ function mapUser(user: RawUser): AuthUser | null {
         phone: user.phoneNumber ?? null,
         role: toRole(user.role),
         image: user.image ?? null,
-        emailVerified: user.emailVerified === true
+        emailVerified: user.emailVerified === true,
       }
     : null;
 }
@@ -62,10 +64,16 @@ async function readJson<T>(response: Response) {
  * translates; `fallback` covers a body with neither.
  */
 async function errorFrom(response: Response, fallback: string) {
-  const payload = await readJson<{ code?: string; error?: { code?: string } }>(response);
+  const payload = await readJson<{ code?: string; error?: { code?: string } }>(
+    response,
+  );
   const code = payload?.code ?? payload?.error?.code ?? null;
 
-  return new AuthError(authErrorMessage(code, response.status, fallback), code, response.status);
+  return new AuthError(
+    authErrorMessage(code, response.status, fallback),
+    code,
+    response.status,
+  );
 }
 
 /**
@@ -78,9 +86,9 @@ async function errorFrom(response: Response, fallback: string) {
 async function post(path: string, body: unknown) {
   try {
     return await fetch(path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
   } catch {
     throw networkError();
@@ -145,8 +153,10 @@ export class Session {
   async refresh() {
     return this.#track(async () => {
       try {
-        const response = await fetch('/api/auth/get-session');
-        this.#user = response.ok ? extractUser(await readJson<UserPayload>(response)) : null;
+        const response = await fetch("/api/auth/get-session");
+        this.#user = response.ok
+          ? extractUser(await readJson<UserPayload>(response))
+          : null;
         return this.#user;
       } catch (error) {
         this.#user = null;
@@ -168,17 +178,19 @@ export class Session {
       if (fields.name !== undefined) body.name = fields.name.trim();
       if (fields.phone !== undefined) body.phoneNumber = fields.phone.trim();
 
-      const response = await post('/api/auth/update-user', body);
+      const response = await post("/api/auth/update-user", body);
 
       if (!response.ok) {
-        throw await errorFrom(response, 'Unable to update profile.');
+        throw await errorFrom(response, "Unable to update profile.");
       }
 
       // update-user doesn't always echo the user back; fall back to re-reading it.
-      const user = extractUser(await readJson<UserPayload>(response)) ?? (await this.refresh());
+      const user =
+        extractUser(await readJson<UserPayload>(response)) ??
+        (await this.refresh());
 
       if (!user) {
-        throw new AuthError('Unable to update profile.');
+        throw new AuthError("Unable to update profile.");
       }
 
       this.#user = user;
@@ -200,19 +212,22 @@ export class Session {
       let response: Response;
 
       try {
-        response = await fetch('/api/account/photo', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image })
+        response = await fetch("/api/account/photo", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image }),
         });
       } catch {
         throw networkError();
       }
 
-      const payload = await readJson<{ message?: string; image?: string | null }>(response);
+      const payload = await readJson<{
+        message?: string;
+        image?: string | null;
+      }>(response);
 
       if (!response.ok) {
-        throw new AuthError(payload?.message ?? 'Unable to save your photo.');
+        throw new AuthError(payload?.message ?? "Unable to save your photo.");
       }
 
       const current = this.#user;
@@ -224,27 +239,26 @@ export class Session {
 
   async changePassword(currentPassword: string, newPassword: string) {
     return this.#track(async () => {
-      const response = await post('/api/auth/change-password', {
+      const response = await post("/api/auth/change-password", {
         currentPassword,
         newPassword,
-        revokeOtherSessions: false
+        revokeOtherSessions: false,
       });
 
       if (!response.ok) {
-        throw await errorFrom(response, 'Unable to change password.');
+        throw await errorFrom(response, "Unable to change password.");
       }
 
       return true;
     });
   }
-
 }
 
 // ---------------------------------------------------------------------------
 // Context
 // ---------------------------------------------------------------------------
 
-const SESSION_KEY = Symbol('yada.session');
+const SESSION_KEY = Symbol("yada.session");
 
 /** Provide the session for the whole app. Called once, by the root layout. */
 export function createSession(user: AuthUser | null) {
@@ -256,7 +270,9 @@ export function getSession(): Session {
   const session = getContext<Session | undefined>(SESSION_KEY);
 
   if (!session) {
-    throw new Error('getSession() was called outside the root layout, which provides it.');
+    throw new Error(
+      "getSession() was called outside the root layout, which provides it.",
+    );
   }
 
   return session;

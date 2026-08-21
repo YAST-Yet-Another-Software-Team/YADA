@@ -1,6 +1,14 @@
 /**
- * Socket.IO connection handling, shared by `server.js` (production) and
- * `vite-plugin-socket-io.ts` (dev) so the two entry points cannot drift apart.
+ * Socket.IO connection handling. Development only.
+ *
+ * The single entry point is `vite-plugin-socket-io.ts`, which attaches a socket
+ * server to the Vite dev server. There is no production counterpart: Cloudflare
+ * Workers is the only deployment target and has no always-on process for a
+ * socket server to live in, so `REALTIME_ENABLED` is `false` there and the
+ * business tracking screen falls back to polling `GET /api/trips`. This exists
+ * so that fallback is not the *only* thing anyone ever exercises — live fixes
+ * are the behaviour the DO-based replacement is meant to restore, and it helps
+ * to be able to see them working.
  *
  * Sockets carry the browser's cookies but never pass through SvelteKit's `handle`
  * hook, so none of the app's route guards apply to them. Authorization here works
@@ -8,8 +16,8 @@
  * for sessions, and trip membership reuses the participant check that
  * `GET /api/trips` already enforces.
  *
- * Plain JS with no SvelteKit imports, because `server.js` runs outside Vite and
- * cannot resolve `$lib` / `$env` aliases.
+ * Plain JS with no SvelteKit imports: it is loaded from the Vite *config*, which
+ * is evaluated before the `$lib` / `$env` aliases exist.
  */
 
 /**
@@ -21,8 +29,7 @@
  * on their own schedule and only *coincide* with a render — but because the
  * wrapper is installed on a global, a handshake landing inside that window was
  * enough to print "Avoid calling `fetch` eagerly during server-side rendering"
- * against code that does nothing of the sort. Both entry points import this
- * module at start-up, long before any render can patch anything, so the
+ * against code that does nothing of the sort. This module is imported at start-up, long before any render can patch anything, so the
  * reference captured here is the real one.
  */
 const fetchDirect = globalThis.fetch.bind(globalThis);

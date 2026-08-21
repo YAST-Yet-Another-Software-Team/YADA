@@ -11,5 +11,14 @@
     "strict": true,
     "moduleResolution": "bundler"
   },
-  "include": [".svelte-kit/ambient.d.ts", "src/**/*.d.ts", "src/**/*.ts", "src/**/*.js", "src/**/*.svelte", "vite.config.ts", "svelte.config.ts", "drizzle.config.ts"]
+  "include": [
+    ".svelte-kit/ambient.d.ts",
+    "src/**/*.d.ts",
+    "src/**/*.ts",
+    "src/**/*.js",
+    "src/**/*.svelte",
+    "vite.config.ts",
+    "svelte.config.ts",
+    "drizzle.config.ts"
+  ]
 }

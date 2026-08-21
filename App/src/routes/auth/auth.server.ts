@@ -1,28 +1,35 @@
-import { drizzleAdapter } from '@better-auth/drizzle-adapter';
-import { dash } from '@better-auth/infra';
-import { betterAuth } from 'better-auth';
-import { getOAuthState } from 'better-auth/api';
-import { sveltekitCookies } from 'better-auth/svelte-kit';
-import { getRequestEvent } from '$app/server';
-import { env } from '$env/dynamic/private';
+import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import { dash } from "@better-auth/infra";
+import { betterAuth } from "better-auth";
+import { getOAuthState } from "better-auth/api";
+import { sveltekitCookies } from "better-auth/svelte-kit";
+import { getRequestEvent } from "$app/server";
+import { env } from "$env/dynamic/private";
 
-import type { AuthRole } from '$lib/utils/types';
+import type { AuthRole } from "$lib/utils/types";
 
-import { db } from '$lib/server/db';
-import * as schema from '$lib/server/db/schema';
-import { resetPasswordTemplate, sendEmail, verifyEmailTemplate } from '$lib/server/email';
-import { runInBackground } from '$lib/server/platform';
+import { db } from "$lib/server/db";
+import * as schema from "$lib/server/db/schema";
+import {
+  resetPasswordTemplate,
+  sendEmail,
+  verifyEmailTemplate,
+} from "$lib/server/email";
+import { runInBackground } from "$lib/server/platform";
 
-const authUrl = env.BETTER_AUTH_URL ?? 'http://localhost:5173';
+const authUrl = env.BETTER_AUTH_URL ?? "http://localhost:5173";
 const trustedOrigins = [
   authUrl,
-  ...(env.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
-    .split(',')
+  ...(env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
+    .split(",")
     .map((value) => value.trim())
-    .filter(Boolean)
+    .filter(Boolean),
 ];
 
-const AUTH_ROLES = ['business', 'courier'] as const satisfies readonly AuthRole[];
+const AUTH_ROLES = [
+  "business",
+  "courier",
+] as const satisfies readonly AuthRole[];
 
 /**
  * Where a confirmation link lands once Better Auth has accepted the token.
@@ -36,7 +43,7 @@ const AUTH_ROLES = ['business', 'courier'] as const satisfies readonly AuthRole[
  * Sign-up and the resend action must pass the same value, which is why it
  * lives here rather than in either of them.
  */
-export const VERIFY_EMAIL_CALLBACK = '/verify-email?verified=1';
+export const VERIFY_EMAIL_CALLBACK = "/verify-email?verified=1";
 
 /**
  * Narrow an untrusted `role` to the role union.
@@ -47,18 +54,20 @@ export const VERIFY_EMAIL_CALLBACK = '/verify-email?verified=1';
  * through and then fail every downstream role check with no explanation.
  */
 export function toAuthRole(value: unknown): AuthRole {
-  return AUTH_ROLES.includes(value as AuthRole) ? (value as AuthRole) : 'business';
+  return AUTH_ROLES.includes(value as AuthRole)
+    ? (value as AuthRole)
+    : "business";
 }
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: 'pg',
+    provider: "pg",
     schema: {
       user: schema.users,
       session: schema.sessions,
       account: schema.accounts,
-      verification: schema.verifications
-    }
+      verification: schema.verifications,
+    },
   }),
 
   secret: env.BETTER_AUTH_SECRET,
@@ -81,15 +90,18 @@ export const auth = betterAuth({
      * the caller — see the `reset` action in ./+page.server.
      */
     sendResetPassword: async ({ user, url }) => {
-      const { subject, html, text } = resetPasswordTemplate({ name: user.name, url });
+      const { subject, html, text } = resetPasswordTemplate({
+        name: user.name,
+        url,
+      });
 
       await sendEmail({
         to: { email: user.email, name: user.name },
         subject,
         html,
-        text
+        text,
       });
-    }
+    },
   },
 
   /**
@@ -111,15 +123,18 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24,
 
     sendVerificationEmail: async ({ user, url }) => {
-      const { subject, html, text } = verifyEmailTemplate({ name: user.name, url });
+      const { subject, html, text } = verifyEmailTemplate({
+        name: user.name,
+        url,
+      });
 
       await sendEmail({
         to: { email: user.email, name: user.name },
         subject,
         html,
-        text
+        text,
       });
-    }
+    },
   },
 
   advanced: {
@@ -140,8 +155,8 @@ export const auth = betterAuth({
         }
 
         runInBackground(event, promise);
-      }
-    }
+      },
+    },
   },
 
   /**
@@ -154,7 +169,7 @@ export const auth = betterAuth({
    * is what $lib/server/email/throttle exists to cover.
    */
   rateLimit: {
-    enabled: true
+    enabled: true,
   },
 
   ...(env.OAUTH_GOOGLE_CLIENT_ID && env.OAUTH_GOOGLE_CLIENT_SECRET
@@ -162,9 +177,9 @@ export const auth = betterAuth({
         socialProviders: {
           google: {
             clientId: env.OAUTH_GOOGLE_CLIENT_ID,
-            clientSecret: env.OAUTH_GOOGLE_CLIENT_SECRET
-          }
-        }
+            clientSecret: env.OAUTH_GOOGLE_CLIENT_SECRET,
+          },
+        },
       }
     : {}),
 
@@ -176,17 +191,17 @@ export const auth = betterAuth({
       // request outright. Without this, any client could switch itself between
       // workspaces — or into a role that doesn't exist — through the auth API.
       role: {
-        type: 'string',
-        defaultValue: 'business',
+        type: "string",
+        defaultValue: "business",
         required: false,
-        input: false
+        input: false,
       },
       phoneNumber: {
-        type: 'string',
+        type: "string",
         required: false,
-        input: true
-      }
-    }
+        input: true,
+      },
+    },
   },
 
   databaseHooks: {
@@ -210,7 +225,8 @@ export const auth = betterAuth({
          * /welcome screen asks, because a guess is what caused the bug.
          */
         before: async (user, context) => {
-          let requestedRole = (context?.body as { role?: unknown } | undefined)?.role;
+          let requestedRole = (context?.body as { role?: unknown } | undefined)
+            ?.role;
 
           if (requestedRole === undefined) {
             // Absent outside an OAuth request, and throwing here would fail the
@@ -223,11 +239,10 @@ export const auth = betterAuth({
           }
 
           return { data: { ...user, role: toAuthRole(requestedRole) } };
-        }
-      }
-    }
+        },
+      },
+    },
   },
 
-  plugins: [dash(), sveltekitCookies(getRequestEvent)]
+  plugins: [dash(), sveltekitCookies(getRequestEvent)],
 });
-

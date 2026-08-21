@@ -26,9 +26,9 @@ import * as schema from "./schema";
  *
  * So on Workers the pool is per-request: `withRequestDatabase` opens one, binds
  * it to an AsyncLocalStorage scope for the duration of the request, and closes
- * it once the response body has drained. Under Node (dev, and the adapter-node
- * build that hosts Socket.IO) there is no such isolation and a long-lived pool
- * is the right thing, so the singleton is kept there.
+ * it once the response body has drained. Under `vite dev`, which runs on Node,
+ * there is no such isolation and a long-lived pool is the right thing, so the
+ * singleton is kept there.
  *
  * Callers see none of this: `db` is a proxy onto whichever connection is
  * currently in scope, so `import { db } from '$lib/server/db'` still works from
@@ -48,9 +48,10 @@ if (
   );
 }
 
-// Workers provides WebSocket natively; Node does not until v22, and the local
-// Socket.IO server still runs on Node. The specifier is held in a variable so
-// the bundler leaves it alone — `ws` must never be pulled into the Worker build.
+// Workers provides WebSocket natively; Node does not until v22, and `vite dev`
+// runs on Node — which is why `ws` survives the move to a Workers-only
+// deployment. The specifier is held in a variable so the bundler leaves it
+// alone: `ws` must never be pulled into the Worker build.
 if (typeof WebSocket === "undefined") {
   const wsSpecifier = "ws";
   neonConfig.webSocketConstructor = (
