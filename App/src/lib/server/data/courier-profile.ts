@@ -1,9 +1,9 @@
-import { eq } from 'drizzle-orm';
+import { eq } from "drizzle-orm";
 
-import { initials } from '$lib/shared/text';
+import { initials } from "$lib/shared/text";
 
-import { db } from '../db';
-import { courierProfiles } from '../db/schema';
+import { db } from "../db";
+import { courierProfiles } from "../db/schema";
 
 /**
  * The `courier_profiles` row: who a rider is to the system, as distinct from
@@ -15,9 +15,12 @@ import { courierProfiles } from '../db/schema';
  * upsert rather than a set of "whichever row comes back first" queries.
  */
 
-export function courierProfileOf(name: string | null | undefined, fallback = 'Courier') {
+export function courierProfileOf(
+  name: string | null | undefined,
+  fallback = "Courier",
+) {
   const displayName = name || fallback;
-  return { name: displayName, initials: initials(displayName, 'C') };
+  return { name: displayName, initials: initials(displayName, "C") };
 }
 
 /**
@@ -27,14 +30,17 @@ export function courierProfileOf(name: string | null | undefined, fallback = 'Co
  */
 export async function getCourierRating(userId: string) {
   const [row] = await db
-    .select({ rating: courierProfiles.rating, ratingCount: courierProfiles.ratingCount })
+    .select({
+      rating: courierProfiles.rating,
+      ratingCount: courierProfiles.ratingCount,
+    })
     .from(courierProfiles)
     .where(eq(courierProfiles.userId, userId))
     .limit(1);
 
   return {
     average: row && row.ratingCount > 0 ? Number(row.rating) : null,
-    count: row?.ratingCount ?? 0
+    count: row?.ratingCount ?? 0,
   };
 }
 
@@ -46,7 +52,7 @@ export async function getCourierRating(userId: string) {
  * form. The column stays because the schema has it and the business-facing
  * screens read it; it simply isn't asked for.
  */
-export const COURIER_VEHICLE_TYPE = 'Motorbike';
+export const COURIER_VEHICLE_TYPE = "Motorbike";
 
 /**
  * A plate as it should be stored: upper case, single-spaced, or null when the
@@ -54,7 +60,7 @@ export const COURIER_VEHICLE_TYPE = 'Motorbike';
  * them however they like.
  */
 export function normalisePlate(value: string | null | undefined) {
-  const trimmed = value?.trim().replace(/\s+/g, ' ').toUpperCase() ?? '';
+  const trimmed = value?.trim().replace(/\s+/g, " ").toUpperCase() ?? "";
   return trimmed.length > 0 ? trimmed : null;
 }
 
@@ -76,12 +82,15 @@ export function normalisePlate(value: string | null | undefined) {
  */
 export async function saveCourierProfile(
   userId: string,
-  input: { vehicleType?: string; plateNumber?: string | null } = {}
+  input: { vehicleType?: string; plateNumber?: string | null } = {},
 ) {
   const vehicleType = input.vehicleType ?? COURIER_VEHICLE_TYPE;
   // Absent means "leave it alone" — sign-up doesn't ask for a plate, and the
   // settings form that does must not be able to wipe it by omission.
-  const plate = input.plateNumber === undefined ? undefined : normalisePlate(input.plateNumber);
+  const plate =
+    input.plateNumber === undefined
+      ? undefined
+      : normalisePlate(input.plateNumber);
 
   await db
     .insert(courierProfiles)
@@ -91,8 +100,8 @@ export async function saveCourierProfile(
       set: {
         vehicleType,
         ...(plate === undefined ? {} : { plateNumber: plate }),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 }
 
@@ -115,7 +124,7 @@ export async function getCourierProfile(userId: string) {
   const [row] = await db
     .select({
       vehicleType: courierProfiles.vehicleType,
-      plateNumber: courierProfiles.plateNumber
+      plateNumber: courierProfiles.plateNumber,
     })
     .from(courierProfiles)
     .where(eq(courierProfiles.userId, userId))
@@ -123,6 +132,6 @@ export async function getCourierProfile(userId: string) {
 
   return {
     vehicleType: row?.vehicleType ?? COURIER_VEHICLE_TYPE,
-    plateNumber: row?.plateNumber ?? null
+    plateNumber: row?.plateNumber ?? null,
   };
 }

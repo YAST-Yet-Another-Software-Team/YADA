@@ -1,4 +1,7 @@
-import { getBusinessAddress, getBusinessRating } from '$lib/server/data/business';
+import {
+  getBusinessAddress,
+  getBusinessRating,
+} from "$lib/server/data/business";
 
 /**
  * The dispatch address, for the Location tab. Name, phone and email come from
@@ -8,12 +11,12 @@ import { getBusinessAddress, getBusinessRating } from '$lib/server/data/business
  * the other half of SRS 3.4 needs somewhere to land.
  */
 export async function load({ parent }) {
-	const { user } = await parent();
+  const { user } = await parent();
 
-	const [business, rating] = await Promise.all([
-		getBusinessAddress(user.id),
-		getBusinessRating(user.id)
-	]);
+  const [business, rating] = await Promise.all([
+    getBusinessAddress(user.id),
+    getBusinessRating(user.id),
+  ]);
 
-	return { business, rating };
+  return { business, rating };
 }

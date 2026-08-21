@@ -6,7 +6,7 @@
  * "GH₵55" on one screen and "GH₵55.00" on another reads like two numbers.
  */
 export function formatCedis(amount: number | null | undefined) {
-  if (amount == null || !Number.isFinite(amount)) return '—';
+  if (amount == null || !Number.isFinite(amount)) return "—";
 
   return `GH₵${amount.toFixed(2)}`;
 }
@@ -22,8 +22,8 @@ export function initials(name: string | null | undefined, fallback: string) {
     (name || fallback)
       .split(/\s+/)
       .slice(0, 2)
-      .map((part) => part[0] ?? '')
-      .join('')
+      .map((part) => part[0] ?? "")
+      .join("")
       .toUpperCase() || fallback
   );
 }

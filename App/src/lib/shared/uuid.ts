@@ -7,5 +7,5 @@ const UUID_PATTERN =
  * and answer with a 400 instead of a 500.
  */
 export function isUuid(value: unknown): value is string {
-  return typeof value === 'string' && UUID_PATTERN.test(value);
+  return typeof value === "string" && UUID_PATTERN.test(value);
 }

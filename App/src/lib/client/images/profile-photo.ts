@@ -37,32 +37,38 @@ export class ProfilePhotoError extends Error {}
  * in a circle — padding would just become visible bars inside it.
  */
 export async function readProfilePhoto(file: File): Promise<string> {
-  if (!file.type.startsWith('image/')) {
-    throw new ProfilePhotoError('That file is not an image. Choose a photo.');
+  if (!file.type.startsWith("image/")) {
+    throw new ProfilePhotoError("That file is not an image. Choose a photo.");
   }
 
   if (file.size > MAX_SOURCE_BYTES) {
-    throw new ProfilePhotoError('That photo is too large. Choose one under 8 MB.');
+    throw new ProfilePhotoError(
+      "That photo is too large. Choose one under 8 MB.",
+    );
   }
 
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file);
   } catch {
-    throw new ProfilePhotoError("We couldn't read that photo. Try a different one.");
+    throw new ProfilePhotoError(
+      "We couldn't read that photo. Try a different one.",
+    );
   }
 
   try {
     const edge = Math.min(bitmap.width, bitmap.height);
     const size = Math.min(edge, MAX_EDGE);
 
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     canvas.width = size;
     canvas.height = size;
 
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext("2d");
     if (!context) {
-      throw new ProfilePhotoError("We couldn't process that photo on this device.");
+      throw new ProfilePhotoError(
+        "We couldn't process that photo on this device.",
+      );
     }
 
     context.drawImage(
@@ -75,13 +81,15 @@ export async function readProfilePhoto(file: File): Promise<string> {
       0,
       0,
       size,
-      size
+      size,
     );
 
-    const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+    const dataUrl = canvas.toDataURL("image/jpeg", QUALITY);
 
     if (dataUrl.length > MAX_PHOTO_DATA_URL_LENGTH) {
-      throw new ProfilePhotoError('That photo is too detailed to store. Try a simpler one.');
+      throw new ProfilePhotoError(
+        "That photo is too detailed to store. Try a simpler one.",
+      );
     }
 
     return dataUrl;
@@ -107,14 +115,18 @@ export async function readProfilePhotoFromUrl(url: string): Promise<string> {
   let blob: Blob;
 
   try {
-    const response = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    const response = await fetch(url, { mode: "cors", credentials: "omit" });
     if (!response.ok) throw new Error(String(response.status));
     blob = await response.blob();
   } catch {
-    throw new ProfilePhotoError("We couldn't fetch that picture. Choose a photo instead.");
+    throw new ProfilePhotoError(
+      "We couldn't fetch that picture. Choose a photo instead.",
+    );
   }
 
   // `readProfilePhoto` wants a File for its type and size guards, and a File is
   // a Blob with a name — so this reuses every rule rather than restating them.
-  return readProfilePhoto(new File([blob], 'profile.jpg', { type: blob.type || 'image/jpeg' }));
+  return readProfilePhoto(
+    new File([blob], "profile.jpg", { type: blob.type || "image/jpeg" }),
+  );
 }

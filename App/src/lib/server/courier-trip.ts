@@ -1,7 +1,7 @@
-import { redirect } from '@sveltejs/kit';
+import { redirect } from "@sveltejs/kit";
 
-import { courierTripHref } from '$lib/shared/trip-status';
-import type { CourierTrip } from '$lib/utils/types';
+import { courierTripHref } from "$lib/shared/trip-status";
+import type { CourierTrip } from "$lib/utils/types";
 
 /**
  * The screen that owns a trip at its current status, including the two ends
@@ -13,11 +13,11 @@ import type { CourierTrip } from '$lib/utils/types';
  * API would refuse.
  */
 export function courierScreenFor(trip: CourierTrip) {
-  if (trip.status === 'completed') {
+  if (trip.status === "completed") {
     return `/complete?tripId=${encodeURIComponent(trip.id)}`;
   }
 
-  if (trip.status === 'cancelled') return '/home';
+  if (trip.status === "cancelled") return "/home";
 
   return courierTripHref(trip);
 }
@@ -34,7 +34,7 @@ export async function requireCourierTrip(lookup: Promise<CourierTrip | null>) {
   const trip = await lookup;
 
   if (!trip) {
-    redirect(303, '/home');
+    redirect(303, "/home");
   }
 
   return trip;

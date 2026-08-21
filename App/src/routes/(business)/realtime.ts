@@ -1,6 +1,6 @@
-import { io, type Socket } from 'socket.io-client';
+import { io, type Socket } from "socket.io-client";
 
-import type { RiderLocationEvent } from '$lib/utils/types';
+import type { RiderLocationEvent } from "$lib/utils/types";
 
 /**
  * The business workspace's live connection.
@@ -35,15 +35,15 @@ export function setRealtimeEnabled(value: boolean) {
 }
 
 function getRealtimeSocket() {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
   if (!enabled) return null;
   if (socket) return socket;
 
   socket = io({
-    path: '/socket.io',
-    transports: ['websocket', 'polling'],
+    path: "/socket.io",
+    transports: ["websocket", "polling"],
     withCredentials: true,
-    autoConnect: true
+    autoConnect: true,
   });
 
   return socket;
@@ -59,20 +59,22 @@ export function isRealtimeEnabled() {
 
 export function joinTripRoom(tripId: string) {
   const s = getRealtimeSocket();
-  s?.emit('trip:join', tripId);
+  s?.emit("trip:join", tripId);
 }
 
 export function leaveTripRoom(tripId: string) {
   const s = getRealtimeSocket();
-  s?.emit('trip:leave', tripId);
+  s?.emit("trip:leave", tripId);
 }
 
-export function onRiderLocation(handler: (payload: RiderLocationEvent) => void) {
+export function onRiderLocation(
+  handler: (payload: RiderLocationEvent) => void,
+) {
   const s = getRealtimeSocket();
   if (!s) return () => {};
-  s.on('rider:location', handler);
+  s.on("rider:location", handler);
   return () => {
-    s.off('rider:location', handler);
+    s.off("rider:location", handler);
   };
 }
 

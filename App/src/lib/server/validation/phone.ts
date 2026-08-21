@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * A Ghanaian mobile number, normalised to E.164.
@@ -13,9 +13,9 @@ import { z } from 'zod';
  * thing Google cannot supply.
  */
 export const phoneNumber = z
-	.string()
-	.transform((value) => value.replace(/[^\d+]/g, ''))
-	.refine((value) => /^(0\d{9}|\+?233\d{9})$/.test(value), {
-		message: 'Enter a 10-digit phone number, like 024 123 4567.'
-	})
-	.transform((value) => `+233${value.replace(/^(\+?233|0)/, '')}`);
+  .string()
+  .transform((value) => value.replace(/[^\d+]/g, ""))
+  .refine((value) => /^(0\d{9}|\+?233\d{9})$/.test(value), {
+    message: "Enter a 10-digit phone number, like 024 123 4567.",
+  })
+  .transform((value) => `+233${value.replace(/^(\+?233|0)/, "")}`);

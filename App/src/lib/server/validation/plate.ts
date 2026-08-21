@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * A motorbike's number plate, as three writers now accept it: sign-up, the
@@ -15,6 +15,6 @@ import { z } from 'zod';
  * `normalisePlate` in `$lib/server/data/courier-profile`, not here.
  */
 export const plateNumber = z
-	.string()
-	.max(16, 'That plate is too long.')
-	.regex(/^[A-Za-z0-9 -]*$/, 'A plate is letters, numbers, spaces and dashes.');
+  .string()
+  .max(16, "That plate is too long.")
+  .regex(/^[A-Za-z0-9 -]*$/, "A plate is letters, numbers, spaces and dashes.");

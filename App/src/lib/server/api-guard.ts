@@ -1,7 +1,7 @@
-import { json, type RequestEvent } from '@sveltejs/kit';
+import { json, type RequestEvent } from "@sveltejs/kit";
 
-import { isUuid } from '$lib/shared/uuid';
-import type { AuthRole, SessionUser } from '$lib/utils/types';
+import { isUuid } from "$lib/shared/uuid";
+import type { AuthRole, SessionUser } from "$lib/utils/types";
 
 /**
  * The error envelope every `/api` route answers with: `ok` for the happy-path
@@ -25,14 +25,14 @@ export function apiError(status: number, code: string, message: string) {
 export function emailUnverified(action: string) {
   return apiError(
     403,
-    'email_unverified',
-    `Confirm your email before ${action}. Check your inbox for the link.`
+    "email_unverified",
+    `Confirm your email before ${action}. Check your inbox for the link.`,
   );
 }
 
 const ROLE_REQUIRED: Record<AuthRole, string> = {
-  business: 'Business account required.',
-  courier: 'Courier account required.'
+  business: "Business account required.",
+  courier: "Courier account required.",
 };
 
 export type ApiRouteOptions = {
@@ -67,14 +67,17 @@ export type ApiRouteOptions = {
  */
 export function apiRoute(
   options: ApiRouteOptions,
-  handler: (event: RequestEvent, user: SessionUser) => Response | Promise<Response>
+  handler: (
+    event: RequestEvent,
+    user: SessionUser,
+  ) => Response | Promise<Response>,
 ) {
   return async (event: RequestEvent): Promise<Response> => {
     const user = event.locals.user;
 
-    if (!user) return apiError(401, 'denied', 'Sign in required.');
+    if (!user) return apiError(401, "denied", "Sign in required.");
     if (options.role && user.role !== options.role) {
-      return apiError(403, 'denied', ROLE_REQUIRED[options.role]);
+      return apiError(403, "denied", ROLE_REQUIRED[options.role]);
     }
     if (options.verifiedFor && !user.emailVerified) {
       return emailUnverified(options.verifiedFor);
@@ -111,5 +114,5 @@ export async function readTripId(request: Request): Promise<string | null> {
 
 /** The 400 that a missing or malformed trip id earns. */
 export function invalidTripId() {
-  return apiError(400, 'invalid_request', 'Trip id required.');
+  return apiError(400, "invalid_request", "Trip id required.");
 }

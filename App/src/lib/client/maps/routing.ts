@@ -1,7 +1,7 @@
-import { loadGoogleMapsRoutes } from './google-maps-loader';
-import type { DrivingRouteResult, LatLng } from '$lib/utils/types';
-import { GeoError, geoErrorMessage } from '$lib/shared/geo/errors';
-import { clientRouteCache, routeCacheKey } from './route-cache';
+import { loadGoogleMapsRoutes } from "./google-maps-loader";
+import type { DrivingRouteResult, LatLng } from "$lib/utils/types";
+import { GeoError, geoErrorMessage } from "$lib/shared/geo/errors";
+import { clientRouteCache, routeCacheKey } from "./route-cache";
 
 type RouteCacheEntry = {
   key: string;
@@ -66,12 +66,12 @@ export async function computeDrivingRoute(
   apiKey: string,
   origin: LatLng,
   destination: LatLng,
-  options?: { force?: boolean }
+  options?: { force?: boolean },
 ): Promise<DrivingRouteResult> {
   // One key for all three cache layers — a second rounding helper here was how
   // the memo and the persisted cache could disagree about the same coordinates.
   const cacheKey = routeCacheKey(origin, destination);
-  const requestKey = `${options?.force ? 'force:' : ''}${cacheKey}`;
+  const requestKey = `${options?.force ? "force:" : ""}${cacheKey}`;
 
   if (!options?.force) {
     const cached = clientRouteCache.get(cacheKey);
@@ -119,13 +119,13 @@ export async function computeDrivingRoute(
       const response = await RouteApi.computeRoutes({
         origin,
         destination,
-        travelMode: 'DRIVING',
-        fields: ['legs', 'path', 'polyline']
+        travelMode: "DRIVING",
+        fields: ["legs", "path", "polyline"],
       });
 
       const route = response.routes[0];
       if (!route) {
-        throw new GeoError('no_results', geoErrorMessage('no_results'));
+        throw new GeoError("no_results", geoErrorMessage("no_results"));
       }
 
       const leg = route.legs?.[0];
@@ -133,18 +133,26 @@ export async function computeDrivingRoute(
       let durationSeconds = 0;
 
       const rawDuration = leg?.duration;
-      if (typeof rawDuration === 'string') {
-        durationSeconds = Number.parseInt(rawDuration.replace('s', ''), 10) || 0;
-      } else if (rawDuration && typeof rawDuration === 'object' && 'seconds' in rawDuration) {
+      if (typeof rawDuration === "string") {
+        durationSeconds =
+          Number.parseInt(rawDuration.replace("s", ""), 10) || 0;
+      } else if (
+        rawDuration &&
+        typeof rawDuration === "object" &&
+        "seconds" in rawDuration
+      ) {
         durationSeconds = Number(rawDuration.seconds) || 0;
       }
 
       let path: LatLng[] = [];
       if (route.path?.length) {
         path = route.path.map((p) =>
-          typeof (p as google.maps.LatLng).lat === 'function'
-            ? { lat: (p as google.maps.LatLng).lat(), lng: (p as google.maps.LatLng).lng() }
-            : (p as LatLng)
+          typeof (p as google.maps.LatLng).lat === "function"
+            ? {
+                lat: (p as google.maps.LatLng).lat(),
+                lng: (p as google.maps.LatLng).lng(),
+              }
+            : (p as LatLng),
         );
       } else if (route.polyline?.encodedPolyline) {
         path = decodePolyline(route.polyline.encodedPolyline);
@@ -157,7 +165,7 @@ export async function computeDrivingRoute(
         durationText: formatDuration(durationSeconds || 60),
         path,
         distanceKm: Math.round((distanceMeters / 1000) * 100) / 100,
-        durationMinutes: Math.max(1, Math.round((durationSeconds || 60) / 60))
+        durationMinutes: Math.max(1, Math.round((durationSeconds || 60) / 60)),
       };
 
       lastRoute = { key: cacheKey, result };
@@ -179,34 +187,41 @@ async function computeDrivingRouteRest(
   apiKey: string,
   origin: LatLng,
   destination: LatLng,
-  cacheKey: string
+  cacheKey: string,
 ): Promise<DrivingRouteResult> {
-  const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask':
-        'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
-    },
-    body: JSON.stringify({
-      origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
-      destination: {
-        location: { latLng: { latitude: destination.lat, longitude: destination.lng } }
+  const response = await fetch(
+    "https://routes.googleapis.com/directions/v2:computeRoutes",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask":
+          "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
       },
-      travelMode: 'DRIVE',
-      routingPreference: 'TRAFFIC_AWARE'
-    })
-  });
+      body: JSON.stringify({
+        origin: {
+          location: { latLng: { latitude: origin.lat, longitude: origin.lng } },
+        },
+        destination: {
+          location: {
+            latLng: { latitude: destination.lat, longitude: destination.lng },
+          },
+        },
+        travelMode: "DRIVE",
+        routingPreference: "TRAFFIC_AWARE",
+      }),
+    },
+  );
 
   if (response.status === 429) {
-    throw new GeoError('quota', geoErrorMessage('quota'));
+    throw new GeoError("quota", geoErrorMessage("quota"));
   }
   if (response.status === 403) {
-    throw new GeoError('denied', geoErrorMessage('denied'));
+    throw new GeoError("denied", geoErrorMessage("denied"));
   }
   if (!response.ok) {
-    throw new GeoError('unavailable', geoErrorMessage('unavailable'));
+    throw new GeoError("unavailable", geoErrorMessage("unavailable"));
   }
 
   const data = (await response.json()) as {
@@ -219,11 +234,12 @@ async function computeDrivingRouteRest(
 
   const route = data.routes?.[0];
   if (!route) {
-    throw new GeoError('no_results', geoErrorMessage('no_results'));
+    throw new GeoError("no_results", geoErrorMessage("no_results"));
   }
 
   const distanceMeters = route.distanceMeters ?? 0;
-  const durationSeconds = Number.parseInt((route.duration ?? '0s').replace('s', ''), 10) || 0;
+  const durationSeconds =
+    Number.parseInt((route.duration ?? "0s").replace("s", ""), 10) || 0;
   const path = route.polyline?.encodedPolyline
     ? decodePolyline(route.polyline.encodedPolyline)
     : [origin, destination];
@@ -235,7 +251,7 @@ async function computeDrivingRouteRest(
     durationText: formatDuration(durationSeconds || 60),
     path,
     distanceKm: Math.round((distanceMeters / 1000) * 100) / 100,
-    durationMinutes: Math.max(1, Math.round((durationSeconds || 60) / 60))
+    durationMinutes: Math.max(1, Math.round((durationSeconds || 60) / 60)),
   };
 
   lastRoute = { key: cacheKey, result };

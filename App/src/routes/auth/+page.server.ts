@@ -5,7 +5,10 @@ import { env } from "$env/dynamic/private";
 
 import { messageForApiError } from "$lib/server/auth-error";
 import { accountCompletion } from "$lib/server/data/account";
-import { saveCourierProfile, setCourierAvailability } from '$lib/server/data/courier-profile';
+import {
+  saveCourierProfile,
+  setCourierAvailability,
+} from "$lib/server/data/courier-profile";
 import { allowSend, sendKey } from "$lib/server/email/throttle";
 // The photo rules are shared with PUT /api/account/photo, which writes the same
 // column; see $lib/server/validation/photo.

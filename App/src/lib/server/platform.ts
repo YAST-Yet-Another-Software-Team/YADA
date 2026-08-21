@@ -1,4 +1,4 @@
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from "@sveltejs/kit";
 
 /**
  * The Workers `ExecutionContext.waitUntil`, when there is one.
@@ -28,7 +28,10 @@ export function waitUntilFor(event: RequestEvent) {
  * failure has already been logged where it happened, and an unhandled
  * rejection crossing the runtime boundary is its own problem.
  */
-export function runInBackground(event: RequestEvent | null, promise: Promise<unknown>) {
+export function runInBackground(
+  event: RequestEvent | null,
+  promise: Promise<unknown>,
+) {
   const settled = promise.catch(() => {});
   const waitUntil = event ? waitUntilFor(event) : undefined;
 

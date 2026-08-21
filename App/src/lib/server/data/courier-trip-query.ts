@@ -1,11 +1,14 @@
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 
-import { ACTIVE_TRIP_STATUSES, CLOSED_TRIP_STATUSES } from '$lib/shared/trip-status';
-import type { CourierRequest, CourierTrip } from '$lib/utils/types';
+import {
+  ACTIVE_TRIP_STATUSES,
+  CLOSED_TRIP_STATUSES,
+} from "$lib/shared/trip-status";
+import type { CourierRequest, CourierTrip } from "$lib/utils/types";
 
-import { db } from '../db';
-import { asNumber } from '../db/columns';
-import { businessProfiles, deliveryRequests, users } from '../db/schema';
+import { db } from "../db";
+import { asNumber } from "../db/columns";
+import { businessProfiles, deliveryRequests, users } from "../db/schema";
 
 /**
  * How a courier-facing trip row is selected and shaped.
@@ -41,7 +44,7 @@ const tripColumns = {
   businessPhone: users.phoneNumber,
   businessDeletedAt: users.deletedAt,
   businessRating: businessProfiles.rating,
-  businessRatingCount: businessProfiles.ratingCount
+  businessRatingCount: businessProfiles.ratingCount,
 };
 
 export function tripQuery() {
@@ -54,11 +57,16 @@ export function tripQuery() {
       // dispatch address, and a trip must not vanish from a rider's screen
       // because the sender hasn't finished onboarding. Both rating columns come
       // back null in that case, which reads as unrated.
-      .leftJoin(businessProfiles, eq(businessProfiles.userId, deliveryRequests.businessId))
+      .leftJoin(
+        businessProfiles,
+        eq(businessProfiles.userId, deliveryRequests.businessId),
+      )
   );
 }
 
-export type TripRow = Awaited<ReturnType<ReturnType<typeof tripQuery>['execute']>>[number];
+export type TripRow = Awaited<
+  ReturnType<ReturnType<typeof tripQuery>["execute"]>
+>[number];
 
 // ---------------------------------------------------------------------------
 // Predicates and orderings
@@ -66,31 +74,34 @@ export type TripRow = Awaited<ReturnType<ReturnType<typeof tripQuery>['execute']
 
 export const byMostRecentlyAccepted = [
   desc(deliveryRequests.acceptedAt),
-  desc(deliveryRequests.requestedAt)
+  desc(deliveryRequests.requestedAt),
 ] as const;
 
 export const byMostRecentlyCompleted = [
   desc(deliveryRequests.completedAt),
-  desc(deliveryRequests.requestedAt)
+  desc(deliveryRequests.requestedAt),
 ] as const;
 
 /** The trip this courier is currently on the hook for. */
 export const activeTripsFor = (userId: string) =>
   and(
     eq(deliveryRequests.assignedCourierId, userId),
-    inArray(deliveryRequests.status, [...ACTIVE_TRIP_STATUSES])
+    inArray(deliveryRequests.status, [...ACTIVE_TRIP_STATUSES]),
   );
 
 /** Everything this courier has finished, delivered or cancelled. */
 export const closedTripsFor = (userId: string) =>
   and(
     eq(deliveryRequests.assignedCourierId, userId),
-    inArray(deliveryRequests.status, [...CLOSED_TRIP_STATUSES])
+    inArray(deliveryRequests.status, [...CLOSED_TRIP_STATUSES]),
   );
 
 /** Offers on the board: requested, nobody assigned yet. Not courier-scoped. */
 export const openRequests = () =>
-  and(eq(deliveryRequests.status, 'requested'), isNull(deliveryRequests.assignedCourierId));
+  and(
+    eq(deliveryRequests.status, "requested"),
+    isNull(deliveryRequests.assignedCourierId),
+  );
 
 // ---------------------------------------------------------------------------
 // Mapping
@@ -115,8 +126,8 @@ export function toCourierRequest(row: TripRow): CourierRequest {
       // defaults to 0.00, and showing that as a score would brand every new
       // business a zero.
       average: row.businessRatingCount ? Number(row.businessRating) : null,
-      count: row.businessRatingCount ?? 0
-    }
+      count: row.businessRatingCount ?? 0,
+    },
   };
 }
 
@@ -125,7 +136,10 @@ export function toCourierRequest(row: TripRow): CourierRequest {
  * is still running, where the rider's verdict cannot exist yet. Only the two
  * completed-trip queries pay for the extra read.
  */
-export function toCourierTrip(row: TripRow, myRating: number | null = null): CourierTrip {
+export function toCourierTrip(
+  row: TripRow,
+  myRating: number | null = null,
+): CourierTrip {
   return {
     ...toCourierRequest(row),
     // The stored status, not a display stage: the pickup screen has to tell
@@ -135,6 +149,6 @@ export function toCourierTrip(row: TripRow, myRating: number | null = null): Cou
     completedAt: row.completedAt?.toISOString() ?? null,
     estimatedDistanceKm: asNumber(row.estimatedDistanceKm),
     estimatedDurationMinutes: asNumber(row.estimatedDurationMinutes),
-    myRating
+    myRating,
   };
 }

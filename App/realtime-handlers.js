@@ -33,15 +33,15 @@ async function resolveSessionUser(appOrigin, cookie) {
   if (!cookie) return null;
 
   try {
-    const response = await fetch(new URL('/api/auth/get-session', appOrigin), {
-      headers: { cookie }
+    const response = await fetch(new URL("/api/auth/get-session", appOrigin), {
+      headers: { cookie },
     });
     if (!response.ok) return null;
 
     const payload = await response.json().catch(() => null);
     const user = payload?.user ?? payload?.data?.user ?? null;
 
-    return user?.id ? { id: user.id, role: user.role ?? 'business' } : null;
+    return user?.id ? { id: user.id, role: user.role ?? "business" } : null;
   } catch {
     return null;
   }
@@ -58,8 +58,8 @@ async function resolveSessionUser(appOrigin, cookie) {
  */
 async function isTripParticipant(appOrigin, cookie, tripId) {
   try {
-    const url = new URL('/api/trips', appOrigin);
-    url.searchParams.set('id', tripId);
+    const url = new URL("/api/trips", appOrigin);
+    url.searchParams.set("id", tripId);
 
     const response = await fetch(url, { headers: { cookie } });
     if (!response.ok) return false;
@@ -79,11 +79,11 @@ export function attachRealtimeHandlers(io, { getAppOrigin }) {
   // Reject anonymous sockets at the handshake rather than at each event, so an
   // unauthenticated client never reaches a room in the first place.
   io.use(async (socket, next) => {
-    const cookie = socket.handshake.headers.cookie ?? '';
+    const cookie = socket.handshake.headers.cookie ?? "";
     const user = await resolveSessionUser(getAppOrigin(), cookie);
 
     if (!user) {
-      next(new Error('unauthorized'));
+      next(new Error("unauthorized"));
       return;
     }
 
@@ -92,23 +92,23 @@ export function attachRealtimeHandlers(io, { getAppOrigin }) {
     next();
   });
 
-  io.on('connection', (socket) => {
+  io.on("connection", (socket) => {
     // The handshake already rejected anonymous sockets; per-room authorization
     // is checked at join time, so the resolved user isn't needed again here.
     /** @type {string} */
     const cookie = socket.data.cookie;
 
-    socket.emit('yada:ready', { connectedAt: new Date().toISOString() });
+    socket.emit("yada:ready", { connectedAt: new Date().toISOString() });
 
-    socket.on('trip:join', async (tripId) => {
-      if (typeof tripId !== 'string' || tripId.length === 0) return;
+    socket.on("trip:join", async (tripId) => {
+      if (typeof tripId !== "string" || tripId.length === 0) return;
       if (await isTripParticipant(getAppOrigin(), cookie, tripId)) {
         socket.join(`trip:${tripId}`);
       }
     });
 
-    socket.on('trip:leave', (tripId) => {
-      if (typeof tripId === 'string' && tripId.length > 0) {
+    socket.on("trip:leave", (tripId) => {
+      if (typeof tripId === "string" && tripId.length > 0) {
         socket.leave(`trip:${tripId}`);
       }
     });
@@ -128,8 +128,8 @@ export function attachRealtimeHandlers(io, { getAppOrigin }) {
  * @returns {string}
  */
 export function loopbackOrigin(address, fallbackPort) {
-  if (address && typeof address === 'object') {
-    const host = address.family === 'IPv6' ? '[::1]' : '127.0.0.1';
+  if (address && typeof address === "object") {
+    const host = address.family === "IPv6" ? "[::1]" : "127.0.0.1";
     return `http://${host}:${address.port}`;
   }
 

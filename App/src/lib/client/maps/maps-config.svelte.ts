@@ -1,4 +1,4 @@
-import { getContext, setContext } from 'svelte';
+import { getContext, setContext } from "svelte";
 
 /**
  * The browser-visible Google Maps credentials.
@@ -14,8 +14,8 @@ import { getContext, setContext } from 'svelte';
  * module-level value would be shared by every in-flight SSR request.
  */
 export class MapsConfig {
-  #apiKey = $state('');
-  #mapId = $state('');
+  #apiKey = $state("");
+  #mapId = $state("");
 
   constructor(apiKey: string, mapId: string) {
     this.#apiKey = apiKey;
@@ -43,7 +43,7 @@ export class MapsConfig {
   }
 }
 
-const MAPS_KEY = Symbol('yada.maps');
+const MAPS_KEY = Symbol("yada.maps");
 
 /** Provide the Maps config for the whole app. Called once, by the root layout. */
 export function createMapsConfig(apiKey: string, mapId: string) {
@@ -55,7 +55,9 @@ export function getMapsConfig(): MapsConfig {
   const config = getContext<MapsConfig | undefined>(MAPS_KEY);
 
   if (!config) {
-    throw new Error('getMapsConfig() was called outside the root layout, which provides it.');
+    throw new Error(
+      "getMapsConfig() was called outside the root layout, which provides it.",
+    );
   }
 
   return config;

@@ -13,7 +13,7 @@
  * UI must describe the same clock the server enforces.
  */
 
-import type { TripStage } from '$lib/utils/types';
+import type { TripStage } from "$lib/utils/types";
 
 /** Beyond this a courier isn't a candidate at all — roughly the service zone. */
 export const MAX_MATCH_RADIUS_KM = 6;
@@ -21,7 +21,7 @@ export const MAX_MATCH_RADIUS_KM = 6;
 export const RING_STEPS = [
   { radiusKm: 0.4, startsAtSeconds: 0 },
   { radiusKm: 0.8, startsAtSeconds: 15 },
-  { radiusKm: MAX_MATCH_RADIUS_KM, startsAtSeconds: 35 }
+  { radiusKm: MAX_MATCH_RADIUS_KM, startsAtSeconds: 35 },
 ] as const;
 
 /** After this the request has failed quietly; only a manual re-ring restarts it. */
@@ -59,15 +59,20 @@ export function isDispatchExpired(elapsedSeconds: number) {
  * clock, and the gap between a request being written and its first round
  * starting, are both better shown as searching than as failed.
  */
-export function isMatchingNow(stage: TripStage, dispatchStartedAt: string | null) {
-  if (stage !== 'searching') return false;
+export function isMatchingNow(
+  stage: TripStage,
+  dispatchStartedAt: string | null,
+) {
+  if (stage !== "searching") return false;
   if (!dispatchStartedAt) return true;
 
-  return !isDispatchExpired((Date.now() - new Date(dispatchStartedAt).getTime()) / 1000);
+  return !isDispatchExpired(
+    (Date.now() - new Date(dispatchStartedAt).getTime()) / 1000,
+  );
 }
 
 /** "400 m", "800 m", "across the zone" — for the business watching the search. */
 export function ringLabel(radiusKm: number) {
-  if (radiusKm >= MAX_MATCH_RADIUS_KM) return 'across the zone';
+  if (radiusKm >= MAX_MATCH_RADIUS_KM) return "across the zone";
   return `within ${Math.round(radiusKm * 1000)} m`;
 }

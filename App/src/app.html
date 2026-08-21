@@ -13,8 +13,9 @@
          sync by hand with src/lib/client/theme.ts — see the note there. -->
     <script>
       try {
-        var t = localStorage.getItem('yada.courierTheme');
-        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+        var t = localStorage.getItem("yada.courierTheme");
+        if (t === "light" || t === "dark")
+          document.documentElement.dataset.theme = t;
       } catch (e) {
         /* storage unavailable — fall through to the OS setting */
       }

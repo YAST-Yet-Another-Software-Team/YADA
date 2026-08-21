@@ -17,7 +17,7 @@
 /** A `numeric` column as a JS number, or null when the column is null. */
 export function asNumber(value: string | number | null | undefined) {
   if (value == null) return null;
-  return typeof value === 'number' ? value : Number(value);
+  return typeof value === "number" ? value : Number(value);
 }
 
 /**

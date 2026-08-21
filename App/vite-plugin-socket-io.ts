@@ -1,10 +1,10 @@
-import type { Plugin } from 'vite';
-import type { Server as HttpServer } from 'node:http';
-import { Server } from 'socket.io';
+import type { Plugin } from "vite";
+import type { Server as HttpServer } from "node:http";
+import { Server } from "socket.io";
 
-import { attachRealtimeHandlers, loopbackOrigin } from './realtime-handlers.js';
+import { attachRealtimeHandlers, loopbackOrigin } from "./realtime-handlers.js";
 
-const GLOBAL_KEY = '__yada_socket_io__';
+const GLOBAL_KEY = "__yada_socket_io__";
 const DEFAULT_DEV_PORT = 5173;
 
 /**
@@ -19,7 +19,7 @@ const DEFAULT_DEV_PORT = 5173;
  */
 export function socketIoDevPlugin(): Plugin {
   return {
-    name: 'yada-socket-io-dev',
+    name: "yada-socket-io-dev",
     configureServer(server) {
       const httpServer = server.httpServer as HttpServer | null;
       if (!httpServer) return;
@@ -35,21 +35,22 @@ export function socketIoDevPlugin(): Plugin {
       // this would be a cross-site WebSocket hijacking hole — if a production
       // socket server ever appears, it needs an explicit origin allowlist.
       const io = new Server(httpServer, {
-        path: '/socket.io',
+        path: "/socket.io",
         cors: {
           origin: true,
-          credentials: true
-        }
+          credentials: true,
+        },
       });
 
       (globalThis as Record<string, unknown>)[GLOBAL_KEY] = io;
 
       attachRealtimeHandlers(io, {
         // Resolved per call: the dev server's port is only known once it is listening.
-        getAppOrigin: () => loopbackOrigin(httpServer.address(), DEFAULT_DEV_PORT)
+        getAppOrigin: () =>
+          loopbackOrigin(httpServer.address(), DEFAULT_DEV_PORT),
       });
 
-      console.info('[yada] Socket.IO attached to Vite dev server');
-    }
+      console.info("[yada] Socket.IO attached to Vite dev server");
+    },
   };
 }

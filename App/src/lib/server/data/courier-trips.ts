@@ -1,21 +1,21 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq } from "drizzle-orm";
 
-import type { CourierTrip } from '$lib/utils/types';
+import type { CourierTrip } from "$lib/utils/types";
 
-import { db } from '../db';
-import { round } from '../db/columns';
-import { deliveryRequests, users } from '../db/schema';
-import { courierProfileOf } from './courier-profile';
+import { db } from "../db";
+import { round } from "../db/columns";
+import { deliveryRequests, users } from "../db/schema";
+import { courierProfileOf } from "./courier-profile";
 import {
   activeTripsFor,
   byMostRecentlyAccepted,
   byMostRecentlyCompleted,
   closedTripsFor,
   toCourierTrip,
-  tripQuery
-} from './courier-trip-query';
-import { ringingRequestRows, toCourierOffer } from './dispatch';
-import { ratingByRaterForTrip, ratingsByRaterFor } from './ratings';
+  tripQuery,
+} from "./courier-trip-query";
+import { ringingRequestRows, toCourierOffer } from "./dispatch";
+import { ratingByRaterForTrip, ratingsByRaterFor } from "./ratings";
 
 /**
  * The reads behind each courier screen — Home, Orders, Pickup/Deliver, the
@@ -41,20 +41,24 @@ function startOfToday() {
 }
 
 /** Delivery counts and distance covered, derived from the delivered trips in a set. */
-function summarize(trips: CourierTrip[], activeTrips: number): CourierHomeSummary {
-  const delivered = trips.filter((trip) => trip.status === 'completed');
+function summarize(
+  trips: CourierTrip[],
+  activeTrips: number,
+): CourierHomeSummary {
+  const delivered = trips.filter((trip) => trip.status === "completed");
   const today = startOfToday();
 
   return {
     completedTrips: delivered.length,
     tripsToday: delivered.filter(
-      (trip) => trip.completedAt && new Date(trip.completedAt).getTime() >= today
+      (trip) =>
+        trip.completedAt && new Date(trip.completedAt).getTime() >= today,
     ).length,
     totalDistanceKm: round(
       delivered.reduce((sum, trip) => sum + (trip.estimatedDistanceKm ?? 0), 0),
-      1
+      1,
     ),
-    activeTrips
+    activeTrips,
   };
 }
 
@@ -68,8 +72,13 @@ export async function getCourierHomeData(userId: string, courierName: string) {
   // The active trip first: whether this courier is busy changes which requests
   // ring them at all.
   const [activeRows, closedRows] = await Promise.all([
-    tripQuery().where(activeTripsFor(userId)).orderBy(...byMostRecentlyAccepted).limit(1),
-    tripQuery().where(closedTripsFor(userId)).orderBy(...byMostRecentlyCompleted)
+    tripQuery()
+      .where(activeTripsFor(userId))
+      .orderBy(...byMostRecentlyAccepted)
+      .limit(1),
+    tripQuery()
+      .where(closedTripsFor(userId))
+      .orderBy(...byMostRecentlyCompleted),
   ]);
 
   const activeTripRow = activeRows[0] ?? null;
@@ -79,7 +88,7 @@ export async function getCourierHomeData(userId: string, courierName: string) {
     profile: courierProfileOf(profileRow?.name ?? courierName),
     activeTrip: activeTripRow ? toCourierTrip(activeTripRow) : null,
     pendingRequests: pendingRows.map(toCourierOffer),
-    summary: summarize(closedRows.map(toCourierTrip), activeTripRow ? 1 : 0)
+    summary: summarize(closedRows.map(toCourierTrip), activeTripRow ? 1 : 0),
   };
 }
 
@@ -99,7 +108,7 @@ export async function getCourierOrdersData(userId: string) {
 
   return {
     activeTrip: activeTripRow ? toCourierTrip(activeTripRow) : null,
-    pendingRequests: pendingRows.map(toCourierOffer)
+    pendingRequests: pendingRows.map(toCourierOffer),
   };
 }
 
@@ -107,12 +116,18 @@ export async function getCourierOrdersData(userId: string) {
  * The courier's trip for the pickup/deliver screens: a specific one when an id
  * is given, otherwise whichever is currently live.
  */
-export async function getCourierTripById(userId: string, tripId?: string | null) {
+export async function getCourierTripById(
+  userId: string,
+  tripId?: string | null,
+) {
   const [row] = await tripQuery()
     .where(
       tripId
-        ? and(eq(deliveryRequests.assignedCourierId, userId), eq(deliveryRequests.id, tripId))
-        : activeTripsFor(userId)
+        ? and(
+            eq(deliveryRequests.assignedCourierId, userId),
+            eq(deliveryRequests.id, tripId),
+          )
+        : activeTripsFor(userId),
     )
     .orderBy(...byMostRecentlyAccepted)
     .limit(1);
@@ -120,12 +135,18 @@ export async function getCourierTripById(userId: string, tripId?: string | null)
   return row ? toCourierTrip(row) : null;
 }
 
-export async function getCourierLatestCompletedTrip(userId: string, tripId?: string | null) {
+export async function getCourierLatestCompletedTrip(
+  userId: string,
+  tripId?: string | null,
+) {
   const [row] = await tripQuery()
     .where(
       tripId
-        ? and(eq(deliveryRequests.assignedCourierId, userId), eq(deliveryRequests.id, tripId))
-        : closedTripsFor(userId)
+        ? and(
+            eq(deliveryRequests.assignedCourierId, userId),
+            eq(deliveryRequests.id, tripId),
+          )
+        : closedTripsFor(userId),
     )
     .orderBy(...byMostRecentlyCompleted)
     .limit(1);
@@ -146,13 +167,15 @@ export async function getCourierTripHistory(userId: string) {
   // One read for the whole page rather than one per card.
   const myRatings = await ratingsByRaterFor(
     userId,
-    rows.map((row) => row.id)
+    rows.map((row) => row.id),
   );
 
-  const historyTrips = rows.map((row) => toCourierTrip(row, myRatings.get(row.id) ?? null));
+  const historyTrips = rows.map((row) =>
+    toCourierTrip(row, myRatings.get(row.id) ?? null),
+  );
 
   return {
     historyTrips,
-    summary: summarize(historyTrips, 0)
+    summary: summarize(historyTrips, 0),
   };
 }

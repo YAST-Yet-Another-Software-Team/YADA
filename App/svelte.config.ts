@@ -1,5 +1,5 @@
-import adapter from '@sveltejs/adapter-cloudflare';
-import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+import adapter from "@sveltejs/adapter-cloudflare";
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
 // Cloudflare Workers is the only deployment target — Pages is in maintenance
 // mode, and the adapter reads its output paths (`main`, `assets.directory`)
@@ -18,9 +18,9 @@ const config = {
     alias: {
       // Auth lives with its route (src/routes/auth), not in $lib — the alias
       // spares consumers the ../../.. climb out of nested route groups.
-      $auth: 'src/routes/auth'
-    }
-  }
+      $auth: "src/routes/auth",
+    },
+  },
 };
 
 export default config;

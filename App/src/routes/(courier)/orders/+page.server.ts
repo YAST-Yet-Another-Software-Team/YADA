@@ -1,7 +1,7 @@
-import { getCourierOrdersData } from '$lib/server/data/courier-trips';
+import { getCourierOrdersData } from "$lib/server/data/courier-trips";
 
 export async function load({ parent }) {
-	const { user } = await parent();
+  const { user } = await parent();
 
-	return getCourierOrdersData(user.id);
+  return getCourierOrdersData(user.id);
 }

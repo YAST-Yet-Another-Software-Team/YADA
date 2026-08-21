@@ -1,8 +1,8 @@
-import { and, eq, type SQL } from 'drizzle-orm';
+import { and, eq, type SQL } from "drizzle-orm";
 
-import { apiError } from '../api-guard';
-import { db } from '../db';
-import { deliveryRequests } from '../db/schema';
+import { apiError } from "../api-guard";
+import { db } from "../db";
+import { deliveryRequests } from "../db/schema";
 
 /**
  * Moving a trip from one state to another, safely.
@@ -25,11 +25,12 @@ import { deliveryRequests } from '../db/schema';
  */
 
 /** What a caller is told when the row moved under them. */
-export const TRIP_MOVED_MESSAGE = 'This delivery has moved on — refresh and try again.';
+export const TRIP_MOVED_MESSAGE =
+  "This delivery has moved on — refresh and try again.";
 
 /** The 409 a lost race earns. */
 export function tripMoved(message = TRIP_MOVED_MESSAGE) {
-  return apiError(409, 'conflict', message);
+  return apiError(409, "conflict", message);
 }
 
 type TripChanges = Partial<typeof deliveryRequests.$inferInsert>;
@@ -44,7 +45,7 @@ type TripChanges = Partial<typeof deliveryRequests.$inferInsert>;
 export async function applyTripChange(
   tripId: string,
   conditions: SQL[],
-  changes: TripChanges
+  changes: TripChanges,
 ): Promise<boolean> {
   const [row] = await db
     .update(deliveryRequests)

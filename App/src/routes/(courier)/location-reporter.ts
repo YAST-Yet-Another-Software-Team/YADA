@@ -33,8 +33,13 @@ const STALE_MS = 30_000;
 export function startCourierLocationReporter(options: {
   tripId: string | null;
   enabled: boolean;
-  onUpdate?: (point: { lat: number; lng: number; recordedAt: string; stale: boolean }) => void;
-  onError?: (code: 'denied' | 'unavailable') => void;
+  onUpdate?: (point: {
+    lat: number;
+    lng: number;
+    recordedAt: string;
+    stale: boolean;
+  }) => void;
+  onError?: (code: "denied" | "unavailable") => void;
 }) {
   // A trip id is what separates the two cadences: it is only ever set by the
   // pickup and deliver screens, and by the home screen when that courier has a
@@ -52,8 +57,12 @@ export function startCourierLocationReporter(options: {
     }
   }
 
-  if (!options.enabled || typeof navigator === 'undefined' || !navigator.geolocation) {
-    options.onError?.('unavailable');
+  if (
+    !options.enabled ||
+    typeof navigator === "undefined" ||
+    !navigator.geolocation
+  ) {
+    options.onError?.("unavailable");
     return stop;
   }
 
@@ -64,7 +73,7 @@ export function startCourierLocationReporter(options: {
       const point = {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
-        recordedAt
+        recordedAt,
       };
       lastPoint = point;
       options.onUpdate?.({ ...point, stale: false });
@@ -77,33 +86,34 @@ export function startCourierLocationReporter(options: {
         lat: point.lat,
         lng: point.lng,
         heading: position.coords.heading,
-        recordedAt
+        recordedAt,
       };
 
       // POST only — the endpoint persists the fix and then broadcasts it over
       // Socket.IO itself, so there is nothing for the client to emit.
-      void fetch('/api/location', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      void fetch("/api/location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       }).catch(() => {
         // keep UI on last known
       });
     },
     () => {
-      options.onError?.('denied');
+      options.onError?.("denied");
       if (lastPoint) {
         options.onUpdate?.({
           ...lastPoint,
-          stale: Date.now() - new Date(lastPoint.recordedAt).getTime() > STALE_MS
+          stale:
+            Date.now() - new Date(lastPoint.recordedAt).getTime() > STALE_MS,
         });
       }
     },
     {
       enableHighAccuracy: true,
       maximumAge: 2000,
-      timeout: 10000
-    }
+      timeout: 10000,
+    },
   );
 
   return stop;

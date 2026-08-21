@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { env } from "$env/dynamic/private";
 
 /**
  * The session is already resolved by hooks.server.ts on every request. Handing
@@ -17,10 +17,10 @@ import { env } from '$env/dynamic/private';
  * off only when explicitly set to `false`, so local dev needs no configuration.
  */
 export async function load({ locals }) {
-	return {
-		user: locals.user,
-		googleMapsApiKey: locals.user ? (env.GOOGLE_MAPS_API_KEY ?? '') : '',
-		googleMapsMapId: env.GOOGLE_MAPS_MAP_ID ?? 'DEMO_MAP_ID',
-		realtimeEnabled: env.REALTIME_ENABLED !== 'false'
-	};
+  return {
+    user: locals.user,
+    googleMapsApiKey: locals.user ? (env.GOOGLE_MAPS_API_KEY ?? "") : "",
+    googleMapsMapId: env.GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID",
+    realtimeEnabled: env.REALTIME_ENABLED !== "false",
+  };
 }

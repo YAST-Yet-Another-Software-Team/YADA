@@ -1,19 +1,23 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq } from "drizzle-orm";
 
-import { DISPATCH_TIMEOUT_SECONDS } from '$lib/shared/dispatch';
-import { haversineKm } from '$lib/shared/geo/service-area';
-import type { CourierOffer, LatLng } from '$lib/utils/types';
+import { DISPATCH_TIMEOUT_SECONDS } from "$lib/shared/dispatch";
+import { haversineKm } from "$lib/shared/geo/service-area";
+import type { CourierOffer, LatLng } from "$lib/utils/types";
 
-import { db } from '../db';
-import { asNumber, round } from '../db/columns';
-import { courierProfiles, deliveryRequests, tripDeclines } from '../db/schema';
+import { db } from "../db";
+import { asNumber, round } from "../db/columns";
+import { courierProfiles, deliveryRequests, tripDeclines } from "../db/schema";
 import {
   openRequests,
   toCourierRequest,
   tripQuery,
-  type TripRow
-} from './courier-trip-query';
-import { courierMatchScore, MATCH_LOCATION_FRESH_MS, offerWindow } from './matching';
+  type TripRow,
+} from "./courier-trip-query";
+import {
+  courierMatchScore,
+  MATCH_LOCATION_FRESH_MS,
+  offerWindow,
+} from "./matching";
 
 /**
  * The dispatcher: which open requests are ringing a given courier right now.
@@ -38,7 +42,10 @@ import { courierMatchScore, MATCH_LOCATION_FRESH_MS, offerWindow } from './match
  * A busy courier's ringing position is where their current trip *ends*: they
  * qualify only when that drop-off is inside the first ring of the new pickup.
  */
-export async function ringingRequestRows(userId: string, activeTripRow: TripRow | null) {
+export async function ringingRequestRows(
+  userId: string,
+  activeTripRow: TripRow | null,
+) {
   const [profile] = await db
     .select({
       lat: courierProfiles.currentLatitude,
@@ -46,7 +53,7 @@ export async function ringingRequestRows(userId: string, activeTripRow: TripRow 
       locatedAt: courierProfiles.lastLocationAt,
       rating: courierProfiles.rating,
       ratingCount: courierProfiles.ratingCount,
-      active: courierProfiles.active
+      active: courierProfiles.active,
     })
     .from(courierProfiles)
     .where(eq(courierProfiles.userId, userId))
@@ -58,10 +65,13 @@ export async function ringingRequestRows(userId: string, activeTripRow: TripRow 
   let origin: LatLng | null = null;
 
   if (busy) {
-    if (activeTripRow.dropoffLatitude != null && activeTripRow.dropoffLongitude != null) {
+    if (
+      activeTripRow.dropoffLatitude != null &&
+      activeTripRow.dropoffLongitude != null
+    ) {
       origin = {
         lat: Number(activeTripRow.dropoffLatitude),
-        lng: Number(activeTripRow.dropoffLongitude)
+        lng: Number(activeTripRow.dropoffLongitude),
       };
     }
   } else if (
@@ -81,7 +91,9 @@ export async function ringingRequestRows(userId: string, activeTripRow: TripRow 
     .where(eq(tripDeclines.courierId, userId));
   const declined = new Set(declinedRows.map((row) => row.tripId));
 
-  const open = await tripQuery().where(openRequests()).orderBy(desc(deliveryRequests.requestedAt));
+  const open = await tripQuery()
+    .where(openRequests())
+    .orderBy(desc(deliveryRequests.requestedAt));
 
   const now = Date.now();
   const rating = Number(profile.rating);
@@ -92,14 +104,15 @@ export async function ringingRequestRows(userId: string, activeTripRow: TripRow 
     .map((row) => {
       const distanceKm = haversineKm(origin, {
         lat: Number(row.pickupLatitude),
-        lng: Number(row.pickupLongitude)
+        lng: Number(row.pickupLongitude),
       });
 
       const opensAt = offerWindow({ distanceKm, busy, rating, ratingCount });
       if (opensAt == null) return null;
 
       const elapsedSeconds = (now - row.dispatchStartedAt.getTime()) / 1000;
-      if (elapsedSeconds < opensAt || elapsedSeconds > DISPATCH_TIMEOUT_SECONDS) return null;
+      if (elapsedSeconds < opensAt || elapsedSeconds > DISPATCH_TIMEOUT_SECONDS)
+        return null;
 
       return {
         row,
@@ -109,7 +122,10 @@ export async function ringingRequestRows(userId: string, activeTripRow: TripRow 
         // no way to know it — a busy rider is ringed from where their current
         // trip *ends*, not from where they are.
         distanceToPickupKm: round(distanceKm, 1),
-        expiresInSeconds: Math.max(0, Math.round(DISPATCH_TIMEOUT_SECONDS - elapsedSeconds))
+        expiresInSeconds: Math.max(
+          0,
+          Math.round(DISPATCH_TIMEOUT_SECONDS - elapsedSeconds),
+        ),
       };
     })
     .filter((candidate) => candidate != null)
@@ -126,6 +142,6 @@ export function toCourierOffer(candidate: {
     ...toCourierRequest(candidate.row),
     distanceToPickupKm: candidate.distanceToPickupKm,
     tripDistanceKm: asNumber(candidate.row.estimatedDistanceKm),
-    expiresInSeconds: candidate.expiresInSeconds
+    expiresInSeconds: candidate.expiresInSeconds,
   };
 }

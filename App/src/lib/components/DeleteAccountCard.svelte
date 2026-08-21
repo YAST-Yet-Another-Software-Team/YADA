@@ -76,12 +76,11 @@
     <div class="min-w-0 flex-1">
       <h2 class="text-base font-semibold text-ink">Delete account</h2>
       <p class="mt-1 text-sm text-ink-secondary">
-        Closes your account and signs you out everywhere. Your email and phone number are
-        removed, so you can sign up again with them later.
+        Closes your account and signs you out everywhere.
       </p>
       <p class="mt-2 text-xs text-ink-tertiary">
         Past deliveries stay on record so the other side of each one keeps their history and
-        their ratings. Your name stays on those, marked as a closed account.
+        their ratings.
       </p>
 
       {#if !open}

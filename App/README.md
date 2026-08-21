@@ -9,34 +9,36 @@ repository root.
 
 ## Stack
 
-| | |
-|---|---|
-| Framework | SvelteKit 2 + Svelte 5 |
-| Database | Postgres on Neon, via Drizzle ORM |
-| Auth | Better Auth — email/password, Google OAuth, email verification |
-| Maps | Google Maps JavaScript API (Maps, Places, Geocoding, Routes) |
-| Realtime | Polling. Socket.IO in `vite dev` only — Workers has no always-on process |
-| Email | Brevo |
-| Deploy | Cloudflare Workers (`adapter-cloudflare`) |
-| Styling | Tailwind CSS |
+|           |                                                                          |
+| --------- | ------------------------------------------------------------------------ |
+| Framework | SvelteKit 2 + Svelte 5                                                   |
+| Database  | Postgres on Neon, via Drizzle ORM                                        |
+| Auth      | Better Auth — email/password, Google OAuth, email verification           |
+| Maps      | Google Maps JavaScript API (Maps, Places, Geocoding, Routes)             |
+| Realtime  | Polling. Socket.IO in `vite dev` only — Workers has no always-on process |
+| Email     | Brevo                                                                    |
+| Deploy    | Cloudflare Workers (`adapter-cloudflare`)                                |
+| Styling   | Tailwind CSS                                                             |
 
 ## Roadmap
 
 ### Shipped
 
 **Accounts and access**
+
 - [x] Email/password sign-up and sign-in, with the role (business or courier) chosen at sign-up
-- [x] Email verification as a *soft* gate — it blocks sending a delivery and going online, never sign-in
+- [x] Email verification as a _soft_ gate — it blocks sending a delivery and going online, never sign-in
 - [x] Password reset by email
 - [x] Google OAuth, including carrying the chosen role across the redirect in the signed OAuth state
 - [x] `/welcome` completion flow for accounts that arrive missing a phone number, photo or plate
 - [x] Profile photos, avatar-grade (~256 px data URLs — there is no object storage yet)
-- [x] Close your own account, from Settings (courier) or Profile (business). A *soft*
+- [x] Close your own account, from Settings (courier) or Profile (business). A _soft_
       delete: credentials, sessions, email, phone and photo go, the name stays so past
       deliveries can still say who was on them, and the account is refused while a
       delivery is still in flight
 
 **Business**
+
 - [x] Dashboard board of live and recent deliveries
 - [x] New request: drop a pin or search with Places autocomplete, plus order name, value and notes
 - [x] Nearby riders drawn on the map — anonymised, positions rounded to ~11 m
@@ -47,6 +49,7 @@ repository root.
 - [x] Delivery history, and a business profile carrying the dispatch address and rating
 
 **Courier**
+
 - [x] Availability toggle — dispatch reads it before it reads a position
 - [x] Offer board fed by the expanding-ring dispatcher
 - [x] Accept, decline (remembered, so a re-ring doesn't ask again), or release a job already accepted
@@ -56,6 +59,7 @@ repository root.
 - [x] Background location reporting, tiered — 10 s idle, 2.5 s mid-trip
 
 **Dispatch and trips**
+
 - [x] Expanding-ring dispatcher (400 m → 800 m → 6 km → timeout) with no scheduler or timers
 - [x] Offer windows staggered by rating, idle riders ringed before busy ones
 - [x] Two-phase lifecycle with an explicit, position-checked handover between them
@@ -64,18 +68,17 @@ repository root.
 - [x] KNUST/Ayeduase service area, with landmark naming for dropped pins
 
 **Platform**
+
 - [x] Cloudflare Workers deployment — the only target
 - [x] Live rider position over Socket.IO in `vite dev`; deployment polls `GET /api/trips`
 - [x] Light/dark theme
 
 ### Next
 
-- [ ] Apply migrations `0011` (business ratings), `0012` (courier profile uniqueness)
-      and `0013` (account soft delete)
 - [ ] Retune polling before real usage — tracking 4 s → 8 s, and pause every poll on `visibilitychange`
 - [ ] Enable Google sign-in by configuring the OAuth credentials (the button is built and disabled until then)
 - [ ] Tune the provisional constants against field data: the 150 m proximity radii, the
-      proximity/rating weights, and the cold-start prior. The *shape* should survive; the numbers may not
+      proximity/rating weights, and the cold-start prior. The _shape_ should survive; the numbers may not
 - [ ] Verify the two hand-entered landmarks (`knust-commercial`, `ayeduase-new-site`) — neither matched
       an OSM feature, and a landmark in the wrong place misnames every pin near it
 - [ ] Unit tests for `dispatch.ts`, `matching.ts` and `trip-status.ts` — all pure functions, no runner configured yet
@@ -108,17 +111,17 @@ npm run dev            # http://localhost:5173
 
 ### Environment
 
-| Variable | Required | Notes |
-|---|---|---|
-| `DATABASE_URL` | yes | Neon **pooled** connection string (the one containing `-pooler`) |
-| `BETTER_AUTH_SECRET` | yes | Random string. Also salts the `/api/couriers/nearby` marker refs |
-| `BETTER_AUTH_URL` | yes | Must exactly match the origin the browser uses, or sign-ins won't stick |
-| `GOOGLE_MAPS_API_KEY` | yes | Browser-restricted key; served only to signed-in users |
-| `GOOGLE_MAPS_MAP_ID` | no | Defaults to `DEMO_MAP_ID` |
-| `OAUTH_GOOGLE_CLIENT_ID` / `_SECRET` | no | Google sign-in is skipped if unset |
-| `BREVO_API_KEY` | no | Without it, mail is logged to the console instead of sent |
-| `EMAIL_FROM` / `EMAIL_FROM_NAME` | no | `EMAIL_FROM` must be a **verified sender** in Brevo |
-| `REALTIME_ENABLED` | no | `false` in deployment — there is no socket server on Workers. Leave unset locally |
+| Variable                             | Required | Notes                                                                             |
+| ------------------------------------ | -------- | --------------------------------------------------------------------------------- |
+| `DATABASE_URL`                       | yes      | Neon **pooled** connection string (the one containing `-pooler`)                  |
+| `BETTER_AUTH_SECRET`                 | yes      | Random string. Also salts the `/api/couriers/nearby` marker refs                  |
+| `BETTER_AUTH_URL`                    | yes      | Must exactly match the origin the browser uses, or sign-ins won't stick           |
+| `GOOGLE_MAPS_API_KEY`                | yes      | Browser-restricted key; served only to signed-in users                            |
+| `GOOGLE_MAPS_MAP_ID`                 | no       | Defaults to `DEMO_MAP_ID`                                                         |
+| `OAUTH_GOOGLE_CLIENT_ID` / `_SECRET` | no       | Google sign-in is skipped if unset                                                |
+| `BREVO_API_KEY`                      | no       | Without it, mail is logged to the console instead of sent                         |
+| `EMAIL_FROM` / `EMAIL_FROM_NAME`     | no       | `EMAIL_FROM` must be a **verified sender** in Brevo                               |
+| `REALTIME_ENABLED`                   | no       | `false` in deployment — there is no socket server on Workers. Leave unset locally |
 
 ## Scripts
 
@@ -133,6 +136,11 @@ npm run db:migrate   # apply pending migrations
 npm run test:e2e     # Playwright
 npm run deploy       # build + wrangler deploy
 ```
+
+> The `drizzle/meta` snapshot chain was rebuilt on 2026-08-20 and verified against
+> the live database, so `db:generate` produces correct incremental migrations again.
+> Generate them rather than hand-writing them, and never edit `drizzle/meta` by
+> hand — see `drizzle/README.md` for what went wrong and how to spot it recurring.
 
 ## Layout
 
@@ -216,7 +224,7 @@ their parcel moved.
   races are the normal case, not an edge one.
 - **Authenticated `/api` routes are wrapped in `apiRoute`**, which handles the
   session, the workspace role and the email gate. Per-route authorisation is a
-  question about a *row* and stays in the query that loads it.
+  question about a _row_ and stays in the query that loads it.
 - `$lib/shared` cannot import `$lib/server`, and components cannot import either
   one's server half. `$lib/utils/types.ts` is the neutral ground.
 - Roles are set server-side only. `role` is `input: false` in the Better Auth

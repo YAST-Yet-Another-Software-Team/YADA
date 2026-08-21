@@ -6,8 +6,8 @@
 // resolving `google` as an unknown namespace.
 /// <reference types="google.maps" />
 
-import type { auth } from '$auth/auth.server';
-import type { SessionUser } from '$lib/utils/types';
+import type { auth } from "$auth/auth.server";
+import type { SessionUser } from "$lib/utils/types";
 
 declare global {
   namespace App {
@@ -27,4 +27,4 @@ declare global {
   }
 }
 
-export {};
+export {};

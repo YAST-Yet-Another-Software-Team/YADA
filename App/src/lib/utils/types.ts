@@ -25,7 +25,7 @@
  * Was declared twice — `$auth/auth.server` and `$auth/session.svelte` — with
  * a comment on the second saying it mirrored the first.
  */
-export type AuthRole = 'business' | 'courier';
+export type AuthRole = "business" | "courier";
 
 /** The signed-in user, as both the server guards and the client session hold it. */
 export type AuthUser = {
@@ -66,11 +66,7 @@ export type LatLng = { lat: number; lng: number };
 
 /** Why a geocode or routing call failed, in terms the UI can map to copy. */
 export type GeoErrorCode =
-  | 'quota'
-  | 'denied'
-  | 'no_results'
-  | 'unavailable'
-  | 'invalid_request';
+  "quota" | "denied" | "no_results" | "unavailable" | "invalid_request";
 
 /** A resolved address, as held in the forward/reverse geocode caches. */
 export type CachedGeocode = {
@@ -104,20 +100,21 @@ export type DrivingRouteResult = {
  * so. `arrived` is legacy — see the schema.
  */
 export type TripStatus =
-  | 'requested'
-  | 'accepted'
-  | 'courier_arriving'
-  | 'arrived'
-  | 'picked_up'
-  | 'in_progress'
-  | 'completed'
-  | 'cancelled';
+  | "requested"
+  | "accepted"
+  | "courier_arriving"
+  | "arrived"
+  | "picked_up"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
 
 /** Which half of the journey a trip is in, for screens that speak in phases. */
-export type TripPhase = 'pickup' | 'delivery';
+export type TripPhase = "pickup" | "delivery";
 
 /** The six states the UI renders — see `StatusPill`. */
-export type TripStage = 'searching' | 'assigned' | 'en_route' | 'arrived' | 'delivered' | 'cancelled';
+export type TripStage =
+  "searching" | "assigned" | "en_route" | "arrived" | "delivered" | "cancelled";
 
 /** A courier's live position, broadcast over the socket. */
 export type RiderLocationEvent = {

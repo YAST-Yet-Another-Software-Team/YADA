@@ -1,12 +1,12 @@
-import { and, eq, gt, isNotNull } from 'drizzle-orm';
+import { and, eq, gt, isNotNull } from "drizzle-orm";
 
-import { MAX_MATCH_RADIUS_KM, RING_STEPS } from '$lib/shared/dispatch';
-import { minutesAway } from '$lib/shared/geo/nearby';
-import { haversineKm } from '$lib/shared/geo/service-area';
-import type { LatLng } from '$lib/utils/types';
+import { MAX_MATCH_RADIUS_KM, RING_STEPS } from "$lib/shared/dispatch";
+import { minutesAway } from "$lib/shared/geo/nearby";
+import { haversineKm } from "$lib/shared/geo/service-area";
+import type { LatLng } from "$lib/utils/types";
 
-import { db } from '../db';
-import { courierProfiles } from '../db/schema';
+import { db } from "../db";
+import { courierProfiles } from "../db/schema";
 
 export { MAX_MATCH_RADIUS_KM };
 
@@ -72,7 +72,9 @@ export function courierMatchScore(input: {
 }) {
   const proximity = clamp01(1 - input.distanceKm / MAX_MATCH_RADIUS_KM);
   // 1–5 → 0–1, so a weight compares like with like.
-  const reputation = clamp01((smoothedRating(input.rating, input.ratingCount) - 1) / 4);
+  const reputation = clamp01(
+    (smoothedRating(input.rating, input.ratingCount) - 1) / 4,
+  );
 
   return PROXIMITY_WEIGHT * proximity + RATING_WEIGHT * reputation;
 }
@@ -115,7 +117,9 @@ export function offerWindow(input: {
   rating: number;
   ratingCount: number;
 }): number | null {
-  const reputation = clamp01((smoothedRating(input.rating, input.ratingCount) - 1) / 4);
+  const reputation = clamp01(
+    (smoothedRating(input.rating, input.ratingCount) - 1) / 4,
+  );
   const stagger = (1 - reputation) * RATING_STAGGER_SECONDS;
 
   if (input.busy) {
@@ -142,51 +146,55 @@ export function offerWindow(input: {
  * from being a metre-accurate tracker of individuals nobody has hired.
  */
 export type NearbyCourier = {
-	/** Opaque and stable within a session, so a marker can be keyed and moved. */
-	ref: string;
-	lat: number;
-	lng: number;
-	minutesAway: number;
+  /** Opaque and stable within a session, so a marker can be keyed and moved. */
+  ref: string;
+  lat: number;
+  lng: number;
+  minutesAway: number;
 };
 
 export async function nearbyCouriers(
-	pickup: LatLng,
-	options: { radiusKm: number; limit?: number; ref: (courierId: string) => string }
+  pickup: LatLng,
+  options: {
+    radiusKm: number;
+    limit?: number;
+    ref: (courierId: string) => string;
+  },
 ): Promise<NearbyCourier[]> {
-	const freshAfter = new Date(Date.now() - MATCH_LOCATION_FRESH_MS);
+  const freshAfter = new Date(Date.now() - MATCH_LOCATION_FRESH_MS);
 
-	const rows = await db
-		.select({
-			courierId: courierProfiles.userId,
-			lat: courierProfiles.currentLatitude,
-			lng: courierProfiles.currentLongitude
-		})
-		.from(courierProfiles)
-		.where(
-			and(
-				eq(courierProfiles.active, true),
-				isNotNull(courierProfiles.currentLatitude),
-				isNotNull(courierProfiles.currentLongitude),
-				gt(courierProfiles.lastLocationAt, freshAfter)
-			)
-		);
+  const rows = await db
+    .select({
+      courierId: courierProfiles.userId,
+      lat: courierProfiles.currentLatitude,
+      lng: courierProfiles.currentLongitude,
+    })
+    .from(courierProfiles)
+    .where(
+      and(
+        eq(courierProfiles.active, true),
+        isNotNull(courierProfiles.currentLatitude),
+        isNotNull(courierProfiles.currentLongitude),
+        gt(courierProfiles.lastLocationAt, freshAfter),
+      ),
+    );
 
-	return rows
-		.map((row) => {
-			const point = { lat: Number(row.lat), lng: Number(row.lng) };
+  return rows
+    .map((row) => {
+      const point = { lat: Number(row.lat), lng: Number(row.lng) };
 
-			return {
-				ref: options.ref(row.courierId),
-				lat: Number(point.lat.toFixed(4)),
-				lng: Number(point.lng.toFixed(4)),
-				distanceKm: haversineKm(pickup, point)
-			};
-		})
-		.filter((courier) => courier.distanceKm <= options.radiusKm)
-		.sort((a, b) => a.distanceKm - b.distanceKm)
-		.slice(0, options.limit ?? 25)
-		.map(({ distanceKm, ...courier }) => ({
-			...courier,
-			minutesAway: minutesAway(distanceKm)
-		}));
+      return {
+        ref: options.ref(row.courierId),
+        lat: Number(point.lat.toFixed(4)),
+        lng: Number(point.lng.toFixed(4)),
+        distanceKm: haversineKm(pickup, point),
+      };
+    })
+    .filter((courier) => courier.distanceKm <= options.radiusKm)
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .slice(0, options.limit ?? 25)
+    .map(({ distanceKm, ...courier }) => ({
+      ...courier,
+      minutesAway: minutesAway(distanceKm),
+    }));
 }
