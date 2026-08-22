@@ -71,8 +71,41 @@ export function isMatchingNow(
   );
 }
 
-/** "400 m", "800 m", "across the zone" — for the business watching the search. */
-export function ringLabel(radiusKm: number) {
-  if (radiusKm >= MAX_MATCH_RADIUS_KM) return "across the zone";
-  return `within ${Math.round(radiusKm * 1000)} m`;
+/**
+ * How much of the dispatch window is left, 1 at the start and 0 at the timeout.
+ *
+ * This is what the business sees instead of a countdown. The seconds are real
+ * and the server enforces them, but a number ticking down is a specification of
+ * the dispatcher — it says how long the window is, so it says how long to wait
+ * before a decline stops mattering. A bar draining says the one thing a
+ * business can act on: this is still running, and it will not run forever.
+ *
+ * Clamped rather than allowed to go negative, because the tracking screen keeps
+ * ticking locally between polls and would otherwise draw a bar past empty.
+ */
+export function dispatchRemaining(elapsedSeconds: number) {
+  const left =
+    (DISPATCH_TIMEOUT_SECONDS - elapsedSeconds) / DISPATCH_TIMEOUT_SECONDS;
+
+  return Math.min(1, Math.max(0, left));
+}
+
+/**
+ * How wide the search *feels*, 0–1 across the rings — not how wide it is.
+ *
+ * The map scales its pulse and its zoom off this so the search visibly reaches
+ * further as the dispatcher widens. It is deliberately an index into
+ * `RING_STEPS` rather than the radius in metres: 400 m and 6 km are four
+ * fifteenths and the whole of the zone, and a ring drawn to scale would be a
+ * legible statement of both numbers on screen. What a business needs to know is
+ * "we are looking further out now", which is what an ordinal gives.
+ *
+ * There used to be a `ringLabel` here returning "within 400 m" / "across the
+ * zone" for the same spot on the tracking screen. It was replaced, not moved:
+ * printing the radius is exactly the detail this is here to avoid.
+ */
+export function ringReach(ringIndex: number) {
+  if (RING_STEPS.length < 2) return 0;
+
+  return Math.min(1, Math.max(0, ringIndex / (RING_STEPS.length - 1)));
 }

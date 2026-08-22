@@ -140,7 +140,11 @@ const OAUTH_MESSAGE_BY_CODE: Record<string, string> = {
     "Google didn't share an email address for that account, so we can't create your account.",
   unable_to_get_user_info:
     "We couldn't read your Google profile. Try again in a moment.",
-  oauth_provider_not_found: "Google sign-in isn't configured on this server.",
+  // "isn't configured on this server" is what this used to say. It is a
+  // deployment detail — it tells a reader which secrets are missing and
+  // therefore which build they are talking to. Unavailable is all a user can
+  // act on either way.
+  oauth_provider_not_found: "Google sign-in isn't available right now.",
   signup_disabled: "New accounts can't be created with Google right now.",
   unable_to_link_account:
     "That Google account is already linked to a different YADA account.",
@@ -165,6 +169,67 @@ export function oauthErrorMessage(code: string | null | undefined) {
     OAUTH_MESSAGE_BY_CODE[code] ??
     "We couldn't finish signing you in with Google. Try again."
   );
+}
+
+/**
+ * The single answer every rejected sign-in gets, whatever was actually wrong.
+ *
+ * Better Auth distinguishes "no such user" from "wrong password" from "that
+ * address has no password because it signed up with Google", and each of those
+ * is a question an attacker can ask a login form and get a straight answer to.
+ * Together they turn /auth into a directory: which addresses have accounts, and
+ * which of those are Google-only and so worth phishing rather than guessing.
+ *
+ * So the sign-in form gives one line for all of them. It is deliberately vague
+ * about *which* half is wrong, and deliberately says "details" rather than
+ * "email or password" — naming the two fields invites the reader to work out
+ * which one it was.
+ */
+export const SIGN_IN_REFUSAL =
+  "Those details don't match an account. Check them and try again.";
+
+/**
+ * The codes that mean "we are not letting you in", collapsed to one answer.
+ *
+ * Only refusals belong here. A rate limit, a disabled provider or a failure to
+ * write the session say nothing about whether an account exists, and hiding
+ * those behind the same line would leave someone retyping a correct password
+ * at a server that is simply busy.
+ *
+ * `EMAIL_NOT_VERIFIED` is on the list even though this app's confirmation is a
+ * soft gate that never raises it (see `emailVerification` in ./auth.server).
+ * Turning the hard gate on should not quietly reopen the oracle.
+ */
+const SIGN_IN_OPAQUE_CODES = new Set([
+  "INVALID_EMAIL_OR_PASSWORD",
+  "INVALID_PASSWORD",
+  "USER_NOT_FOUND",
+  "USER_EMAIL_NOT_FOUND",
+  "ACCOUNT_NOT_FOUND",
+  "CREDENTIAL_ACCOUNT_NOT_FOUND",
+  "EMAIL_NOT_VERIFIED",
+]);
+
+/**
+ * Copy for a failed *sign-in*, as opposed to any other auth request.
+ *
+ * The same codes stay explicit everywhere else, and should: on the
+ * change-password form `INVALID_PASSWORD` is talking to someone already holding
+ * that account's session, so vagueness there protects nothing and costs them a
+ * guess. It is only the unauthenticated front door that has to be uniform.
+ *
+ * A 401 or 403 with an unmapped code already falls through to a generic line in
+ * `messageForStatus`, so the set above only has to cover the codes that would
+ * otherwise be specific.
+ */
+export function signInErrorMessage(
+  code: string | null,
+  status: number | null,
+  fallback: string,
+) {
+  if (code && SIGN_IN_OPAQUE_CODES.has(code)) return SIGN_IN_REFUSAL;
+
+  return authErrorMessage(code, status, fallback);
 }
 
 /** Copy for a status we got but a code we don't recognise. */

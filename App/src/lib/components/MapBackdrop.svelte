@@ -27,6 +27,15 @@
      */
     pulse?: boolean;
     /**
+     * How far the pulse throws, as a multiple of the glyph's own size.
+     *
+     * Not a distance. The rings say "the search has widened" and nothing more
+     * precise — see `ringReach` in $lib/shared/dispatch for why the radius in
+     * metres is deliberately not what drives this. A caller that only wants a
+     * pulse leaves it alone and gets the default.
+     */
+    pulseScale?: number;
+    /**
      * Which way this party is travelling, 0–360° clockwise from north.
      *
      * Only a rider has one — a counter does not face anywhere — and only while
@@ -61,6 +70,21 @@
   const ROLE_HAS_HEADING: Partial<Record<MapMarkerRole, boolean>> = {
     rider: true
   };
+
+  /** The throw a pulsing marker gets when its caller doesn't ask for one. */
+  const DEFAULT_PULSE_SCALE = 3.4;
+
+  /**
+   * The pulse throw for a marker, floored at the default.
+   *
+   * Floored rather than trusted outright: a scale under 1 would animate the
+   * ring *inward*, and a caller computing this from a ring index that hasn't
+   * arrived yet would otherwise get a marker that looks broken rather than one
+   * that looks new.
+   */
+  function pulseScaleOf(marker: MapMarker) {
+    return Math.max(DEFAULT_PULSE_SCALE, marker.pulseScale ?? DEFAULT_PULSE_SCALE);
+  }
 
   /**
    * How far the direction pointer's tip sits from the centre of the glyph it
@@ -379,7 +403,7 @@
       marker.label ?? '',
       marker.accent ? 'accent' : '',
       marker.stale ? 'stale' : '',
-      marker.pulse ? 'pulse' : ''
+      marker.pulse ? `pulse:${pulseScaleOf(marker)}` : ''
     ].join('|');
   }
 
@@ -531,6 +555,8 @@
       // CSS can't reach it — the rings are animated through the Web Animations
       // API instead of a keyframes rule. Two of them, half a cycle apart, so the
       // pulse reads as continuous rather than as a blink.
+      const reach = pulseScaleOf(marker);
+
       for (const delay of [0, 1200]) {
         const ring = document.createElement('div');
         ring.style.position = 'absolute';
@@ -542,9 +568,17 @@
         ring.animate(
           [
             { transform: 'scale(1)', opacity: 0.75 },
-            { transform: 'scale(3.4)', opacity: 0 }
+            { transform: `scale(${reach})`, opacity: 0 }
           ],
-          { duration: 2400, iterations: Infinity, delay, easing: 'ease-out' }
+          // A wider throw is given longer to travel, so the ring keeps roughly
+          // the same speed instead of snapping outward as the search grows —
+          // the change should read as reaching further, not as hurrying.
+          {
+            duration: Math.round(2400 * (reach / DEFAULT_PULSE_SCALE)),
+            iterations: Infinity,
+            delay,
+            easing: 'ease-out'
+          }
         );
         host.appendChild(ring);
       }
@@ -804,7 +838,12 @@
 
   $effect(() => {
     if (mapState === 'ready' && map && zoom != null && fitIds.length === 0) {
-      map.setZoom(zoom);
+      // Eased rather than set: the tracking screen steps this outward as a
+      // search widens, and a snap between zoom levels reads as the map
+      // reloading rather than as the camera pulling back. Programmatic, so it
+      // carries no `originalEvent` and does not trip the fence that hands the
+      // camera to the viewer — see the `zoomstart` handler above.
+      map.easeTo({ zoom, duration: 600 });
     }
   });
 
