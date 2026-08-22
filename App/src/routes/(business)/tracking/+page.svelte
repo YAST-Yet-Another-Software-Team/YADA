@@ -212,6 +212,7 @@
 	const searchPulseScale = $derived(5.1 + searchReach * 4.8);
 	const searchZoom = $derived(matching ? 17.5 - searchReach * 2.5 : null);
 
+
 	/**
 	 * Where the camera sits.
 	 *
@@ -681,6 +682,24 @@
 			: []
 	);
 
+	/**
+	 * The riders the camera must not crop, handed to `contain` rather than to
+	 * `fitIds`.
+	 *
+	 * The difference is the whole point: framing pickup-and-riders together
+	 * would put the middle of *that set* in the middle of the screen, sliding
+	 * the counter off to whichever side the riders happened to be. `contain`
+	 * only loosens the zoom, so the counter stays centred and the span above
+	 * stays the tightest the camera will go — a rider already inside the frame
+	 * costs nothing, and one outside it opens the view exactly far enough.
+	 *
+	 * Empty once someone accepts, along with the markers themselves, which hands
+	 * the camera back to the ring span alone.
+	 */
+	const searchContain = $derived(
+		nearbyMarkers.map((rider) => ({ lat: rider.lat, lng: rider.lng }))
+	);
+
 	const markers = $derived(
 		trip
 			? [
@@ -891,6 +910,7 @@
 			fitIds={searching ? [] : ['rider', 'pickup']}
 			locationUnavailable={!searching && riderStale}
 			zoom={searchZoom}
+			contain={searchContain}
 		>
 			{#if searching && !closed}
 				<!-- Desktop only: on a phone the sheet below already narrates the
