@@ -193,12 +193,19 @@
 	 * as the search widens. Both interpolate off the same 0–1 `searchReach`, so
 	 * the map opening out and the pulse reaching further are one gesture.
 	 *
-	 * The zoom span is narrow on purpose — 15 down to 12.6 is a little over two
-	 * steps. A camera that pulled all the way out to the zone would frame the
-	 * match radius, which is the number this screen stopped printing.
+	 * The two were retuned against each other after the first pass read wrong on
+	 * screen: the rings are half again as far (5.1→9.9 where they were 3.4→6.6)
+	 * and the camera travels a third less (1.6 zoom levels where it was 2.4).
+	 * More of the widening is now carried by the pulse and less by the camera,
+	 * which is the right division of labour — the rings are the search reaching
+	 * out, while the camera pulling back is only the frame making room for them.
+	 *
+	 * The zoom span stays deliberately short of the zone. A camera that pulled
+	 * all the way out would frame the match radius, which is the number this
+	 * screen stopped printing.
 	 */
-	const searchPulseScale = $derived(3.4 + searchReach * 3.2);
-	const searchZoom = $derived(matching ? 15 - searchReach * 2.4 : null);
+	const searchPulseScale = $derived(5.1 + searchReach * 4.8);
+	const searchZoom = $derived(matching ? 15 - searchReach * 1.6 : null);
 
 	/**
 	 * The pickup phase is still open: a rider is assigned and the parcel hasn't
