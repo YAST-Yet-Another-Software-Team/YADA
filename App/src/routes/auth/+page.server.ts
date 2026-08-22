@@ -3,7 +3,10 @@ import { z } from "zod";
 
 import { env } from "$env/dynamic/private";
 
-import { messageForApiError } from "$lib/server/auth-error";
+import {
+  messageForApiError,
+  messageForSignInError,
+} from "$lib/server/auth-error";
 import { accountCompletion } from "$lib/server/data/account";
 import {
   saveCourierProfile,
@@ -258,7 +261,11 @@ export const actions = {
         headers: request.headers,
       });
     } catch (error) {
-      const message = messageFor(error, "Unable to sign in.");
+      // Not `messageFor`: the front door answers every refusal with one line,
+      // so a wrong password, an address with no account, and an address that
+      // only ever signed in with Google are indistinguishable from out here.
+      // See `SIGN_IN_REFUSAL` in ./errors.
+      const message = messageForSignInError(error, "Unable to sign in.");
       if (message === null) throw error;
 
       return fail(400, { ...fields, message });

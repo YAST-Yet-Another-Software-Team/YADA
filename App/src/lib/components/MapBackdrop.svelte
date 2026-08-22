@@ -27,6 +27,15 @@
      */
     pulse?: boolean;
     /**
+     * How far the pulse throws, as a multiple of the glyph's own size.
+     *
+     * Not a distance. The rings say "the search has widened" and nothing more
+     * precise — see `ringReach` in $lib/shared/dispatch for why the radius in
+     * metres is deliberately not what drives this. A caller that only wants a
+     * pulse leaves it alone and gets the default.
+     */
+    pulseScale?: number;
+    /**
      * Which way this party is travelling, 0–360° clockwise from north.
      *
      * Only a rider has one — a counter does not face anywhere — and only while
@@ -61,6 +70,21 @@
   const ROLE_HAS_HEADING: Partial<Record<MapMarkerRole, boolean>> = {
     rider: true
   };
+
+  /** The throw a pulsing marker gets when its caller doesn't ask for one. */
+  const DEFAULT_PULSE_SCALE = 3.4;
+
+  /**
+   * The pulse throw for a marker, floored at the default.
+   *
+   * Floored rather than trusted outright: a scale under 1 would animate the
+   * ring *inward*, and a caller computing this from a ring index that hasn't
+   * arrived yet would otherwise get a marker that looks broken rather than one
+   * that looks new.
+   */
+  function pulseScaleOf(marker: MapMarker) {
+    return Math.max(DEFAULT_PULSE_SCALE, marker.pulseScale ?? DEFAULT_PULSE_SCALE);
+  }
 
   /**
    * How far the direction pointer's tip sits from the centre of the glyph it
@@ -584,7 +608,7 @@
       marker.label ?? '',
       marker.accent ? 'accent' : '',
       marker.stale ? 'stale' : '',
-      marker.pulse ? 'pulse' : '',
+      marker.pulse ? `pulse:${pulseScaleOf(marker)}` : '',
       // Heading is absent for the same reason position is: it changes with
       // every fix, and rebuilding the marker to turn it would unmount and
       // remount the glyph a second at a time. It is applied to the element that
@@ -727,6 +751,8 @@
       // CSS can't reach it — the rings are animated through the Web Animations
       // API instead of a keyframes rule. Two of them, half a cycle apart, so the
       // pulse reads as continuous rather than as a blink.
+      const reach = pulseScaleOf(marker);
+
       for (const delay of [0, 1200]) {
         const ring = document.createElement('div');
         ring.style.position = 'absolute';
@@ -738,9 +764,17 @@
         ring.animate(
           [
             { transform: 'scale(1)', opacity: 0.75 },
-            { transform: 'scale(3.4)', opacity: 0 }
+            { transform: `scale(${reach})`, opacity: 0 }
           ],
-          { duration: 2400, iterations: Infinity, delay, easing: 'ease-out' }
+          // A wider throw is given longer to travel, so the ring keeps roughly
+          // the same speed instead of snapping outward as the search grows —
+          // the change should read as reaching further, not as hurrying.
+          {
+            duration: Math.round(2400 * (reach / DEFAULT_PULSE_SCALE)),
+            iterations: Infinity,
+            delay,
+            easing: 'ease-out'
+          }
         );
         host.appendChild(ring);
       }
@@ -938,6 +972,22 @@
 
   $effect(() => {
     if (mapState === 'ready' && map && zoom != null && fitIds.length === 0) {
+      // The tracking screen steps this outward as a search widens, so the move
+      // wants to read as the camera pulling back rather than as the map
+      // reloading. The two builds say that differently and this is the whole of
+      // the difference between them: MapLibre's `easeTo` takes a duration, so
+      // the OSM build names one; the Maps SDK's camera takes no duration at all
+      // and the vector renderer owns the transition, so here the zoom is simply
+      // assigned and the renderer carries it.
+      //
+      // Fractional zooms — the tracking screen asks for 13.8 before it asks for
+      // 12.6 — need `isFractionalZoomEnabled`, which is on by default for the
+      // vector map a `mapId` selects (see `buildMap`). Were this ever a raster
+      // map they would round to whole steps: coarser, but still outward.
+      //
+      // `moveCamera` is this component's own fence helper, not the SDK method
+      // of the same name. It marks the move as ours so the framing logic does
+      // not read it as the viewer taking the camera.
       moveCamera(() => map!.setZoom(zoom!));
     }
   });

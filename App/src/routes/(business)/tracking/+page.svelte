@@ -33,7 +33,12 @@
 	import IconArrowRight from '~icons/mdi/arrow-right';
 	import IconStar from '~icons/mdi/star';
 	import IconCheck from '~icons/mdi/check';
-	import { DISPATCH_TIMEOUT_SECONDS, ringForElapsed, ringLabel } from '$lib/shared/dispatch';
+	import {
+		DISPATCH_TIMEOUT_SECONDS,
+		dispatchRemaining,
+		ringForElapsed,
+		ringReach
+	} from '$lib/shared/dispatch';
 	import { isCancellableByBusiness, isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
 	import { formatCedis } from '$lib/shared/text';
 	import { formatPhone } from '$lib/shared/phone';
@@ -162,6 +167,38 @@
 	 * moves belongs to this flag, not to `searching`.
 	 */
 	const matching = $derived(searching && !closed && !dispatchExpired);
+
+	/**
+	 * The search, abstracted to the two things a business can act on: it is still
+	 * running, and it is reaching further than it was.
+	 *
+	 * What used to sit here was the radius in metres and a seconds countdown.
+	 * Both were accurate and neither was theirs to act on — together they
+	 * published the dispatcher's rings and its timeout to anyone watching the
+	 * screen, which is a specification of how long to stall and how far to stand
+	 * back to stay unrung. `reach` drives the pulse and the zoom, `remaining`
+	 * drives the bar, and neither carries a number to the page.
+	 */
+	const searchRemaining = $derived(
+		// Full, not empty, before the first poll answers: `dispatchElapsed` is null
+		// for the moment between the page mounting and the server saying how long
+		// this request has been running, and a bar that starts at zero and jumps
+		// back to full is a worse lie than one that starts full.
+		dispatchElapsed == null ? 1 : dispatchRemaining(dispatchElapsed)
+	);
+	const searchReach = $derived(dispatchRing ? ringReach(dispatchRing.index) : 0);
+
+	/**
+	 * How far the pickup marker's rings throw, and how far back the camera sits,
+	 * as the search widens. Both interpolate off the same 0–1 `searchReach`, so
+	 * the map opening out and the pulse reaching further are one gesture.
+	 *
+	 * The zoom span is narrow on purpose — 15 down to 12.6 is a little over two
+	 * steps. A camera that pulled all the way out to the zone would frame the
+	 * match radius, which is the number this screen stopped printing.
+	 */
+	const searchPulseScale = $derived(3.4 + searchReach * 3.2);
+	const searchZoom = $derived(matching ? 15 - searchReach * 2.4 : null);
 
 	/**
 	 * The pickup phase is still open: a rider is assigned and the parcel hasn't
@@ -541,7 +578,10 @@
 						// radiates from this counter, and the map is the only place that
 						// can show it happening. It stops the moment someone accepts —
 						// or the moment the dispatch window closes with nobody.
-						pulse: matching
+						pulse: matching,
+						// Throws further as the dispatcher widens, so the map shows the
+						// search reaching out without ever stating how far.
+						pulseScale: searchPulseScale
 					},
 					{
 						id: 'dropoff',
@@ -727,6 +767,7 @@
 			polylinePath={routePath}
 			fitIds={searching ? [] : ['rider', 'pickup']}
 			locationUnavailable={!searching && riderStale}
+			zoom={searchZoom}
 		>
 			{#if searching && !closed}
 				<!-- Desktop only: on a phone the sheet below already narrates the
@@ -737,8 +778,6 @@
 				>
 					{#if dispatchExpired}
 						No rider accepted — ring again from the panel.
-					{:else if dispatchRing}
-						Ringing riders {ringLabel(dispatchRing.radiusKm)}…
 					{:else}
 						Looking for a rider near {trip?.pickupAddress ?? 'you'}…
 					{/if}
@@ -784,16 +823,34 @@
 					<p class="mt-1 text-sm text-ink-secondary">
 						{#if dispatchExpired}
 							No rider accepted in time. Ring again, or cancel the request.
-						{:else if dispatchRing}
-							Ringing riders {ringLabel(dispatchRing.radiusKm)} of your pickup
-							<span class="font-mono-data">
-								· {Math.max(0, Math.ceil(DISPATCH_TIMEOUT_SECONDS - (dispatchElapsed ?? 0)))}s
-							</span>
 						{:else}
-							Usually under a minute.
+							<!-- "Usually under a minute" used to close this line. The bar
+							     below now says how long is left without naming it, and
+							     leaving the phrase in would have restated the window in
+							     words a moment after taking it out of digits. -->
+							Ringing riders near your pickup.
 						{/if}
 					</p>
 				</div>
+
+				<!-- The search window, as a bar draining right to left.
+				     `aria-hidden` because it is the countdown it replaced, drawn: a
+				     screen reader that announced a value here would be reading out
+				     the timeout this stopped printing. The sentence above already
+				     says a search is running, and the copy that matters — that it
+				     ran out, and what to do — is text when it happens. -->
+				{#if matching}
+					<div class="h-1.5 w-full overflow-hidden rounded-full bg-primary-subtle" aria-hidden="true">
+						<!-- Anchored left, so the fill's right edge retreats leftward as
+						     the window drains. The direction is the point: a bar growing
+						     from the left would read as progress being made rather than
+						     as time being spent. -->
+						<div
+							class="dispatch-fill h-full rounded-full bg-primary"
+							style="width: {searchRemaining * 100}%"
+						></div>
+					</div>
+				{/if}
 
 				<p class="hidden w-full min-w-0 items-center gap-1.5 text-sm text-ink-secondary lg:flex">
 					<span class="min-w-0 truncate">{trip?.pickupAddress ?? 'Pickup'}</span>
@@ -956,3 +1013,28 @@
 		{/if}
 	</aside>
 </div>
+
+<style>
+	/*
+	 * The dispatch bar's motion only. Its colours are utility classes on the
+	 * elements themselves: the palette tokens in tailwind.config are functions
+	 * (see `withAlpha`), so `theme()` cannot resolve them from a stylesheet.
+	 *
+	 * The width is re-assigned once a second by the same local ticker that
+	 * carries the dispatch clock between polls, so this transition is what makes
+	 * the bar a slide rather than a series of steps. `linear` for the reason a
+	 * clock hand is: any easing would be the bar implying something about the
+	 * shape of the wait.
+	 */
+	.dispatch-fill {
+		transition: width 1s linear;
+	}
+
+	/* Someone who asked for reduced motion still gets the bar, and it still
+	   drains — it just arrives at each new width instead of travelling there. */
+	@media (prefers-reduced-motion: reduce) {
+		.dispatch-fill {
+			transition: none;
+		}
+	}
+</style>

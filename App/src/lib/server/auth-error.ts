@@ -1,6 +1,6 @@
 import { APIError } from "better-auth/api";
 
-import { authErrorMessage } from "$auth/errors";
+import { authErrorMessage, signInErrorMessage } from "$auth/errors";
 
 /**
  * Turn a thrown Better Auth error into copy, or `null` if it isn't one.
@@ -19,6 +19,25 @@ export function messageForApiError(error: unknown, fallback: string) {
   const body = error.body as { code?: string } | undefined;
 
   return authErrorMessage(
+    body?.code ?? null,
+    error.statusCode ?? null,
+    fallback,
+  );
+}
+
+/**
+ * The same, for the sign-in form, where every refusal has to read alike.
+ *
+ * A separate function rather than a flag on the one above so the choice is
+ * visible at the call site: a reader of the `signin` action can see that it
+ * answers differently from `signup` beside it, and why.
+ */
+export function messageForSignInError(error: unknown, fallback: string) {
+  if (!(error instanceof APIError)) return null;
+
+  const body = error.body as { code?: string } | undefined;
+
+  return signInErrorMessage(
     body?.code ?? null,
     error.statusCode ?? null,
     fallback,
