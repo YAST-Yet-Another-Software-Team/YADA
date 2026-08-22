@@ -1,12 +1,12 @@
-/* Single source of truth: Design System tokens (must precede other rules).
+/* Single source of truth: Design tokens (must precede other rules).
    These are the *only* colour/type/space/radius/shadow definitions in the app —
    nothing below and nothing in a component should introduce a literal colour.
    tailwind.config.ts exposes every token here as a utility class; reach for the
    class first and `var(--token)` only inside a `<style>` block. */
-@import url("../../../../Design System/tokens/colors.css");
-@import url("../../../../Design System/tokens/typography.css");
-@import url("../../../../Design System/tokens/spacing.css");
-@import url("../../../../Design System/tokens/base.css");
+@import url("../../../../Design/tokens/colors.css");
+@import url("../../../../Design/tokens/typography.css");
+@import url("../../../../Design/tokens/spacing.css");
+@import url("../../../../Design/tokens/base.css");
 
 @tailwind base;
 @tailwind components;

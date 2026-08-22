@@ -3,7 +3,7 @@
  *
  * There is no stylesheet here and no list of dark overrides — the entire theme
  * is a `color-scheme` value, which the Design System's `light-dark()` tokens
- * resolve against (see `Design System/tokens/colors.css`). All this module does
+ * resolve against (see `Design/tokens/colors.css`). All this module does
  * is decide which of the three states <html> is in and remember the choice.
  *
  * `system` is the absence of an override rather than a third value, so the OS
