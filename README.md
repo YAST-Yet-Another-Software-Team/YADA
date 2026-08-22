@@ -262,7 +262,7 @@ Docs/
   api_schema.md      every endpoint, written from the handlers
   api_schema.yaml    the OpenAPI counterpart
   SRS Document.pdf   Software Requirements Specification v1.0
-Design System/       visual language
+Design/              tokens, components, screens, captures
 YADA Wireframes.html early wireframes
 ```
 
