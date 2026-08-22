@@ -106,6 +106,7 @@
   import { mount, onDestroy, onMount, unmount, type Snippet } from 'svelte';
   import { loadGoogleMaps, loadGoogleMapsMarker } from '$lib/client/maps/google-maps-loader';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
+  import { zoomToContain } from '$lib/shared/geo/fit';
   import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
   import {
     AUTO_FIT_DELAY_MS,
@@ -130,6 +131,7 @@
     hintPath = [],
     center = null,
     zoom = null,
+    contain = [],
     children,
     onpick
   }: {
@@ -158,6 +160,18 @@
     hintPath?: LatLng[];
     center?: LatLng | null;
     zoom?: number | null;
+    /**
+     * Points that must stay on screen *without* moving the camera off `center`.
+     *
+     * Unlike `fitIds`, which frames a set and puts the middle of that set in
+     * the middle of the screen, this only ever loosens `zoom`: the centre is
+     * left exactly where the caller put it and the camera opens out until the
+     * furthest point is inside. `zoom` remains the tightest the camera will go,
+     * so a caller whose points are already in view gets the zoom it asked for.
+     *
+     * Ignored while `fitIds` is set — framing already owns the camera then.
+     */
+    contain?: LatLng[];
     children?: Snippet;
     onpick?: (detail: { lat: number; lng: number }) => void;
   } = $props();
@@ -170,6 +184,15 @@
   let routePolyline: google.maps.Polyline | null = null;
   let hintPolyline: google.maps.Polyline | null = null;
   let lastCenteredKey = '';
+
+  /**
+   * The zoom the camera was last *sent* to, which is not the zoom it is at: a
+   * viewer who pinches afterwards owns the camera until something actually asks
+   * for a different number. Comparing against the target rather than
+   * `getZoom()` is what stops a rider poll that changes nothing from hauling
+   * the view back every ten seconds.
+   */
+  let lastZoomTarget: number | null = null;
   const maps = getMapsConfig();
 
   /** Every listener this component owns, dropped together on teardown. */
@@ -449,8 +472,15 @@
       return;
     }
 
+    // Captured, not re-read. `center` is a prop and the SDK below resolves
+    // asynchronously, so by the time this function finishes `center` may be a
+    // different point than the map was actually built at — see the comment
+    // where `lastCenteredKey` is armed at the end of this function.
+    const builtAt = center ?? KUMASI_CENTER;
+    const builtZoom = zoom;
+
     map = new mapsLibrary.Map(mapElement, {
-      center: center ?? KUMASI_CENTER,
+      center: builtAt,
       zoom: zoom ?? KUMASI_DEFAULT_ZOOM,
       // AdvancedMarkerElement renders nothing without a Map ID.
       mapId: maps.mapId,
@@ -499,7 +529,17 @@
     );
 
     mapState = 'ready';
-    lastCenteredKey = centerKey(center ?? KUMASI_CENTER);
+    // `builtAt`, not `center`. This used to re-read the prop, and on any page
+    // whose centre arrives *while the map is still being built* that silently
+    // armed the "already there" guard with a point the camera had never been
+    // moved to: the map stayed where it was built and the follow effect below
+    // declined to correct it, because the key it compared against was the new
+    // centre. On /tracking that meant a search framed on the zone centre with
+    // the counter it was searching around somewhere off screen — visible only
+    // when the two happened to differ, which is why it survived a test where
+    // the shop sat exactly on the zone centre.
+    lastCenteredKey = centerKey(builtAt);
+    lastZoomTarget = builtZoom;
     syncMarkers();
     syncPolylines();
     reviewFraming();
@@ -966,42 +1006,89 @@
   }
 
   /**
-   * Follow `center`, but only where nothing better owns the camera.
+   * The zoom actually moved to: the caller's, opened out as far as `contain`
+   * needs and no further.
+   *
+   * `Math.min` because smaller is wider. A caller asking for 17.5 with a rider
+   * 600 m off gets whatever holds that rider; with every rider already inside
+   * the frame it gets 17.5 untouched.
+   *
+   * The pixel size comes from `getDiv()` — the Maps SDK's container element —
+   * where the MapLibre build reads `getCanvas()`. That is the only part of this
+   * the two stacks say differently; the arithmetic itself is shared, in
+   * $lib/shared/geo/fit, so neither can drift into framing its own way.
+   */
+  function zoomWithContain(requested: number) {
+    if (!map || contain.length === 0 || !center) return requested;
+
+    const container = map.getDiv();
+    const fits = zoomToContain({
+      centre: center,
+      points: contain,
+      widthPx: container.clientWidth,
+      heightPx: container.clientHeight,
+      paddingPx: FIT_PADDING_PX
+    });
+
+    return fits == null ? requested : Math.min(requested, fits);
+  }
+
+  /**
+   * Follow `center` and `zoom`, but only where nothing better owns the camera.
    *
    * With `fitIds` set the framing decides where to look, and a centre that
    * moves with every fix would fight it. The pickers, which have no framing,
    * still get their pan when a search result lands.
+   *
+   * ---------------------------------------------------------------------------
+   * One effect, and it has to be one
+   * ---------------------------------------------------------------------------
+   * This was two — a centre-follower and a zoom-follower — and they raced. Each
+   * took the camera through its own fenced move in its own effect, both firing
+   * in the same tick, and the second one landed on a camera the first had not
+   * finished with. On /tracking that is exactly the reported symptom: a search
+   * zoomed in on the zone centre with the counter it was searching around off
+   * screen. It only showed when the two points differed, which is why a test
+   * with the shop sitting on the zone centre missed it twice.
+   *
+   * Both moves now leave through one `moveCamera`, so there is nothing to race.
+   *
+   * On the transition itself the two builds differ and this is the whole of it:
+   * MapLibre's `easeTo` takes a duration, so the OSM build names one; the Maps
+   * SDK's camera takes no duration at all and the vector renderer owns the
+   * transition, so here the values are simply assigned and the renderer carries
+   * them. Fractional zooms — 16.25 before 15 — need `isFractionalZoomEnabled`,
+   * on by default for the vector map a `mapId` selects (see `buildMap`); on a
+   * raster map they would round to whole steps, coarser but still outward.
+   *
+   * `moveCamera` is this component's own fence helper, not the SDK method of
+   * the same name. It marks the move as ours so the framing logic does not read
+   * it as the viewer taking the camera.
    */
   $effect(() => {
-    if (mapState === 'ready' && map && center && fitIds.length === 0) {
-      const key = centerKey(center);
-      if (key && key !== lastCenteredKey) {
-        lastCenteredKey = key;
-        panToPoint(center, zoom);
-      }
-    }
-  });
+    if (mapState !== 'ready' || !map || fitIds.length > 0) return;
 
-  $effect(() => {
-    if (mapState === 'ready' && map && zoom != null && fitIds.length === 0) {
-      // The tracking screen steps this outward as a search widens, so the move
-      // wants to read as the camera pulling back rather than as the map
-      // reloading. The two builds say that differently and this is the whole of
-      // the difference between them: MapLibre's `easeTo` takes a duration, so
-      // the OSM build names one; the Maps SDK's camera takes no duration at all
-      // and the vector renderer owns the transition, so here the zoom is simply
-      // assigned and the renderer carries it.
-      //
-      // Fractional zooms — the tracking screen asks for 13.8 before it asks for
-      // 12.6 — need `isFractionalZoomEnabled`, which is on by default for the
-      // vector map a `mapId` selects (see `buildMap`). Were this ever a raster
-      // map they would round to whole steps: coarser, but still outward.
-      //
-      // `moveCamera` is this component's own fence helper, not the SDK method
-      // of the same name. It marks the move as ours so the framing logic does
-      // not read it as the viewer taking the camera.
-      moveCamera(() => map!.setZoom(zoom!));
-    }
+    // Read unconditionally: the required zoom depends on these, and below they
+    // are only reached through a call that a null `zoom` skips.
+    contain;
+
+    const key = center ? centerKey(center) : '';
+    const centreChanged = Boolean(key) && key !== lastCenteredKey;
+
+    const target = zoom == null ? null : zoomWithContain(zoom);
+    const zoomChanged =
+      target != null &&
+      (lastZoomTarget == null || Math.abs(lastZoomTarget - target) > 0.01);
+
+    if (!centreChanged && !zoomChanged) return;
+
+    if (centreChanged) lastCenteredKey = key;
+    if (zoomChanged) lastZoomTarget = target;
+
+    moveCamera(() => {
+      if (centreChanged && center) map!.panTo(center);
+      if (zoomChanged && target != null) map!.setZoom(target);
+    });
   });
 
   $effect(() => {
