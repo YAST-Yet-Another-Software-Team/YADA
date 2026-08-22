@@ -193,26 +193,43 @@
 	 * as the search widens. Both interpolate off the same 0–1 `searchReach`, so
 	 * the map opening out and the pulse reaching further are one gesture.
 	 *
-	 * The rings throw 5.1→9.9 while the camera runs 15→20 — closing *in* on the
-	 * counter, not opening out from it. That is deliberate and it is the reverse
-	 * of what an earlier pass did: the widening is carried entirely by the pulse,
-	 * and the frame tightening under it is what makes the rings read as breaking
-	 * past the edges of the view rather than being contained by it.
+	 * The rings throw 5.1→9.9 while the camera runs 17.5→15 — a two-and-a-half
+	 * level pull-back, held over the counter the whole way (see `mapCentre`).
+	 * Most of the widening is the pulse; the frame easing back under it is only
+	 * the view making room, which is the division of labour these two have been
+	 * converging on across every retune.
 	 *
-	 * Higher is closer in MapLibre, so 20 is roughly building level. Two things
-	 * follow, both intended:
+	 * Both are straight lines in `searchReach`, so the middle ring lands exactly
+	 * halfway: 16.25 on the camera, 7.5 on the rings. `searchReach` is itself an
+	 * even 0 / 0.5 / 1 across the three ring steps, so "linear in reach" and
+	 * "even per ring" are the same statement here.
 	 *
-	 *   - Nothing on screen states a distance. The rings are screen-space, a
-	 *     fixed multiple of the marker, so they measure no ground at any zoom,
-	 *     and a frame this tight shows *less* of it rather than more — the match
-	 *     radius is further from being legible here than it was at 15.
-	 *   - The other available riders (`nearbyMarkers`) drift out of frame as the
-	 *     camera closes. They are the backdrop to the wait, not the subject, and
-	 *     they are on screen at the start of the search when the question they
-	 *     answer — is there anyone out there — is the one being asked.
+	 * Nothing on screen states a distance at any point in that span. The rings
+	 * are screen-space, a fixed multiple of the marker, so they measure no
+	 * ground at any zoom — which is what lets the camera move freely without the
+	 * match radius ever becoming legible.
 	 */
 	const searchPulseScale = $derived(5.1 + searchReach * 4.8);
-	const searchZoom = $derived(matching ? 15 + searchReach * 5 : null);
+	const searchZoom = $derived(matching ? 17.5 - searchReach * 2.5 : null);
+
+	/**
+	 * Where the camera sits.
+	 *
+	 * While the request is unassigned that is the pickup, dead centre: the pulse
+	 * radiates from that marker and the search is *about* that address, so
+	 * framing anywhere else leaves the one thing happening off to one side. This
+	 * used to centre on the dropoff throughout, which put the counter and its
+	 * rings near the edge for the whole search.
+	 *
+	 * Once a rider is assigned the old behaviour takes back over, and `fitIds`
+	 * takes the camera off this entirely — from then on what is being watched is
+	 * the gap between rider and counter closing, which is a frame, not a point.
+	 */
+	const mapCentre = $derived(
+		searching && trip
+			? { lat: trip.pickupLat, lng: trip.pickupLng }
+			: (riderPoint ?? (trip ? { lat: trip.dropoffLat, lng: trip.dropoffLng } : KUMASI_CENTER))
+	);
 
 	/**
 	 * The pickup phase is still open: a rider is assigned and the parcel hasn't
@@ -868,7 +885,7 @@
 		     it described a journey nobody has started. The dropoff keeps its
 		     marker, so where the parcel goes next is still on the map. -->
 		<MapBackdrop
-			center={riderPoint ?? (trip ? { lat: trip.dropoffLat, lng: trip.dropoffLng } : KUMASI_CENTER)}
+			center={mapCentre}
 			{markers}
 			polylinePath={routePath}
 			fitIds={searching ? [] : ['rider', 'pickup']}
