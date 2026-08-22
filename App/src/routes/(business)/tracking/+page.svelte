@@ -193,20 +193,26 @@
 	 * as the search widens. Both interpolate off the same 0–1 `searchReach`, so
 	 * the map opening out and the pulse reaching further are one gesture.
 	 *
-	 * The rings throw 5.1→9.9 and the camera runs 15→10, five zoom levels — from
-	 * the street the counter is on out to well past the service zone by the last
-	 * ring. Wide, deliberately: the last ring is the one that means "everyone,
-	 * anywhere", and a frame that barely moved would undersell it.
+	 * The rings throw 5.1→9.9 while the camera runs 15→20 — closing *in* on the
+	 * counter, not opening out from it. That is deliberate and it is the reverse
+	 * of what an earlier pass did: the widening is carried entirely by the pulse,
+	 * and the frame tightening under it is what makes the rings read as breaking
+	 * past the edges of the view rather than being contained by it.
 	 *
-	 * Opening out this far does not put the match radius back on screen, which
-	 * was the worry when this span was shorter. Nothing here is drawn to scale —
-	 * the rings are screen-space, a fixed multiple of the marker, so they neither
-	 * shrink as the camera pulls back nor ever measure a distance on the ground.
-	 * By the last ring the view is wider than the zone rather than framing it,
-	 * and a radius cannot be read off a frame that overshoots it.
+	 * Higher is closer in MapLibre, so 20 is roughly building level. Two things
+	 * follow, both intended:
+	 *
+	 *   - Nothing on screen states a distance. The rings are screen-space, a
+	 *     fixed multiple of the marker, so they measure no ground at any zoom,
+	 *     and a frame this tight shows *less* of it rather than more — the match
+	 *     radius is further from being legible here than it was at 15.
+	 *   - The other available riders (`nearbyMarkers`) drift out of frame as the
+	 *     camera closes. They are the backdrop to the wait, not the subject, and
+	 *     they are on screen at the start of the search when the question they
+	 *     answer — is there anyone out there — is the one being asked.
 	 */
 	const searchPulseScale = $derived(5.1 + searchReach * 4.8);
-	const searchZoom = $derived(matching ? 15 - searchReach * 5 : null);
+	const searchZoom = $derived(matching ? 15 + searchReach * 5 : null);
 
 	/**
 	 * The pickup phase is still open: a rider is assigned and the parcel hasn't
@@ -571,9 +577,101 @@
 		if (tickTimer) clearInterval(tickTimer);
 	});
 
+	/* --------------------------------------------------- riders nearby */
+
+	/**
+	 * The other online riders, drawn while the request is still unassigned.
+	 *
+	 * The same "cars on the map" the /request screen opens with, carried through
+	 * to the wait — a business watching a search wants to know there is supply
+	 * behind it, and an empty map during a search says the opposite of what the
+	 * pulse is saying. They vanish the moment someone accepts: from then on the
+	 * only rider that matters is the one coming, and leaving the rest on screen
+	 * would make it a guess which dot to watch.
+	 *
+	 * Anonymous by construction. `GET /api/couriers/nearby` returns an opaque
+	 * per-process ref and a position rounded to about eleven metres — never a
+	 * name, a rating, or an id that lines up with anything else in the API — so
+	 * this shows supply without showing people. It also centres on the
+	 * business's *stored* address rather than anything sent from here, which for
+	 * an ordinary request is the pickup being searched around.
+	 */
+	type NearbyCourier = { ref: string; lat: number; lng: number; minutesAway: number };
+
+	let nearby = $state<NearbyCourier[]>([]);
+	let nearbyTimer: ReturnType<typeof setInterval> | undefined;
+
+	/** Matches the /request screen: live enough to read, quiet enough to leave on. */
+	const NEARBY_POLL_MS = 10_000;
+
+	async function refreshNearby() {
+		try {
+			const response = await fetch('/api/couriers/nearby');
+			const payload = await response.json().catch(() => null);
+			if (!response.ok || !payload?.ok) return;
+
+			nearby = payload.couriers ?? [];
+		} catch {
+			// A dropped poll holds the last positions until the next one lands.
+		}
+	}
+
+	/**
+	 * Poll only while there is something to poll for.
+	 *
+	 * Keyed on the same `searching && !closed` that gates the markers, so the
+	 * request stops the moment a rider accepts rather than continuing to ask
+	 * about riders nobody is going to see. `$effect` rather than a branch inside
+	 * the existing interval: this way acceptance tears the timer down instead of
+	 * leaving it running and discarding every answer.
+	 */
+	$effect(() => {
+		const wanted = searching && !closed;
+
+		if (!wanted) {
+			if (nearbyTimer) clearInterval(nearbyTimer);
+			nearbyTimer = undefined;
+			nearby = [];
+			return;
+		}
+
+		void refreshNearby();
+		nearbyTimer = setInterval(() => void refreshNearby(), NEARBY_POLL_MS);
+
+		return () => {
+			if (nearbyTimer) clearInterval(nearbyTimer);
+			nearbyTimer = undefined;
+		};
+	});
+
+	/**
+	 * One marker per available rider, under the pickup and dropoff pins so the
+	 * two ends of the job still read on top of the supply behind them.
+	 *
+	 * `minutesAway` rather than a distance in the hover title, for the reason the
+	 * search copy carries no radius: a time is what a business is waiting on, and
+	 * a distance is a fact about the dispatcher.
+	 */
+	const nearbyMarkers = $derived(
+		searching && !closed
+			? nearby.map((courier) => ({
+					id: `nearby-${courier.ref}`,
+					lat: courier.lat,
+					lng: courier.lng,
+					label: `Rider · about ${courier.minutesAway} min away`,
+					role: 'rider' as const
+				}))
+			: []
+	);
+
 	const markers = $derived(
 		trip
 			? [
+					// First, so they sit *under* the two ends of the job and the rider
+					// coming: supply is the backdrop to this screen, never the subject.
+					// Empty from the moment someone accepts, which is what leaves the
+					// assigned rider below as the only one on the map.
+					...nearbyMarkers,
 					{
 						// The pickup *is* the business, and this is the slot a custom
 						// business marker drops into when there is one.
