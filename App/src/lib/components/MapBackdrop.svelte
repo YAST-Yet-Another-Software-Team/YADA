@@ -553,11 +553,26 @@
     if (marker.pulse) {
       // Marker content is built imperatively, outside the template, so component
       // CSS can't reach it — the rings are animated through the Web Animations
-      // API instead of a keyframes rule. Two of them, half a cycle apart, so the
-      // pulse reads as continuous rather than as a blink.
+      // API instead of a keyframes rule.
       const reach = pulseScaleOf(marker);
 
-      for (const delay of [0, 1200]) {
+      // A wider throw is given longer to travel, so a ring keeps roughly the
+      // same speed instead of snapping outward as the search grows — the change
+      // should read as reaching further, not as hurrying.
+      const duration = Math.round(2400 * (reach / DEFAULT_PULSE_SCALE));
+
+      // …which is why the count is derived rather than fixed. This was two
+      // rings 1200 ms apart, which is one launched every half-cycle only while
+      // a cycle is 2400 ms. Once the tracking screen widened the throw, the
+      // cycle stretched past 6 s and that same pair travelled almost together
+      // and then left five seconds of nothing — a double blink, not a pulse.
+      // Holding the *cadence* at roughly 1200 ms and spacing whatever number of
+      // rings that needs across the cycle keeps it continuous at any reach, and
+      // collapses back to exactly the original two at the default.
+      const RING_CADENCE_MS = 1200;
+      const ringCount = Math.max(2, Math.min(6, Math.round(duration / RING_CADENCE_MS)));
+
+      for (let index = 0; index < ringCount; index++) {
         const ring = document.createElement('div');
         ring.style.position = 'absolute';
         ring.style.width = `${size}px`;
@@ -570,13 +585,10 @@
             { transform: 'scale(1)', opacity: 0.75 },
             { transform: `scale(${reach})`, opacity: 0 }
           ],
-          // A wider throw is given longer to travel, so the ring keeps roughly
-          // the same speed instead of snapping outward as the search grows —
-          // the change should read as reaching further, not as hurrying.
           {
-            duration: Math.round(2400 * (reach / DEFAULT_PULSE_SCALE)),
+            duration,
             iterations: Infinity,
-            delay,
+            delay: Math.round((duration / ringCount) * index),
             easing: 'ease-out'
           }
         );
