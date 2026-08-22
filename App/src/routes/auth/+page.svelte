@@ -814,6 +814,15 @@
                 <span class="h-px flex-1 bg-border"></span>
               </div>
 
+              <!-- A Google failure arrives as a redirect back to this page
+                   carrying `?error=`, not as a form result — the callback is
+                   Better Auth's endpoint and there is no action to fail. It is
+                   rendered here rather than with the credential form's errors
+                   because it belongs to the button below it. -->
+              {#if data.oauthError}
+                <Alert>{data.oauthError}</Alert>
+              {/if}
+
               <form method="POST" action="?/google" use:enhance={submitGoogle}>
                 <!-- Only meaningful in sign-up mode: that is the only place the
                      Business/Courier toggle is on screen. Blank from the

@@ -17,6 +17,7 @@ import { phoneNumber } from "$lib/server/validation/phone";
 import { plateNumber } from "$lib/server/validation/plate";
 
 import { auth, toAuthRole, VERIFY_EMAIL_CALLBACK } from "./auth.server";
+import { oauthErrorMessage } from "./errors";
 import type { Actions } from "./$types";
 
 /**
@@ -201,7 +202,7 @@ function googleConfigured() {
  */
 const messageFor = messageForApiError;
 
-export async function load({ locals }) {
+export async function load({ locals, url }) {
   if (locals.user) {
     // A signed-in visitor who never finished setting up goes back to finishing
     // it rather than into a workspace that would only bounce them here again.
@@ -218,6 +219,14 @@ export async function load({ locals }) {
   return {
     googleEnabled: googleConfigured(),
     minPasswordLength: MIN_PASSWORD_LENGTH,
+    // A failed Google sign-in comes back here as a *redirect* carrying
+    // `?error=`, not as a form result — the callback is Better Auth's endpoint
+    // and there is no action to fail. Both halves of that redirect now point
+    // here: `errorCallbackURL` for failures after the state was read, and
+    // `onAPIError.errorURL` for the ones before it (see ./auth.server). Without
+    // this the page rendered as if nothing had happened, which is the bounce
+    // that looked like the button doing nothing.
+    oauthError: oauthErrorMessage(url.searchParams.get("error")),
   };
 }
 

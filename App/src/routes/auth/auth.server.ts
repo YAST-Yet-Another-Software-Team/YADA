@@ -137,7 +137,45 @@ export const auth = betterAuth({
     },
   },
 
+  /**
+   * Where a *failed* OAuth callback lands.
+   *
+   * Better Auth's default is its own /api/auth/error page — a bare "Something
+   * went wrong / CODE: state_mismatch" screen with a Go Home button, which is
+   * what a Google sign-in failure used to dead-end on and what reads to a user
+   * as the server having crashed. Sending it to /auth instead puts them back on
+   * the form they came from, where `?error=` is turned into a sentence (see
+   * `oauthErrorMessage` in ./errors).
+   *
+   * `errorCallbackURL` on `signInSocial` already covers failures that happen
+   * *after* the state is parsed. This covers the ones before it, which is
+   * exactly the state_mismatch case: with no state there is no per-flow error
+   * URL to recover, so the default was the only thing left.
+   *
+   * Absolute rather than "/auth": Better Auth also hands this value straight to
+   * `Location` from GET /api/auth/error, and the same string has to work there.
+   */
+  onAPIError: {
+    errorURL: `${authUrl}/auth`,
+  },
+
   advanced: {
+    /**
+     * The `state` cookie's default `maxAge` is 300s while the verification row
+     * holding the same value lives 600s, so between five and ten minutes on
+     * Google's consent screen the cookie is gone, the row is not, and the
+     * callback fails the "state not persisted correctly" check for no reason
+     * the user could have avoided. Matching the two removes that window; what
+     * is left is one expiry, not two.
+     */
+    cookies: {
+      state: {
+        attributes: {
+          maxAge: 600,
+        },
+      },
+    },
+
     /**
      * Without this, Better Auth *awaits* the callbacks above — which would put
      * a round trip to the mail provider in front of every sign-up response.
