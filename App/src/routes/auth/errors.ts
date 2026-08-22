@@ -98,6 +98,75 @@ const MESSAGE_BY_CODE: Record<string, string> = {
     "Your browser blocked that request. Reload the page and try again.",
 };
 
+/**
+ * Copy per OAuth callback error code.
+ *
+ * A different vocabulary from `MESSAGE_BY_CODE` above, and it has to be: the
+ * OAuth callback never throws an `APIError` a caller could catch. It redirects,
+ * putting a *lowercase* code in `?error=` on the way to the error URL — see
+ * `redirectOnError` in better-auth's oauth2/errors. So these arrive as query
+ * strings on a GET of /auth, not as exceptions, and nothing in the UPPER_SNAKE
+ * map would ever match them.
+ *
+ * `state_mismatch` is the one worth reading twice. Better Auth stores the
+ * signed `state` in the verifications table and *consumes it on the way in* —
+ * before the code is even exchanged. So the code means one of:
+ *
+ *   - the row expired (10 minutes from the moment the button was pressed);
+ *   - the cookie holding the same value expired (5 minutes, until this app
+ *     widened it — see `advanced.cookies.state` in ./auth.server);
+ *   - the callback URL was opened twice — a refresh, or Back onto it — and the
+ *     first visit already spent the state.
+ *
+ * All three are "start again", which is what the copy says. It deliberately
+ * does not say "expired": a replayed callback has not expired, and the user
+ * cannot tell the difference anyway.
+ */
+const OAUTH_MESSAGE_BY_CODE: Record<string, string> = {
+  state_mismatch:
+    "That sign-in link was already used or took too long. Tap Continue with Google to start again.",
+  state_not_found:
+    "That sign-in didn't carry its security token. Tap Continue with Google to start again.",
+  invalid_code:
+    "Google didn't accept that sign-in. Tap Continue with Google to start again.",
+  no_code: "Google didn't send anything back. Try again.",
+  invalid_callback_request: "That sign-in link is malformed. Try again.",
+  // Provider-side refusals: Google puts these in `?error=` itself and Better
+  // Auth passes them straight through.
+  access_denied: "You cancelled the Google sign-in. Nothing was changed.",
+  admin_policy_enforced:
+    "Your Google account's administrator blocks sign-ins to YADA.",
+  email_not_found:
+    "Google didn't share an email address for that account, so we can't create your account.",
+  unable_to_get_user_info:
+    "We couldn't read your Google profile. Try again in a moment.",
+  oauth_provider_not_found: "Google sign-in isn't configured on this server.",
+  signup_disabled: "New accounts can't be created with Google right now.",
+  unable_to_link_account:
+    "That Google account is already linked to a different YADA account.",
+  account_already_linked_to_different_user:
+    "That Google account is already linked to a different YADA account.",
+  internal_server_error:
+    "Something went wrong on our end during sign-in. Try again in a moment.",
+};
+
+/**
+ * Display copy for an `?error=` code on the sign-in page, or `null` when the
+ * parameter is absent.
+ *
+ * Unknown codes get a generic line rather than `null`: landing back on /auth
+ * with no explanation is the failure this exists to end, and a vague reason
+ * still beats a silent bounce.
+ */
+export function oauthErrorMessage(code: string | null | undefined) {
+  if (!code) return null;
+
+  return (
+    OAUTH_MESSAGE_BY_CODE[code] ??
+    "We couldn't finish signing you in with Google. Try again."
+  );
+}
+
 /** Copy for a status we got but a code we don't recognise. */
 function messageForStatus(status: number | null) {
   if (status === null) return null;
