@@ -1,0 +1,373 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "New request",
+      "page": "page-1"
+    },
+    {
+      "file": "BizDashboardM.dc.html",
+      "x": 490,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Dashboard",
+      "page": "page-1"
+    },
+    {
+      "file": "BizSearchingM.dc.html",
+      "x": 980,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Finding a rider",
+      "page": "page-1"
+    },
+    {
+      "file": "BizEnrouteM.dc.html",
+      "x": 1470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Rider en route",
+      "page": "page-1"
+    },
+    {
+      "file": "BizDeliveredM.dc.html",
+      "x": 1960,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Delivered + rate",
+      "page": "page-1"
+    },
+    {
+      "file": "BizOrdersM.dc.html",
+      "x": 2450,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Orders",
+      "page": "page-1"
+    },
+    {
+      "file": "BizProfileM.dc.html",
+      "x": 2940,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Profile",
+      "page": "page-1"
+    },
+    {
+      "file": "BizDashboardD.dc.html",
+      "x": 0,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Dashboard",
+      "page": "page-1"
+    },
+    {
+      "file": "BizRequestD.dc.html",
+      "x": 1560,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "New request",
+      "page": "page-1"
+    },
+    {
+      "file": "BizSearchingD.dc.html",
+      "x": 3120,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Finding a rider",
+      "page": "page-1"
+    },
+    {
+      "file": "BizEnrouteD.dc.html",
+      "x": 4680,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Rider en route",
+      "page": "page-1"
+    },
+    {
+      "file": "BizDeliveredD.dc.html",
+      "x": 6240,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Delivered + rate",
+      "page": "page-1"
+    },
+    {
+      "file": "BizHistoryD.dc.html",
+      "x": 7800,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "History",
+      "page": "page-1"
+    },
+    {
+      "file": "BizProfileD.dc.html",
+      "x": 9360,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Profile",
+      "page": "page-1"
+    },
+    {
+      "file": "RiderOfflineM.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Offline",
+      "page": "page-2"
+    },
+    {
+      "file": "RiderOfferM.dc.html",
+      "x": 490,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "New request",
+      "page": "page-2"
+    },
+    {
+      "file": "RiderPickupM.dc.html",
+      "x": 980,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Heading to pickup",
+      "page": "page-2"
+    },
+    {
+      "file": "RiderDeliverM.dc.html",
+      "x": 1470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Delivering",
+      "page": "page-2"
+    },
+    {
+      "file": "RiderDoneM.dc.html",
+      "x": 1960,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Delivered + rate",
+      "page": "page-2"
+    },
+    {
+      "file": "RiderTripsM.dc.html",
+      "x": 2450,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Trips",
+      "page": "page-2"
+    },
+    {
+      "file": "RiderSettingsM.dc.html",
+      "x": 2940,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Profile & Settings",
+      "page": "page-2"
+    },
+    {
+      "file": "RiderOfferD.dc.html",
+      "x": 0,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "New request",
+      "page": "page-2"
+    },
+    {
+      "file": "RiderPickupD.dc.html",
+      "x": 1560,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Heading to pickup",
+      "page": "page-2"
+    },
+    {
+      "file": "RiderDoneD.dc.html",
+      "x": 3120,
+      "y": 1100,
+      "w": 1440,
+      "h": 900,
+      "title": "Delivered + rate",
+      "page": "page-2"
+    },
+    {
+      "file": "LandingD.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1460,
+      "title": "Landing",
+      "page": "page-3"
+    },
+    {
+      "file": "SignInD.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Sign in",
+      "page": "page-3"
+    },
+    {
+      "file": "SignInM.dc.html",
+      "x": 3120,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Sign in",
+      "page": "page-3"
+    },
+    {
+      "file": "WireRequest.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "New request",
+      "page": "page-4"
+    },
+    {
+      "file": "WireSearching.dc.html",
+      "x": 490,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Finding a rider",
+      "page": "page-4"
+    },
+    {
+      "file": "WireTracking.dc.html",
+      "x": 980,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Tracking",
+      "page": "page-4"
+    },
+    {
+      "file": "WireDelivered.dc.html",
+      "x": 1470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Delivered + rate",
+      "page": "page-4"
+    },
+    {
+      "file": "WireOffer.dc.html",
+      "x": 1960,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Courier · Offer",
+      "page": "page-4"
+    },
+    {
+      "file": "WireDeliver.dc.html",
+      "x": 2450,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Courier · Delivering",
+      "page": "page-4"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "biz-note",
+      "x": 0,
+      "y": -190,
+      "w": 760,
+      "text": "Business workspace, redrawn from the captures in ../screenshots (2026-08-22).\nTop row: mobile, 390x844. Bottom row: desktop, 1440x900 — a centred 1232px column under a fixed top bar, with tracking splitting into map + a 318px right rail.\nMaps are placeholders; the real screens render MapLibre + OpenStreetMap tiles, which cannot load inside an artboard.",
+      "page": "page-1"
+    },
+    {
+      "id": "biz-desk-note",
+      "x": 0,
+      "y": 1960,
+      "w": 760,
+      "text": "Desktop tracking keeps the nav on Request, not a tab of its own — the rail replaces the phone's bottom sheet and carries the same content in the same order.",
+      "page": "page-1"
+    },
+    {
+      "id": "rider-note",
+      "x": 0,
+      "y": -190,
+      "w": 760,
+      "text": "Courier workspace. The order's value appears nowhere on this side: GET /api/trips nulls orderPrice for the rider, so a price on a courier screen would be a bug.\nEvery action screen states its own gate in plain words — 235 m to go, confirm within 31 m — because the server refuses the button otherwise.",
+      "page": "page-2"
+    },
+    {
+      "id": "rider-desk-note",
+      "x": 0,
+      "y": 1960,
+      "w": 760,
+      "text": "The courier app has no desktop layout of its own. On a wide screen the same phone column is centred on the shell colour, so it reads as a device against a desk. Captured, not assumed: ../screenshots/desktop/rider-*.png.",
+      "page": "page-2"
+    },
+    {
+      "id": "entry-note",
+      "x": 0,
+      "y": -190,
+      "w": 760,
+      "text": "Landing and sign-in. The red brand panel is the one place the marketing voice shows up; everything past sign-in is the workspace.",
+      "page": "page-3"
+    },
+    {
+      "id": "lofi-note",
+      "x": 0,
+      "y": -190,
+      "w": 760,
+      "text": "Lo-fi wireframes: structure and the rule each screen has to honour, before any styling.",
+      "page": "page-4"
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-2"
+  },
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Business"
+    },
+    {
+      "id": "page-2",
+      "name": "Courier"
+    },
+    {
+      "id": "page-3",
+      "name": "Entry"
+    },
+    {
+      "id": "page-4",
+      "name": "Lo-fi wireframes"
+    }
+  ]
+}
