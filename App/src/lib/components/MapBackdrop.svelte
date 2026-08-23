@@ -790,7 +790,16 @@
         style: maps.styleUrl,
         center: toLngLat(builtAt),
         zoom: zoom ?? KUMASI_DEFAULT_ZOOM,
-        attributionControl: { compact: true },
+        // OSM's own credit rides in the style document; ORS is not part of it
+        // and has to be named here. Their terms ask for the attribution to be
+        // visible wherever a route is, and every route in the app is drawn on
+        // this map — so the map's own control is the one place that covers all
+        // of them without a line of chrome on each screen.
+        attributionControl: {
+          compact: true,
+          customAttribution:
+            '<a href="https://openrouteservice.org/" target="_blank" rel="noreferrer noopener">Routing by openrouteservice</a>'
+        },
         // The Google build set `disableDefaultUI`; these are the equivalents.
         dragRotate: false,
         pitchWithRotate: false,
