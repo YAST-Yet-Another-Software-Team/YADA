@@ -122,6 +122,11 @@
    */
   import { mount, onDestroy, onMount, unmount, type Snippet } from 'svelte';
   import type { GeoJSONSource, LngLatLike, Map as MapLibreMap, Marker } from 'maplibre-gl';
+  // Imported rather than reached for as the global `GeoJSON` namespace: the
+  // types come in transitively via maplibre-gl, so whether that global is in
+  // scope depends on which tsconfig is asking — svelte-check resolves it, an
+  // editor's own TS server need not.
+  import type { Feature, LineString } from 'geojson';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import { zoomToContain } from '$lib/shared/geo/fit';
   import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
@@ -210,6 +215,7 @@
    * the view back every ten seconds.
    */
   let lastZoomTarget: number | null = null;
+
   const maps = getMapsConfig();
 
   /**
@@ -706,7 +712,7 @@
     reviewFraming();
   }
 
-  function lineData(path: LatLng[]): GeoJSON.Feature<GeoJSON.LineString> {
+  function lineData(path: LatLng[]): Feature<LineString> {
     return {
       type: 'Feature',
       properties: {},
