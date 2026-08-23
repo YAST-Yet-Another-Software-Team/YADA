@@ -96,7 +96,7 @@
   }
 
   /** The throw a pulsing marker gets when its caller doesn't ask for one. */
-  const DEFAULT_PULSE_SCALE = 3.4;
+  /** const DEFAULT_PULSE_SCALE = 3.4; */
 
   /**
    * The pulse throw for a marker, floored at the default.
