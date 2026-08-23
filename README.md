@@ -339,7 +339,7 @@ Create `App/.env` with at least the three required variables:
 | `BETTER_AUTH_SECRET`                 | yes      | Random string. Also salts the `/api/couriers/nearby` marker refs                  |
 | `BETTER_AUTH_URL`                    | yes      | Must exactly match the origin the browser uses, or sign-ins won't stick           |
 | `GOOGLE_MAPS_API_KEY`                | no       | Maps JS, Places, Geocoding and Routes. Without it every map is the grid placeholder |
-| `GOOGLE_MAPS_MAP_ID`                 | no       | Required for Advanced Markers. Defaults to `DEMO_MAP_ID`, which is not for production |
+| `GOOGLE_MAPS_MAP_ID`                 | yes      | Selects the map's renderer and cloud style. A wrong value draws the basemap and **no markers at all**, silently. Unset falls back to `DEMO_MAP_ID` — development only |
 | `OAUTH_GOOGLE_CLIENT_ID` / `_SECRET` | no       | Google sign-in is skipped unless both are set                                     |
 | `BREVO_API_KEY`                      | no       | Without it, mail is logged to the console instead of sent                         |
 | `EMAIL_FROM` / `EMAIL_FROM_NAME`     | no       | `EMAIL_FROM` must be a **verified sender** in Brevo                               |

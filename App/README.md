@@ -120,7 +120,7 @@ npm run dev            # http://localhost:5173
 | `BETTER_AUTH_SECRET`                 | yes      | Random string. Also salts the `/api/couriers/nearby` marker refs                  |
 | `BETTER_AUTH_URL`                    | yes      | Must exactly match the origin the browser uses, or sign-ins won't stick           |
 | `GOOGLE_MAPS_API_KEY`                | yes      | Browser-restricted key; served only to signed-in users                            |
-| `GOOGLE_MAPS_MAP_ID`                 | no       | Defaults to `DEMO_MAP_ID`                                                         |
+| `GOOGLE_MAPS_MAP_ID`                 | yes      | Renderer + cloud style. Wrong ⇒ basemap draws, every marker vanishes, nothing logs |
 | `OAUTH_GOOGLE_CLIENT_ID` / `_SECRET` | no       | Google sign-in is skipped if unset                                                |
 | `BREVO_API_KEY`                      | no       | Without it, mail is logged to the console instead of sent                         |
 | `EMAIL_FROM` / `EMAIL_FROM_NAME`     | no       | `EMAIL_FROM` must be a **verified sender** in Brevo                               |

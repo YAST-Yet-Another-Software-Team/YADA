@@ -20,7 +20,13 @@ export async function load({ locals }) {
 	return {
 		user: locals.user,
 		googleMapsApiKey: locals.user ? (env.GOOGLE_MAPS_API_KEY ?? '') : '',
-		googleMapsMapId: env.GOOGLE_MAPS_MAP_ID ?? 'DEMO_MAP_ID',
+		// `||`, not `??`: an empty GOOGLE_MAPS_MAP_ID is not a Map ID, and nullish
+		// coalescing would pass the empty string straight through. That is the
+		// worst failure this app has — `enabled` keys on the API key alone, so the
+		// grid placeholder never trips, and you get a correct, interactive basemap
+		// with every marker missing and nothing logged. There is no meaningful
+		// empty Map ID, so absent and blank are treated the same.
+		googleMapsMapId: env.GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID',
 		realtimeEnabled: env.REALTIME_ENABLED !== 'false'
 	};
 }
