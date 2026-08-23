@@ -1,0 +1,27 @@
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+Copyright 2026 The YADA contributors
+
+The documentation and design assets in this repository — everything under
+Docs/ and Design/, including the Software Requirements Specification, the
+database ERD, the API reference and OpenAPI schema, the design tokens and
+component sheets, the screenshots and the wireframes — are licensed under the
+Creative Commons Attribution 4.0 International License.
+
+You are free to share and adapt this material for any purpose, including
+commercially, provided you give appropriate credit, link to the licence, and
+indicate if changes were made.
+
+Licence deed:  https://creativecommons.org/licenses/by/4.0/
+Legal code:    https://creativecommons.org/licenses/by/4.0/legalcode
+
+Creative Commons does not require the full legal code to be copied into a
+work; marking the work with the notice above and linking to the licence is how
+CC BY is applied. The link is the licence.
+
+The source code in this repository is NOT covered by this licence. It is
+licensed under the Apache License, Version 2.0 — see LICENSE.
+
+Attribution for third-party material appearing in these documents, and for the
+OpenStreetMap data the application depends on, is recorded in NOTICE and
+THIRD-PARTY-NOTICES.md.

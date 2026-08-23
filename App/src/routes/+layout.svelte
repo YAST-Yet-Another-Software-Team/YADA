@@ -18,7 +18,7 @@
   // svelte-ignore state_referenced_locally
   const session = createSession(data.user);
   // svelte-ignore state_referenced_locally
-  const maps = createMapsConfig(data.googleMapsApiKey, data.googleMapsMapId);
+  const maps = createMapsConfig(data.mapStyleUrl, data.routingEnabled);
 
   // Both workspaces ring — couriers for a new offer, businesses for the points
   // of a delivery — so the preference is provided from the root rather than
@@ -28,7 +28,7 @@
   // And keep both in step if a later navigation reruns the layout load.
   $effect(() => {
     session.hydrate(data.user);
-    maps.hydrate(data.googleMapsApiKey, data.googleMapsMapId);
+    maps.hydrate(data.mapStyleUrl, data.routingEnabled);
   });
 
   /**

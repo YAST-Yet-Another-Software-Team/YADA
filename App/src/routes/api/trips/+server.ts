@@ -151,7 +151,10 @@ export const POST: RequestHandler = apiRoute(
         payload: JSON.stringify({
           pickup: { lat: business.lat, lng: business.lng },
           dropoff: { lat: dropoffLat, lng: dropoffLng },
-          mapsKeyConfigured: Boolean(env.GOOGLE_MAPS_API_KEY),
+          // Recorded so a trip with no stored ETA can be told apart later from
+          // one where routing was simply unconfigured. Tiles and geocoding need
+          // no key on this stack, so ORS is the only thing left to report.
+          routingConfigured: Boolean(env.ORS_API_KEY),
         }),
       });
 

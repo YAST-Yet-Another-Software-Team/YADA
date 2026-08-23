@@ -39,6 +39,12 @@ export type Landmark = {
  * there. Two entries predate that and carry their original numbers; they are
  * grouped at the bottom and marked.
  *
+ * © OpenStreetMap contributors, ODbL 1.0 — https://www.openstreetmap.org/copyright
+ *
+ * Three dozen hand-picked points is an insubstantial extract, so ODbL's
+ * share-alike does not reach this repository. The attribution is owed either
+ * way, and is repeated in the root NOTICE.
+ *
  * Two rules when editing:
  *
  *   - Read the coordinate off a map, don't estimate it. The original

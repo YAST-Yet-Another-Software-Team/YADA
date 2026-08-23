@@ -71,13 +71,13 @@
 	 * stored with the trip, so the dashboard can show an ETA before the first fix.
 	 */
 	async function refreshEstimate(origin: LatLng, destination: LatLng) {
-		if (!maps.enabled) {
+		if (!maps.routingEnabled) {
 			estimate = null;
 			return;
 		}
 
 		try {
-			const route = await computeDrivingRoute(maps.apiKey, origin, destination);
+			const route = await computeDrivingRoute(origin, destination);
 			estimate = {
 				distanceKm: route.distanceKm,
 				durationMinutes: route.durationMinutes,

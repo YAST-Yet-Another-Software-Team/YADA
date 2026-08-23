@@ -277,10 +277,10 @@
 	}
 
 	async function drawRoute(origin: LatLng, destination: LatLng) {
-		if (!maps.enabled) return;
+		if (!maps.routingEnabled) return;
 
 		try {
-			const route = await computeDrivingRoute(maps.apiKey, origin, destination, { force: true });
+			const route = await computeDrivingRoute(origin, destination, { force: true });
 			routePath = route.path;
 			etaText = route.durationText;
 		} catch {

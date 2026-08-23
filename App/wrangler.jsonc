@@ -1,5 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  // This stack IS the deployment now. It began as `yada-osm`, a second Worker
+  // running beside the Google build so the two could be compared on the same
+  // database and the same accounts; `116c6db` ended that comparison and took
+  // over the `yada` name and origin. The comment that used to sit here still
+  // warned against exactly that rename, which was true right up until it wasn't.
   "name": "yada",
   "main": ".svelte-kit/cloudflare/_worker.js",
   "compatibility_date": "2026-08-04",
@@ -18,8 +23,13 @@
     // where vite-plugin-socket-io does attach one.
     "REALTIME_ENABLED": "false",
     // Must exactly match the origin the browser uses, or sign-ins appear to
-    // succeed and then don't stick.
+    // succeed and then don't stick. This is the OSM origin, not the Google one.
     "BETTER_AUTH_URL": "https://yada.flaviosobbin04.workers.dev",
+    // MapLibre style document. OpenFreeMap serves OSM tiles with no key, no
+    // quota and no sign-up; swap for a Protomaps or self-hosted style URL to
+    // change the cartography. Blank it and the map falls back to the grid
+    // placeholder, which is the only way `maps.enabled` is false on this stack.
+    "MAP_STYLE_URL": "https://tiles.openfreemap.org/styles/liberty",
     // The From on confirmation and password-reset mail. Must be an address
     // *verified as a sender* in Brevo — it emails you a link to click. Not a
     // domain: this deployment is on a workers.dev subdomain with no DNS of its
@@ -28,4 +38,24 @@
     "EMAIL_FROM": "flaviosobbin04@gmail.com",
     "EMAIL_FROM_NAME": "YADA"
   }
+  // Secrets (never in this file), set with `wrangler secret put <NAME>`:
+  //   DATABASE_URL           the Neon *pooled* string (contains -pooler)
+  //   BETTER_AUTH_SECRET
+  //   BETTER_AUTH_API_KEY
+  //   OAUTH_GOOGLE_CLIENT_ID
+  //   OAUTH_GOOGLE_CLIENT_SECRET
+  //   BREVO_API_KEY          transactional mail; absent falls back to the
+  //                          console transport, which logs the link instead of
+  //                          sending it. See $lib/server/email.
+  //   ORS_API_KEY            OpenRouteService; absent means routingEnabled is
+  //                          false and the app falls back to no ETA rather
+  //                          than erroring. It is a secret and not a var
+  //                          because ORS keys cannot be referrer-locked, which
+  //                          is the whole reason /api/geo/route exists.
+  //
+  // No GOOGLE_MAPS_* here: this stack has no browser map credential at all.
+  //
+  // Unlike the `yada` worker, nothing on this one was ever set as a plaintext
+  // dashboard variable — set them as secrets from the start and `npm run deploy`
+  // needs no --keep-vars guard.
 }

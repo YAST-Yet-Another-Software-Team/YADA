@@ -3,26 +3,27 @@
  *
  * Geocoding answers "where is this address?", which needs a whole address to
  * work with — it has nothing useful to say about "ayed". Predictions are a
- * different service for a different question ("what might they be typing?"),
- * and they are what makes a search bar behave the way people expect a map's
- * search bar to behave.
+ * different question ("what might they be typing?"), and they are what makes a
+ * search bar behave the way people expect a map's search bar to behave.
  *
- * Billing note: predictions are charged per *session*, not per keystroke — a
- * run of keystrokes plus the place lookup that follows count as one, as long as
- * they share a session token. `startSession` mints one; `resolveSuggestion`
- * closes it, and the next keystroke opens the next. Getting this wrong is the
- * difference between one charge and one per letter typed.
+ * On the OSM stack both questions go to the same place. Photon is built for
+ * search-as-you-type and answers partial input directly, so predictions are the
+ * same endpoint `forwardGeocode` uses, asked more often and with a shorter
+ * query.
+ *
+ * Two things the Google implementation needed are simply gone. There are no
+ * session tokens, because there is no per-session billing to batch keystrokes
+ * into — Photon is free, and the debounce in the caller is now purely about not
+ * being rude. And `resolveSuggestion` costs nothing: a Photon prediction already
+ * carries its coordinates, where a Google prediction was an opaque handle that
+ * had to be redeemed with a second billed call.
  */
 
-import {
-  GeoError,
-  geoErrorMessage,
-  mapGoogleStatusToGeoError,
-} from "$lib/shared/geo/errors";
-import { getZoneBounds } from "$lib/shared/geo/service-area";
-import type { CachedGeocode } from "$lib/utils/types";
+import { GeoError, geoErrorMessage } from '$lib/shared/geo/errors';
+import { getZoneBounds, KUMASI_CENTER } from '$lib/shared/geo/service-area';
+import type { CachedGeocode } from '$lib/utils/types';
 
-import { loadGoogleMapsPlaces } from "./google-maps-loader";
+import { photonLabel } from './geocoding';
 
 export type PlaceSuggestion = {
   id: string;
@@ -30,160 +31,97 @@ export type PlaceSuggestion = {
   mainText: string;
   /** Where it is: "KNUST, Kumasi". Often empty. */
   secondaryText: string;
-  /** Opaque handle used by `resolveSuggestion` to fetch coordinates. */
-  prediction: PlacePrediction;
-};
-
-type PlaceLike = {
-  fetchFields?: (options: { fields: string[] }) => Promise<unknown>;
-  formattedAddress?: string;
-  displayName?: string | { text?: string };
-  id?: string;
-  location?:
-    { lat: () => number; lng: () => number } | { lat: number; lng: number };
-};
-
-type PlacePrediction = {
-  placeId?: string;
-  text?: { text?: string } | string;
-  mainText?: { text?: string } | string;
-  secondaryText?: { text?: string } | string;
-  toPlace: () => Promise<PlaceLike> | PlaceLike;
-};
-
-type PlacesNamespace = {
-  AutocompleteSessionToken?: new () => unknown;
-  AutocompleteSuggestion?: {
-    fetchAutocompleteSuggestions: (
-      request: Record<string, unknown>,
-    ) => Promise<{
-      suggestions?: Array<{ placePrediction?: PlacePrediction }>;
-    }>;
-  };
+  /**
+   * The resolved place. Named `prediction` for continuity with the callers, but
+   * unlike Google's handle this is already the answer — see the module note.
+   */
+  prediction: CachedGeocode;
 };
 
 /** How many predictions to show. More than this is a list, not a shortcut. */
 const MAX_SUGGESTIONS = 5;
 
-let placesReady = false;
-let sessionToken: unknown = null;
+const PHOTON = 'https://photon.komoot.io';
+const REQUEST_TIMEOUT_MS = 4000;
 
-async function places(apiKey: string): Promise<PlacesNamespace> {
-  if (!apiKey)
-    throw new GeoError("unavailable", geoErrorMessage("unavailable"));
-
-  if (!placesReady) {
-    await loadGoogleMapsPlaces(apiKey);
-    placesReady = true;
-  }
-
-  return google.maps.places as unknown as PlacesNamespace;
-}
-
-function textOf(value: { text?: string } | string | undefined) {
-  return typeof value === "string" ? value : (value?.text ?? "");
-}
-
-/**
- * Begin a billing session, if one isn't already open. Called on the first
- * keystroke of a search rather than on every one.
- */
-async function ensureSession(api: PlacesNamespace) {
-  if (!sessionToken && api.AutocompleteSessionToken) {
-    sessionToken = new api.AutocompleteSessionToken();
-  }
-}
+type PhotonFeature = {
+  geometry?: { coordinates?: [number, number] };
+  properties?: { osm_id?: number; osm_type?: string; [key: string]: unknown };
+};
 
 /**
  * Predictions for a partial query, biased to the KNUST service area so the
  * hostel down the road outranks its namesake on another continent.
  *
- * Returns an empty list rather than throwing when Places isn't available in the
- * loaded SDK: the caller still has Enter-to-geocode and the map itself, and a
- * search bar that can't predict is worth strictly more than an error banner.
+ * Returns an empty list rather than throwing when Photon is unreachable: the
+ * caller still has the landmark table, Enter-to-geocode and the map itself, and
+ * a search bar that can't predict is worth strictly more than an error banner.
  */
-export async function fetchPlaceSuggestions(
-  apiKey: string,
-  query: string,
-): Promise<PlaceSuggestion[]> {
+export async function fetchPlaceSuggestions(query: string): Promise<PlaceSuggestion[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
 
-  const api = await places(apiKey);
-  if (!api.AutocompleteSuggestion?.fetchAutocompleteSuggestions) return [];
-
-  await ensureSession(api);
-
   const zone = getZoneBounds();
-  const { suggestions } =
-    await api.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-      input: trimmed,
-      includedRegionCodes: ["gh"],
-      language: "en",
-      sessionToken: sessionToken ?? undefined,
-      locationBias: {
-        west: zone.west,
-        south: zone.south,
-        east: zone.east,
-        north: zone.north,
-      },
+  const url =
+    `${PHOTON}/api?q=${encodeURIComponent(trimmed)}` +
+    `&lat=${KUMASI_CENTER.lat}&lon=${KUMASI_CENTER.lng}` +
+    `&bbox=${zone.west},${zone.south},${zone.east},${zone.north}` +
+    `&limit=${MAX_SUGGESTIONS}&lang=en`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let data: { features?: PhotonFeature[] };
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { Accept: 'application/json' }
     });
+    if (!response.ok) return [];
+    data = await response.json();
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
 
-  return (suggestions ?? [])
-    .map((item, index): PlaceSuggestion | null => {
-      const prediction = item.placePrediction;
-      if (!prediction) return null;
+  return (data.features ?? [])
+    .map((feature, index): PlaceSuggestion | null => {
+      const coords = feature.geometry?.coordinates;
+      if (!coords) return null;
 
-      const main =
-        textOf(prediction.mainText) || textOf(prediction.text) || trimmed;
+      const { main, secondary } = photonLabel(feature);
+      const p = feature.properties ?? {};
+      const id = p.osm_type && p.osm_id ? `${p.osm_type}${p.osm_id}` : `suggestion-${index}`;
 
       return {
-        id: prediction.placeId ?? `suggestion-${index}`,
+        id,
         mainText: main,
-        secondaryText: textOf(prediction.secondaryText),
-        prediction,
+        secondaryText: secondary,
+        prediction: {
+          address: secondary ? `${main}, ${secondary}` : main,
+          lat: coords[1],
+          lng: coords[0],
+          placeId: id
+        }
       };
     })
     .filter((item): item is PlaceSuggestion => item != null)
     .slice(0, MAX_SUGGESTIONS);
 }
 
-/** Turn a chosen prediction into the coordinate the delivery actually needs. */
-export async function resolveSuggestion(
-  suggestion: PlaceSuggestion,
-): Promise<CachedGeocode> {
-  let place: PlaceLike;
-
-  try {
-    place = await Promise.resolve(suggestion.prediction.toPlace());
-    if (typeof place.fetchFields === "function") {
-      await place.fetchFields({
-        fields: ["formattedAddress", "location", "displayName", "id"],
-      });
-    }
-  } catch (error) {
-    const status = (error as { code?: string })?.code;
-    throw status
-      ? mapGoogleStatusToGeoError(status)
-      : new GeoError("unavailable", geoErrorMessage("unavailable"));
-  } finally {
-    // The lookup closes the session whether or not it succeeded; a token is only
-    // good for one resolution either way.
-    sessionToken = null;
+/**
+ * Turn a chosen prediction into the coordinate the delivery actually needs.
+ *
+ * Kept as an async function even though it no longer waits for anything: the
+ * callers `await` it, and a provider that does need a second lookup can slot in
+ * here without touching them.
+ */
+export async function resolveSuggestion(suggestion: PlaceSuggestion): Promise<CachedGeocode> {
+  if (!suggestion.prediction) {
+    throw new GeoError('no_results', geoErrorMessage('no_results'));
   }
 
-  const location = place.location;
-  if (!location) throw mapGoogleStatusToGeoError("ZERO_RESULTS");
-
-  const displayName =
-    typeof place.displayName === "string"
-      ? place.displayName
-      : place.displayName?.text;
-
-  return {
-    address: place.formattedAddress ?? displayName ?? suggestion.mainText,
-    lat: typeof location.lat === "function" ? location.lat() : location.lat,
-    lng: typeof location.lng === "function" ? location.lng() : location.lng,
-    placeId: place.id ?? suggestion.id,
-  };
+  return suggestion.prediction;
 }
