@@ -1,6 +1,5 @@
 /// <reference types="unplugin-icons/types/svelte" />
-// No `google.maps` reference on this stack: MapLibre ships its own types with
-// the package, so the map code needs nothing declared here.
+/// <reference types="google.maps" />
 
 import type { auth } from '$auth/auth.server';
 import type { SessionUser } from '$lib/utils/types';

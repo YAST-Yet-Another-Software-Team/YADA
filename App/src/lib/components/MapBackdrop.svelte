@@ -36,15 +36,6 @@
      */
     pulseScale?: number;
     /**
-     * How far the pulse throws, as a multiple of the glyph's own size.
-     *
-     * Not a distance. The rings say "the search has widened" and nothing more
-     * precise — see `ringReach` in $lib/shared/dispatch for why the radius in
-     * metres is deliberately not what drives this. A caller that only wants a
-     * pulse leaves it alone and gets the default.
-     */
-    pulseScale?: number;
-    /**
      * Which way this party is travelling, 0–360° clockwise from north.
      *
      * Only a rider has one — a counter does not face anywhere — and only while
@@ -95,21 +86,6 @@
     return Math.max(DEFAULT_PULSE_SCALE, marker.pulseScale ?? DEFAULT_PULSE_SCALE);
   }
 
-  /** The throw a pulsing marker gets when its caller doesn't ask for one. */
-  const DEFAULT_PULSE_SCALE = 3.4;
-
-  /**
-   * The pulse throw for a marker, floored at the default.
-   *
-   * Floored rather than trusted outright: a scale under 1 would animate the
-   * ring *inward*, and a caller computing this from a ring index that hasn't
-   * arrived yet would otherwise get a marker that looks broken rather than one
-   * that looks new.
-   */
-  function pulseScaleOf(marker: MapMarker) {
-    return Math.max(DEFAULT_PULSE_SCALE, marker.pulseScale ?? DEFAULT_PULSE_SCALE);
-  }
-
   /**
    * How far the direction pointer's tip sits from the centre of the glyph it
    * orbits, in pixels.
@@ -127,27 +103,9 @@
 </script>
 
 <script lang="ts">
-  /**
-   * The map pane, on MapLibre GL JS with OpenStreetMap tiles.
-   *
-   * The props contract is deliberately identical to the Google implementation
-   * this replaces — a dozen call sites depend on it, and preserving it is what
-   * made the swap a single-file change. `polylinePath` stays `$bindable` for the
-   * same reason, even though nothing here writes back to it.
-   *
-   * MapLibre differs from the Google SDK in two ways that shape the code below.
-   * It is a module import rather than a script the page loads at runtime, so
-   * there is no loader and no API key — but it must be imported dynamically,
-   * because it touches `window` at module scope and would break SSR. And it has
-   * no marker/polyline objects with a `map` property: markers are DOM elements
-   * attached to the map, and a line is a GeoJSON source with a layer over it,
-   * which is why the route is updated by calling `setData` rather than by
-   * tearing down and rebuilding.
-   */
   import { mount, onDestroy, onMount, unmount, type Snippet } from 'svelte';
-  import type { GeoJSONSource, LngLatLike, Map as MapLibreMap, Marker } from 'maplibre-gl';
+  import { loadGoogleMaps, loadGoogleMapsMarker } from '$lib/client/maps/google-maps-loader';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
-  import { zoomToContain } from '$lib/shared/geo/fit';
   import { zoomToContain } from '$lib/shared/geo/fit';
   import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
   import {
@@ -160,6 +118,7 @@
   } from '$lib/shared/geo/framing';
   import type { LatLng } from '$lib/utils/types';
   import { MAP_COLORS, MAP_ROLE_COLORS, MAP_SURFACE } from '$lib/styles/map-colors';
+  import { resolveTheme, watchResolvedTheme, type ResolvedTheme } from '$lib/client/theme';
   import IconRecentre from '~icons/mdi/crosshairs-gps';
 
   let {
@@ -172,7 +131,6 @@
     hintPath = [],
     center = null,
     zoom = null,
-    contain = [],
     contain = [],
     children,
     onpick
@@ -196,7 +154,7 @@
     polylinePath?: LatLng[];
     /**
      * A straight dashed line — "and then it goes over there". Deliberately not
-     * a route: it costs no routing call, and drawing it as roads would claim a
+     * a route: it costs no Routes call, and drawing it as roads would claim a
      * precision about a journey nobody has started.
      */
     hintPath?: LatLng[];
@@ -214,40 +172,18 @@
      * Ignored while `fitIds` is set — framing already owns the camera then.
      */
     contain?: LatLng[];
-    /**
-     * Points that must stay on screen *without* moving the camera off `center`.
-     *
-     * Unlike `fitIds`, which frames a set and puts the middle of that set in
-     * the middle of the screen, this only ever loosens `zoom`: the centre is
-     * left exactly where the caller put it and the camera opens out until the
-     * furthest point is inside. `zoom` remains the tightest the camera will go,
-     * so a caller whose points are already in view gets the zoom it asked for.
-     *
-     * Ignored while `fitIds` is set — framing already owns the camera then.
-     */
-    contain?: LatLng[];
     children?: Snippet;
     onpick?: (detail: { lat: number; lng: number }) => void;
   } = $props();
 
-  const ROUTE_SOURCE = 'yada-route';
-  const ROUTE_LAYER = 'yada-route-line';
-  const HINT_SOURCE = 'yada-hint';
-  const HINT_LAYER = 'yada-hint-line';
-
   let mapElement = $state<HTMLDivElement | null>(null);
   let mapState = $state<'fallback' | 'loading' | 'ready' | 'error'>('fallback');
-  let map: MapLibreMap | null = null;
+  let map = $state<google.maps.Map | null>(null);
+  let googleMaps = $state<typeof google.maps | null>(null);
+  let markerApi = $state<google.maps.MarkerLibrary | null>(null);
+  let routePolyline: google.maps.Polyline | null = null;
+  let hintPolyline: google.maps.Polyline | null = null;
   let lastCenteredKey = '';
-
-  /**
-   * The zoom the camera was last *sent* to, which is not the zoom it is at: a
-   * viewer who pinches afterwards owns the camera until something actually asks
-   * for a different number. Comparing against the target rather than
-   * `getZoom()` is what stops a rider poll that changes nothing from hauling
-   * the view back every ten seconds.
-   */
-  let lastZoomTarget: number | null = null;
 
   /**
    * The zoom the camera was last *sent* to, which is not the zoom it is at: a
@@ -259,18 +195,11 @@
   let lastZoomTarget: number | null = null;
   const maps = getMapsConfig();
 
-  /**
-   * The knockout colour for marker outlines.
-   *
-   * Under the Google build this followed the app theme, because the basemap did
-   * too — `colorScheme` handed a dark app dark cartography, and a white outline
-   * against it was glare. The OSM style is a single URL with a single palette
-   * and stays light whichever theme the app is in, so the outline that separates
-   * a marker from the streets under it stays light with it. That is also why
-   * nothing here rebuilds the map on a theme change: there is no second
-   * cartography to rebuild it into.
-   */
-  const MARKER_KNOCKOUT = MAP_SURFACE.light;
+  /** Every listener this component owns, dropped together on teardown. */
+  let listeners: google.maps.MapsEventListener[] = [];
+
+  /** The one-shot that clamps zoom after a fit; replaced on each fit. */
+  let clampListener: google.maps.MapsEventListener | null = null;
 
   /**
    * One rendered marker, kept so the next update can move it rather than
@@ -279,7 +208,7 @@
    * common case for both and the whole point of holding these.
    */
   type RenderedMarker = {
-    marker: Marker;
+    marker: google.maps.marker.AdvancedMarkerElement;
     icons: Record<string, unknown>[];
     signature: string;
     /** The layer the direction pointer hangs off, or null for a marker with none. */
@@ -294,6 +223,16 @@
   };
 
   let rendered = new Map<string, RenderedMarker>();
+
+  /**
+   * True while a camera move of ours is in flight.
+   *
+   * The fence around the feedback loop this component would otherwise have:
+   * `fitBounds` fires `bounds_changed`, and `bounds_changed` is what decides
+   * whether to fit. Without a way to tell our own move from the viewer's, the
+   * two chase each other forever.
+   */
+  let programmatic = false;
 
   /** The viewer took the wheel; nothing moves the camera until they ask. */
   let suspended = $state(false);
@@ -310,6 +249,31 @@
    */
   let framedCount = 0;
 
+  /**
+   * Backstop for the fence.
+   *
+   * `programmatic` is cleared on the next `idle` — but a move that changes
+   * nothing (fitting a camera that already fits) fires no `idle` at all, and
+   * the flag would then stay up forever, swallowing every gesture after it.
+   */
+  let fenceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /**
+   * Held rather than derived because the map is rebuilt from it, and rebuilding
+   * has to happen at a moment of our choosing rather than mid-render.
+   * Server-side it is never read: nothing draws until onMount.
+   */
+  let theme: ResolvedTheme = 'light';
+  let mapsLibrary: google.maps.MapsLibrary | null = null;
+  let stopThemeWatch: (() => void) | null = null;
+
+  /**
+   * One lookup, no per-shape special cases: which hue a role gets is decided in
+   * `MAP_ROLE_COLORS` and nowhere else, so the dashboard, tracking and the
+   * request map cannot drift apart. This used to force every glyph role to
+   * primary here as well, which quietly outranked the table and made two of its
+   * entries unreachable.
+   */
   function markerColor(marker: MapMarker) {
     if (marker.role) return MAP_ROLE_COLORS[marker.role];
     return marker.accent ? MAP_COLORS.primary : MAP_COLORS.secondary;
@@ -327,19 +291,39 @@
     return `${point.lat.toFixed(4)},${point.lng.toFixed(4)}`;
   }
 
-  /** MapLibre speaks [lng, lat]; the rest of the app speaks {lat, lng}. */
-  function toLngLat(point: LatLng): LngLatLike {
-    return [point.lng, point.lat];
+  /**
+   * Run a camera move with the fence up.
+   *
+   * The flag is cleared on the next `idle` rather than immediately: a pan or a
+   * fit settles over several frames and fires `bounds_changed` throughout, and
+   * every one of those is ours.
+   */
+  function moveCamera(run: () => void) {
+    if (!map) return;
+
+    programmatic = true;
+    if (fenceTimer) clearTimeout(fenceTimer);
+    fenceTimer = setTimeout(() => {
+      fenceTimer = undefined;
+      programmatic = false;
+    }, 1500);
+
+    run();
+  }
+
+  function dropFence() {
+    if (fenceTimer) clearTimeout(fenceTimer);
+    fenceTimer = undefined;
+    programmatic = false;
   }
 
   /** Pan, and only change zoom when a caller actually asked for one. */
   function panToPoint(point: LatLng, nextZoom?: number | null) {
     if (!map) return;
 
-    map.easeTo({
-      center: toLngLat(point),
-      ...(nextZoom != null ? { zoom: nextZoom } : {}),
-      duration: 400
+    moveCamera(() => {
+      map!.panTo(point);
+      if (nextZoom != null) map!.setZoom(nextZoom);
     });
   }
 
@@ -357,22 +341,23 @@
     const bounds = map?.getBounds();
     if (!bounds) return null;
 
+    const southWest = bounds.getSouthWest();
+    const northEast = bounds.getNorthEast();
+
     return {
-      south: bounds.getSouth(),
-      west: bounds.getWest(),
-      north: bounds.getNorth(),
-      east: bounds.getEast()
+      south: southWest.lat(),
+      west: southWest.lng(),
+      north: northEast.lat(),
+      east: northEast.lng()
     };
   }
 
   /**
    * Frame everything in `fitIds`.
    *
-   * A single point is panned to rather than fitted: fitting a zero-width box
-   * zooms to the maximum the map will give, which is a street-level close-up of
-   * one marker. Unlike the Google SDK, MapLibre takes `maxZoom` on the fit
-   * itself, so the cap needs no follow-up listener — two parties on the same
-   * street cannot fill the screen with the gap between them.
+   * A single point is panned to rather than fitted: `fitBounds` on a
+   * zero-width box zooms to the maximum the map will give, which is a
+   * street-level close-up of one marker.
    */
   function frameNow() {
     const points = fitPoints();
@@ -389,13 +374,28 @@
     const box = boundsOf(points);
     if (!box) return;
 
-    map.fitBounds(
-      [
-        [box.west, box.south],
-        [box.east, box.north]
-      ],
-      { padding: FIT_PADDING_PX, maxZoom: FIT_MAX_ZOOM, duration: 400 }
-    );
+    moveCamera(() => {
+      map!.fitBounds(
+        { south: box.south, west: box.west, north: box.north, east: box.east },
+        FIT_PADDING_PX
+      );
+
+      // `fitBounds` has no maxZoom, so the cap is applied once it has settled.
+      // Two parties on the same street would otherwise fill the screen with
+      // the gap between them.
+      //
+      // One listener, replaced rather than accumulated: fits happen for the
+      // life of a trip, and a `once` listener that never fires — because the
+      // fit changed nothing — would otherwise pile up.
+      clampListener?.remove();
+      clampListener = google.maps.event.addListenerOnce(map!, 'idle', () => {
+        clampListener = null;
+
+        if ((map?.getZoom() ?? 0) > FIT_MAX_ZOOM) {
+          moveCamera(() => map?.setZoom(FIT_MAX_ZOOM));
+        }
+      });
+    });
   }
 
   function clearRefit() {
@@ -472,15 +472,8 @@
       return;
     }
 
-    // Captured, not re-read. `center` is a prop and the SDK below resolves
-    // asynchronously, so by the time this function finishes `center` may be a
-    // different point than the map was actually built at — see the comment
-    // where `lastCenteredKey` is armed at the end of this function.
-    const builtAt = center ?? KUMASI_CENTER;
-    const builtZoom = zoom;
-
     map = new mapsLibrary.Map(mapElement, {
-      center: builtAt,
+      center: center ?? KUMASI_CENTER,
       zoom: zoom ?? KUMASI_DEFAULT_ZOOM,
       // AdvancedMarkerElement renders nothing without a Map ID.
       mapId: maps.mapId,
@@ -529,17 +522,11 @@
     );
 
     mapState = 'ready';
-    // `builtAt`, not `center`. This used to re-read the prop, and on any page
-    // whose centre arrives *while the map is still being built* that silently
-    // armed the "already there" guard with a point the camera had never been
-    // moved to: the map stayed where it was built and the follow effect below
-    // declined to correct it, because the key it compared against was the new
-    // centre. On /tracking that meant a search framed on the zone centre with
-    // the counter it was searching around somewhere off screen — visible only
-    // when the two happened to differ, which is why it survived a test where
-    // the shop sat exactly on the zone centre.
-    lastCenteredKey = centerKey(builtAt);
-    lastZoomTarget = builtZoom;
+    lastCenteredKey = centerKey(center ?? KUMASI_CENTER);
+    // Same reasoning as the polyline memo keys in `teardownMap`: a rebuilt map
+    // is at its construction zoom, so a target carried over from the discarded
+    // one would let the follow effect decide the camera was already there.
+    lastZoomTarget = zoom;
     syncMarkers();
     syncPolylines();
     reviewFraming();
@@ -640,9 +627,7 @@
    *
    * Position is deliberately absent: a moving rider is the common case, and
    * the whole reason these are held is so movement is an assignment rather
-   * than a teardown. Heading is absent for the same reason — it is applied to
-   * the element already on screen, see `applyHeading`. There is no theme here
-   * either: the cartography does not follow the app's.
+   * than a teardown.
    */
   function markerSignature(marker: MapMarker) {
     return [
@@ -650,6 +635,10 @@
       marker.label ?? '',
       marker.accent ? 'accent' : '',
       marker.stale ? 'stale' : '',
+      // The throw is part of the signature, not just the fact of pulsing: the
+      // tracking screen widens it as the search grows, and the rings are built
+      // with their reach and cadence baked into a Web Animations call that
+      // nothing later reaches back into.
       marker.pulse ? `pulse:${pulseScaleOf(marker)}` : '',
       // Heading is absent for the same reason position is: it changes with
       // every fix, and rebuilding the marker to turn it would unmount and
@@ -701,7 +690,7 @@
     const wedge = document.createElementNS(namespace, 'path');
     wedge.setAttribute('d', `M${POINTER_W / 2} 0 L${POINTER_W} ${POINTER_H} L0 ${POINTER_H} Z`);
     wedge.setAttribute('fill', color);
-    wedge.setAttribute('stroke', MARKER_KNOCKOUT);
+    wedge.setAttribute('stroke', MAP_SURFACE[theme]);
     wedge.setAttribute('stroke-width', '2');
     wedge.setAttribute('stroke-linejoin', 'round');
     wedge.setAttribute('paint-order', 'stroke');
@@ -726,7 +715,7 @@
       return;
     }
 
-    const delta = ((((heading - entry.angle) % 360) + 540) % 360) - 180;
+    const delta = (((heading - entry.angle) % 360) + 540) % 360 - 180;
 
     entry.angle += delta;
     entry.rotor.style.opacity = '1';
@@ -734,60 +723,46 @@
   }
 
   /**
-   * The element MapLibre will own: a teardrop for a dropped pin, a bare glyph
-   * for a party.
+   * Content for the roles that aren't a dropped pin.
    *
    * Riders and businesses used to be a filled disc with the glyph knocked out
    * of it, which reads as a *place* — the same badge a pin is. They are drawn
-   * as the bare glyph instead: brand red, and outlined a hairline in the
-   * surface colour, which is the whole trick behind a racing-game minimap icon.
-   * The outline is what separates the shape from whatever it is sitting on.
+   * as the bare glyph instead: red, and outlined a hairline in the surface
+   * colour, which is the whole trick behind a racing-game minimap icon. The
+   * outline is what separates the shape from whatever it is sitting on, and it
+   * follows the theme — white over Google's light cartography, near-black over
+   * its dark one — so it reads as separation either way rather than as glare.
    *
    * Markers with no role at all keep the plain dot; there is no shape to
    * outline, so the ring is still doing the separating.
    */
   function markerContent(marker: MapMarker, color: string, icons: Record<string, unknown>[]) {
-    const isPin = marker.role === 'search' || marker.role === 'dropoff';
+    const icon = marker.role ? ROLE_ICONS[marker.role] : undefined;
     const element = document.createElement('div');
     let size: number;
 
-    if (isPin) {
-      // MapLibre has no PinElement, so the teardrop is drawn here. Nudged up by
-      // its own tip so the point of the drop sits on the coordinate.
-      size = 34;
-      element.innerHTML = `
-        <svg width="26" height="34" viewBox="0 0 26 34" aria-hidden="true">
-          <path d="M13 33C13 33 25 20.5 25 13A12 12 0 1 0 1 13c0 7.5 12 20 12 20Z"
-                fill="${color}" stroke="${MARKER_KNOCKOUT}" stroke-width="2"/>
-          <circle cx="13" cy="13" r="4.5" fill="${MARKER_KNOCKOUT}"/>
-        </svg>`;
-      element.style.transform = 'translateY(-6px)';
+    if (icon) {
+      size = (marker.role && ROLE_ICON_PX[marker.role]) || 24;
+
+      element.style.display = 'flex';
+      element.style.alignItems = 'center';
+      element.style.justifyContent = 'center';
+
+      element.style.color = color;
+      element.style.stroke = MAP_SURFACE[theme];
+      element.style.setProperty('stroke-width', '2');
+      element.style.setProperty('paint-order', 'stroke');
+
+      icons.push(mount(icon, { target: element, props: { width: size, height: size } }));
     } else {
-      const icon = marker.role ? ROLE_ICONS[marker.role] : undefined;
+      size = 30;
 
-      if (icon) {
-        size = (marker.role && ROLE_ICON_PX[marker.role]) || 24;
-
-        element.style.display = 'flex';
-        element.style.alignItems = 'center';
-        element.style.justifyContent = 'center';
-
-        element.style.color = color;
-        element.style.stroke = MARKER_KNOCKOUT;
-        element.style.setProperty('stroke-width', '2');
-        element.style.setProperty('paint-order', 'stroke');
-
-        icons.push(mount(icon, { target: element, props: { width: size, height: size } }));
-      } else {
-        size = 30;
-
-        element.style.width = `${size}px`;
-        element.style.height = `${size}px`;
-        element.style.borderRadius = '50%';
-        element.style.background = color;
-        element.style.border = `2px solid ${MARKER_KNOCKOUT}`;
-        element.style.boxSizing = 'content-box';
-      }
+      element.style.width = `${size}px`;
+      element.style.height = `${size}px`;
+      element.style.borderRadius = '50%';
+      element.style.background = color;
+      element.style.border = `2px solid ${MAP_SURFACE[theme]}`;
+      element.style.boxSizing = 'content-box';
     }
 
     const steerable = Boolean(marker.role && ROLE_HAS_HEADING[marker.role]);
@@ -825,26 +800,6 @@
       const ringCount = Math.max(2, Math.min(6, Math.round(duration / RING_CADENCE_MS)));
 
       for (let index = 0; index < ringCount; index++) {
-      // API instead of a keyframes rule.
-      const reach = pulseScaleOf(marker);
-
-      // A wider throw is given longer to travel, so a ring keeps roughly the
-      // same speed instead of snapping outward as the search grows — the change
-      // should read as reaching further, not as hurrying.
-      const duration = Math.round(2400 * (reach / DEFAULT_PULSE_SCALE));
-
-      // …which is why the count is derived rather than fixed. This was two
-      // rings 1200 ms apart, which is one launched every half-cycle only while
-      // a cycle is 2400 ms. Once the tracking screen widened the throw, the
-      // cycle stretched past 6 s and that same pair travelled almost together
-      // and then left five seconds of nothing — a double blink, not a pulse.
-      // Holding the *cadence* at roughly 1200 ms and spacing whatever number of
-      // rings that needs across the cycle keeps it continuous at any reach, and
-      // collapses back to exactly the original two at the default.
-      const RING_CADENCE_MS = 1200;
-      const ringCount = Math.max(2, Math.min(6, Math.round(duration / RING_CADENCE_MS)));
-
-      for (let index = 0; index < ringCount; index++) {
         const ring = document.createElement('div');
         ring.style.position = 'absolute';
         ring.style.width = `${size}px`;
@@ -856,14 +811,7 @@
           [
             { transform: 'scale(1)', opacity: 0.75 },
             { transform: `scale(${reach})`, opacity: 0 }
-            { transform: `scale(${reach})`, opacity: 0 }
           ],
-          {
-            duration,
-            iterations: Infinity,
-            delay: Math.round((duration / ringCount) * index),
-            easing: 'ease-out'
-          }
           {
             duration,
             iterations: Infinity,
@@ -884,20 +832,37 @@
   }
 
   /** Build one marker's DOM and the Svelte roots that live inside it. */
-  function buildMarker(marker: MapMarker, instance: MapLibreMap): RenderedMarker {
+  function buildMarker(marker: MapMarker, api: google.maps.MarkerLibrary): RenderedMarker {
     const color = markerColor(marker);
+    const isPin = marker.role === 'search' || marker.role === 'dropoff';
     const icons: Record<string, unknown>[] = [];
-    const built = markerContent(marker, color, icons);
 
-    // MapLibre's Marker has no opacity option — it takes a DOM element, so
-    // staleness is expressed on the element itself.
+    // PinElement extends HTMLElement, so it is its own content — and it is a
+    // dropped pin, which never faces anywhere.
+    const built = isPin
+      ? {
+          content: new api.PinElement({
+            background: color,
+            borderColor: MAP_SURFACE[theme],
+            glyphColor: MAP_SURFACE[theme],
+            scale: 1.2
+          }) as unknown as HTMLElement,
+          rotor: null
+        }
+      : markerContent(marker, color, icons);
+
+    // AdvancedMarkerElement has no opacity option — it takes a DOM element,
+    // so staleness is expressed on the element itself.
     built.content.style.opacity = marker.stale ? '0.45' : '1';
-    if (marker.label) built.content.title = marker.label;
 
     const entry: RenderedMarker = {
-      marker: new MarkerCtor({ element: built.content, anchor: 'center' })
-        .setLngLat(toLngLat(marker))
-        .addTo(instance),
+      marker: new api.AdvancedMarkerElement({
+        map,
+        position: { lat: marker.lat, lng: marker.lng },
+        title: marker.label,
+        zIndex: marker.role === 'search' || marker.role === 'dropoff' ? 999 : 10,
+        content: built.content
+      }),
       icons,
       signature: markerSignature(marker),
       rotor: built.rotor,
@@ -915,11 +880,6 @@
     return entry;
   }
 
-  function dropMarker(entry: RenderedMarker) {
-    entry.marker.remove();
-    entry.icons.forEach((icon) => void unmount(icon));
-  }
-
   /**
    * Bring the rendered markers in line with the incoming set, keyed by `id`.
    *
@@ -930,8 +890,11 @@
    * *appearance* changed is rebuilt.
    */
   function syncMarkers() {
-    const instance = map;
-    if (!instance) return;
+    const currentMarkerApi = markerApi;
+
+    if (!map || !currentMarkerApi) {
+      return;
+    }
 
     const seen = new Set<string>();
 
@@ -941,20 +904,24 @@
       const existing = rendered.get(marker.id);
 
       if (existing && existing.signature === markerSignature(marker)) {
-        existing.marker.setLngLat(toLngLat(marker));
+        existing.marker.position = { lat: marker.lat, lng: marker.lng };
         applyHeading(existing, marker.heading);
         continue;
       }
 
-      if (existing) dropMarker(existing);
+      if (existing) {
+        existing.marker.map = null;
+        existing.icons.forEach((icon) => void unmount(icon));
+      }
 
-      rendered.set(marker.id, buildMarker(marker, instance));
+      rendered.set(marker.id, buildMarker(marker, currentMarkerApi));
     }
 
     for (const [id, entry] of rendered) {
       if (seen.has(id)) continue;
 
-      dropMarker(entry);
+      entry.marker.map = null;
+      entry.icons.forEach((icon) => void unmount(icon));
       rendered.delete(id);
     }
 
@@ -962,208 +929,80 @@
     reviewFraming();
   }
 
-  function lineData(path: LatLng[]): GeoJSON.Feature<GeoJSON.LineString> {
-    return {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'LineString',
-        coordinates: path.length > 1 ? path.map((point) => [point.lng, point.lat]) : []
-      }
-    };
+  /** Cheap identity for a path: nothing but its ends and its length move. */
+  function pathKey(path: LatLng[]) {
+    if (path.length === 0) return '';
+    const first = path[0];
+    const last = path[path.length - 1];
+    return `${path.length}:${centerKey(first)}:${centerKey(last)}`;
   }
 
-  /**
-   * Update both lines in place.
-   *
-   * The sources and layers are created once, when the style loads, and only
-   * their data changes afterwards — removing and re-adding a layer on every fix
-   * makes the line flicker, and mid-trip this runs whenever the rider leaves it.
-   * That is also why there is no memo key here as there was under the Google
-   * build: `setData` on an unchanged path is cheap and, unlike a rebuild, has
-   * nothing to get out of step with.
-   */
+  let routeKey = '';
+  let hintKey = '';
+
   function syncPolylines() {
-    const instance = map;
-    if (!instance || !instance.isStyleLoaded()) return;
+    if (!map || !googleMaps) return;
 
-    const route = instance.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
-    route?.setData(lineData(polylinePath));
+    const nextRouteKey = pathKey(polylinePath);
+    const nextHintKey = pathKey(hintPath);
 
-    const hint = instance.getSource(HINT_SOURCE) as GeoJSONSource | undefined;
-    hint?.setData(lineData(hintPath));
-  }
+    if (nextRouteKey !== routeKey) {
+      routeKey = nextRouteKey;
+      routePolyline?.setMap(null);
+      routePolyline = null;
 
-  // Held at module-instance scope because `syncMarkers` needs the constructor and
-  // the dynamic import that supplies it resolves inside onMount.
-  let MarkerCtor: typeof Marker;
-
-  onMount(async () => {
-    if (!maps.enabled || !mapElement) {
-      mapState = 'fallback';
-      return;
-    }
-
-    mapState = 'loading';
-
-    try {
-      // Dynamic: maplibre-gl reads `window` at module scope, so a static import
-      // would break SSR for every page that shows a map.
-      //
-      // The worker URL is handed over explicitly. Left alone, MapLibre finds its
-      // tile-parsing worker with `new URL('./maplibre-gl-worker.mjs',
-      // import.meta.url)` — a template literal no bundler can trace, so the file
-      // is never emitted and the built chunk asks for a worker that sits nowhere
-      // near it. `?worker&url` makes Vite bundle it properly (it imports the
-      // 480kB shared chunk, so copying the file alone is not enough) and hand
-      // back the URL of what it emitted.
-      const [maplibre, workerUrl] = await Promise.all([
-        import('maplibre-gl'),
-        import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url')
-      ]);
-      await import('maplibre-gl/dist/maplibre-gl.css');
-
-      if (!mapElement) return;
-
-      maplibre.setWorkerUrl(workerUrl.default);
-      MarkerCtor = maplibre.Marker;
-
-      // Captured, not re-read. `center` is a prop and the style below is a
-      // network fetch, so by the time this function finishes `center` may be a
-      // different point than the map was actually built at — see the comment on
-      // `lastCenteredKey` where the build completes.
-      const builtAt = center ?? KUMASI_CENTER;
-      const builtZoom = zoom;
-
-      map = new maplibre.Map({
-        container: mapElement,
-        style: maps.styleUrl,
-        center: toLngLat(builtAt),
-        zoom: zoom ?? KUMASI_DEFAULT_ZOOM,
-        // OSM's own credit rides in the style document; ORS is not part of it
-        // and has to be named here. Their terms ask for the attribution to be
-        // visible wherever a route is, and every route in the app is drawn on
-        // this map — so the map's own control is the one place that covers all
-        // of them without a line of chrome on each screen.
-        attributionControl: {
-          compact: true,
-          customAttribution:
-            '<a href="https://openrouteservice.org/" target="_blank" rel="noreferrer noopener">Routing by openrouteservice</a>'
-        },
-        // The Google build set `disableDefaultUI`; these are the equivalents.
-        dragRotate: false,
-        pitchWithRotate: false,
-        touchZoomRotate: true
-      });
-
-      map.touchZoomRotate.disableRotation();
-
-      if (interactive) {
-        map.on('click', (event) => {
-          onpick?.({ lat: event.lngLat.lat, lng: event.lngLat.lng });
+      if (polylinePath.length >= 2) {
+        routePolyline = new googleMaps.Polyline({
+          map,
+          path: polylinePath,
+          strokeColor: MAP_COLORS.primary,
+          strokeOpacity: 0.9,
+          strokeWeight: 4,
+          zIndex: 20
         });
-        map.getCanvas().style.cursor = 'crosshair';
       }
-
-      // Telling our own camera moves from the viewer's needs no fence here, as
-      // it did under the Google SDK: MapLibre puts the browser event that
-      // started a move on the event itself, and a move we started has none. A
-      // drag or a zoom with an `originalEvent` is the viewer's, and their choice
-      // outranks any framing of ours.
-      map.on('dragstart', (event) => {
-        if (event.originalEvent) suspendFraming();
-      });
-      map.on('zoomstart', (event) => {
-        if (event.originalEvent) suspendFraming();
-      });
-      map.on('moveend', () => reviewFraming());
-
-      await new Promise<void>((resolve, reject) => {
-        map?.once('load', () => resolve());
-        map?.once('error', (event) => reject(event.error ?? new Error('Map failed to load.')));
-      });
-
-      // Created once; syncPolylines only sets data. The hint goes in first so
-      // the routed leg draws over it: it is context rather than the thing being
-      // followed.
-      map.addSource(HINT_SOURCE, { type: 'geojson', data: lineData([]) });
-      map.addLayer({
-        id: HINT_LAYER,
-        type: 'line',
-        source: HINT_SOURCE,
-        layout: { 'line-cap': 'butt', 'line-join': 'round' },
-        paint: {
-          'line-color': MAP_COLORS.secondary,
-          'line-width': 3,
-          'line-opacity': 0.9,
-          // Dashes are how a line says "this is not a route" — the same job the
-          // repeating dash symbol did on the Google build.
-          'line-dasharray': [2, 2]
-        }
-      });
-
-      map.addSource(ROUTE_SOURCE, { type: 'geojson', data: lineData([]) });
-      map.addLayer({
-        id: ROUTE_LAYER,
-        type: 'line',
-        source: ROUTE_SOURCE,
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: {
-          'line-color': MAP_COLORS.primary,
-          'line-width': 4,
-          'line-opacity': 0.9
-        }
-      });
-
-      mapState = 'ready';
-      // `builtAt`, not `center`. This used to re-read the prop, and on any page
-      // whose centre arrives *while the style is loading* that silently armed
-      // the "already there" guard with a point the camera had never been moved
-      // to: the map stayed where it was built and the follow effect below
-      // declined to correct it, because the key it compared against was the new
-      // centre. On /tracking that meant a search framed on the zone centre with
-      // the counter it was searching around somewhere off screen — visible only
-      // when the two happened to differ, which is why it survived a test where
-      // the shop sat exactly on the zone centre.
-      lastCenteredKey = centerKey(builtAt);
-      lastZoomTarget = builtZoom;
-      syncMarkers();
-      syncPolylines();
-      reviewFraming();
-    } catch (error) {
-      console.error('Unable to load the map.', error);
-      mapState = 'error';
     }
-  });
+
+    if (nextHintKey !== hintKey) {
+      hintKey = nextHintKey;
+      hintPolyline?.setMap(null);
+      hintPolyline = null;
+
+      if (hintPath.length >= 2) {
+        // Dashes are the SDK's way of saying "this is not a route": a
+        // transparent stroke with a repeating dash symbol along it. Drawn
+        // under the routed leg, because it is context rather than the thing
+        // being followed.
+        hintPolyline = new googleMaps.Polyline({
+          map,
+          path: hintPath,
+          strokeOpacity: 0,
+          zIndex: 10,
+          icons: [
+            {
+              icon: {
+                path: 'M 0,-1 0,1',
+                strokeColor: MAP_COLORS.secondary,
+                strokeOpacity: 0.9,
+                strokeWeight: 3,
+                scale: 3
+              },
+              offset: '0',
+              repeat: '14px'
+            }
+          ]
+        });
+      }
+    }
+  }
 
   /**
-   * The zoom actually moved to: the caller's, opened out as far as `contain`
-   * needs and no further.
+   * Follow `center`, but only where nothing better owns the camera.
    *
-   * `Math.min` because smaller is wider. A caller asking for 17.5 with a rider
-   * 600 m off gets whatever holds that rider; with every rider already inside
-   * the frame it gets 17.5 untouched.
-   *
-   * The pixel size comes from `getDiv()` — the Maps SDK's container element —
-   * where the MapLibre build reads `getCanvas()`. That is the only part of this
-   * the two stacks say differently; the arithmetic itself is shared, in
-   * $lib/shared/geo/fit, so neither can drift into framing its own way.
+   * With `fitIds` set the framing decides where to look, and a centre that
+   * moves with every fix would fight it. The pickers, which have no framing,
+   * still get their pan when a search result lands.
    */
-  function zoomWithContain(requested: number) {
-    if (!map || contain.length === 0 || !center) return requested;
-
-    const container = map.getDiv();
-    const fits = zoomToContain({
-      centre: center,
-      points: contain,
-      widthPx: container.clientWidth,
-      heightPx: container.clientHeight,
-      paddingPx: FIT_PADDING_PX
-    });
-
-    return fits == null ? requested : Math.min(requested, fits);
-  }
-
   /**
    * Follow `center` and `zoom`, but only where nothing better owns the camera.
    *
@@ -1174,27 +1013,13 @@
    * ---------------------------------------------------------------------------
    * One effect, and it has to be one
    * ---------------------------------------------------------------------------
-   * This was two — a centre-follower and a zoom-follower — and they raced. Each
-   * took the camera through its own fenced move in its own effect, both firing
-   * in the same tick, and the second one landed on a camera the first had not
-   * finished with. On /tracking that is exactly the reported symptom: a search
-   * zoomed in on the zone centre with the counter it was searching around off
-   * screen. It only showed when the two points differed, which is why a test
-   * with the shop sitting on the zone centre missed it twice.
-   *
-   * Both moves now leave through one `moveCamera`, so there is nothing to race.
-   *
-   * On the transition itself the two builds differ and this is the whole of it:
-   * MapLibre's `easeTo` takes a duration, so the OSM build names one; the Maps
-   * SDK's camera takes no duration at all and the vector renderer owns the
-   * transition, so here the values are simply assigned and the renderer carries
-   * them. Fractional zooms — 16.25 before 15 — need `isFractionalZoomEnabled`,
-   * on by default for the vector map a `mapId` selects (see `buildMap`); on a
-   * raster map they would round to whole steps, coarser but still outward.
-   *
-   * `moveCamera` is this component's own fence helper, not the SDK method of
-   * the same name. It marks the move as ours so the framing logic does not read
-   * it as the viewer taking the camera.
+   * This was two — a centre-follower and a zoom-follower. The centre one was
+   * guarded by `lastCenteredKey`; the zoom one was guarded by nothing, so it
+   * re-ran on every reactive tick and called `setZoom` with the caller's raw
+   * number. On /tracking that undid the widening: the search stepped the zoom
+   * out, the bare effect put it straight back, and riders outside the frame
+   * stayed outside it. Both moves now leave through one guarded block, so there
+   * is nothing to race and nothing unguarded.
    */
   $effect(() => {
     if (mapState !== 'ready' || !map || fitIds.length > 0) return;
@@ -1208,19 +1033,44 @@
 
     const target = zoom == null ? null : zoomWithContain(zoom);
     const zoomChanged =
-      target != null &&
-      (lastZoomTarget == null || Math.abs(lastZoomTarget - target) > 0.01);
+      target != null && (lastZoomTarget == null || Math.abs(lastZoomTarget - target) > 0.01);
 
     if (!centreChanged && !zoomChanged) return;
 
     if (centreChanged) lastCenteredKey = key;
     if (zoomChanged) lastZoomTarget = target;
 
+    // Through the fence, so the moves below are not mistaken for the viewer
+    // taking the wheel — see `moveCamera`.
     moveCamera(() => {
       if (centreChanged && center) map!.panTo(center);
       if (zoomChanged && target != null) map!.setZoom(target);
     });
   });
+
+  /**
+   * The zoom actually flown to: the caller's, opened out as far as `contain`
+   * needs and no further.
+   *
+   * `Math.min` because smaller is wider. A caller asking for 17.5 with a rider
+   * 600 m off gets whatever holds that rider; with every rider already inside
+   * the frame it gets 17.5 untouched.
+   */
+  function zoomWithContain(requested: number) {
+    if (!map || contain.length === 0 || !center || !mapElement) return requested;
+
+    // The container, not a canvas: the Maps SDK renders into a tree of its own
+    // divs rather than one element with intrinsic dimensions.
+    const fits = zoomToContain({
+      centre: center,
+      points: contain,
+      widthPx: mapElement.clientWidth,
+      heightPx: mapElement.clientHeight,
+      paddingPx: FIT_PADDING_PX
+    });
+
+    return fits == null ? requested : Math.min(requested, fits);
+  }
 
   $effect(() => {
     if (mapState === 'ready') {
@@ -1238,27 +1088,18 @@
   });
 
   onDestroy(() => {
-    clearRefit();
-    rendered.forEach((entry) => dropMarker(entry));
-    rendered = new Map();
-    map?.remove();
-    map = null;
+    stopThemeWatch?.();
+    stopThemeWatch = null;
+    teardownMap();
   });
 </script>
 
-<!-- `h-full w-full` alongside `absolute inset-0`, and it is load-bearing.
-     MapLibre injects its own stylesheet at runtime — after Tailwind's — and it
-     carries `.maplibregl-map { position: relative }`. Same specificity as
-     `.absolute`, later in the cascade, so it wins: the container it is given
-     stops being absolutely positioned, `inset-0` no longer sizes it, and it
-     collapses to zero height inside a full-height parent. Every map on this
-     stack then draws into a box nobody can see. Sizing it explicitly holds
-     whichever way that tie lands. -->
 <div class="absolute inset-0 overflow-hidden bg-surface-sunken">
   <div
     bind:this={mapElement}
-    class="absolute inset-0 h-full w-full transition-opacity duration-300"
+    class="absolute inset-0 transition-opacity duration-300"
     class:opacity-0={mapState !== 'ready'}
+    style:cursor={interactive ? 'crosshair' : 'default'}
   ></div>
 
   {#if mapState !== 'ready'}
@@ -1268,11 +1109,11 @@
     >
       <div class="font-mono-data absolute left-4 top-4 text-xs tracking-wide text-ink-tertiary">
         {#if !maps.enabled}
-          MAP PLACEHOLDER — set MAP_STYLE_URL
+          MAP PLACEHOLDER — set GOOGLE_MAPS_API_KEY
         {:else if mapState === 'loading'}
           LOADING KUMASI MAP…
         {:else if mapState === 'error'}
-          MAP TILES FAILED — FALLING BACK TO MOCK MAP
+          GOOGLE MAPS FAILED — FALLING BACK TO MOCK MAP
         {:else}
           MAPS TEMPORARILY DISABLED
         {/if}

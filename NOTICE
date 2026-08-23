@@ -5,9 +5,9 @@ This product includes data from OpenStreetMap, © OpenStreetMap contributors,
 available under the Open Database License (ODbL 1.0):
 https://www.openstreetmap.org/copyright
 
-Map tiles, address search and routing are all derived from that data. The
-landmark table in App/src/lib/shared/geo/landmarks.ts holds coordinates read
-from OpenStreetMap and carries the same attribution.
+Specifically, the landmark table in App/src/lib/shared/geo/landmarks.ts holds
+coordinates read from OpenStreetMap. The basemap, address search and routing
+come from Google Maps Platform and are attributed by the SDK on screen.
 
 Third-party software licences are recorded in THIRD-PARTY-NOTICES.md. They are
 kept out of this file deliberately: anything placed in a NOTICE file must be

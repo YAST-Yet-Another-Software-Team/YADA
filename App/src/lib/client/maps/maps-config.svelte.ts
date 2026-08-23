@@ -1,67 +1,69 @@
 import { getContext, setContext } from 'svelte';
 
 /**
- * Map configuration for the OpenStreetMap stack.
+ * The browser-visible Google Maps credentials.
  *
- * The Google build carried a browser API key here because the Maps JavaScript
- * API authenticates the browser itself. Nothing in this stack does: OSM tiles
- * are served without a key, and Photon geocodes without one. The single
- * credential left — the OpenRouteService key — never reaches the browser at all,
- * because ORS keys cannot be referrer-locked the way Google's browser key could.
- * Routing is proxied through `/api/geo/route` instead, so all the client needs
- * to know is *whether* the server has a key.
+ * The Maps JavaScript API authenticates the browser directly — Google serves
+ * tiles to a `<script src="...?key=">` it loads itself — so this key genuinely
+ * has to cross to the client. It is protected by an HTTP-referrer restriction
+ * and a quota cap in Google Cloud, not by secrecy.
  *
- * Still delivered through context rather than `import.meta.env`, for the reason
- * `$auth/session.svelte` documents: a module-level value would be shared by every
- * in-flight SSR request.
+ * Delivered through context rather than `import.meta.env` for two reasons: the
+ * value is read at runtime, so rotating the key needs a restart instead of a
+ * rebuild; and, as `$auth/session.svelte` documents for the same pattern, a
+ * module-level value would be shared by every in-flight SSR request.
  */
 export class MapsConfig {
-  #styleUrl = $state('');
-  #routingEnabled = $state(false);
+  #apiKey = $state('');
+  #mapId = $state('');
 
-  constructor(styleUrl: string, routingEnabled: boolean) {
-    this.#styleUrl = styleUrl;
-    this.#routingEnabled = routingEnabled;
+  constructor(apiKey: string, mapId: string) {
+    this.#apiKey = apiKey;
+    this.#mapId = mapId;
   }
 
-  /** MapLibre style document — tiles, glyphs and layers in one URL. */
-  get styleUrl() {
-    return this.#styleUrl;
+  get apiKey() {
+    return this.#apiKey;
   }
 
-  /**
-   * Whether the map can draw at all. Unlike the Google build, where this
-   * tracked a key and was routinely false, tiles here need no credential — so
-   * this is false only if someone deliberately blanks the style URL.
-   */
+  /** Map ID for `AdvancedMarkerElement`, which will not render without one. */
+  get mapId() {
+    return this.#mapId;
+  }
+
+  /** Whether maps can load at all — having a key *is* the enabled signal. */
   get enabled() {
-    return this.#styleUrl.length > 0;
+    return this.#apiKey.length > 0;
   }
 
   /**
-   * Whether `/api/geo/route` has an ORS key behind it. Callers check this before
-   * asking for a route; without it the map still renders, pins still drop, and
-   * the app falls back to straight-line estimates.
+   * Whether a route can be drawn.
+   *
+   * On the OSM stack this was a separate flag, because routing lived behind a
+   * server-side OpenRouteService key that could be absent while the keyless map
+   * still rendered. Google bills both against the same credential, so the two
+   * questions collapse into one: if the map can load, it can route. Kept as its
+   * own getter so the four screens that gate on it read the same as before.
    */
   get routingEnabled() {
-    return this.#routingEnabled;
+    return this.enabled;
   }
 
   /** Re-seed when a later navigation reruns the root layout load. */
-  hydrate(styleUrl: string, routingEnabled: boolean) {
-    this.#styleUrl = styleUrl;
-    this.#routingEnabled = routingEnabled;
+  hydrate(apiKey: string, mapId: string) {
+    this.#apiKey = apiKey;
+    this.#mapId = mapId;
   }
 }
 
 const MAPS_KEY = Symbol('yada.maps');
 
-/** Provide the map config for the whole app. Called once, by the root layout. */
-export function createMapsConfig(styleUrl: string, routingEnabled: boolean) {
-  return setContext(MAPS_KEY, new MapsConfig(styleUrl, routingEnabled));
+/** Provide the Maps config for the whole app. Called once, by the root layout. */
+export function createMapsConfig(apiKey: string, mapId: string) {
+  return setContext(MAPS_KEY, new MapsConfig(apiKey, mapId));
 }
 
-/** Read the map config the root layout provided. */
+/** Read the Maps config the root layout provided. */
 export function getMapsConfig(): MapsConfig {
   const config = getContext<MapsConfig | undefined>(MAPS_KEY);
 

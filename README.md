@@ -125,17 +125,19 @@ localisation.
 | Framework  | SvelteKit 2 + Svelte 5                                                              |
 | Database   | Postgres on Neon, via Drizzle ORM                                                   |
 | Auth       | Better Auth — email/password, Google OAuth, email verification                      |
-| Maps       | MapLibre GL with OpenStreetMap tiles                                                |
-| Geocoding  | Photon, with Nominatim as the fallback — both keyless, both reading the same OSM data |
-| Routing    | OpenRouteService, proxied server-side through `/api/geo/route`                       |
+| Maps       | Google Maps JavaScript API (Advanced Markers)                                       |
+| Geocoding  | Google Geocoding API, with Places Autocomplete for as-you-type search               |
+| Routing    | Google Routes API, called from the browser on the same key                          |
 | Realtime   | Polling. Socket.IO in `vite dev` only — Workers has no always-on process             |
 | Email      | Brevo                                                                                |
 | Deploy     | Cloudflare Workers (`adapter-cloudflare`)                                            |
 | Styling    | Tailwind CSS                                                                         |
 
-The whole map stack is keyless in the browser on purpose. The single credential left is the
-OpenRouteService key, and it never reaches the client — ORS keys cannot be referrer-locked the way
-a browser Maps key could, so routing is proxied instead.
+Maps, geocoding and routing all bill against one Google Maps key, and that key reaches the browser
+by design: the Maps JavaScript API authenticates the client directly and cannot be proxied. It is
+protected by an HTTP-referrer restriction and a quota cap in Google Cloud rather than by secrecy,
+and it is withheld from signed-out visitors — every map sits behind a workspace gate, so the public
+landing page never carries it.
 
 ## System Architecture
 
@@ -144,8 +146,9 @@ simultaneously through a browser-based client. It is one SvelteKit application s
 workspaces: route groups (`(business)`, `(courier)`) with a server layout that gates each one, page
 loaders for the screens, and a JSON API for everything the client does after a page is on screen.
 
-- **Client** — Svelte 5 in the browser, mobile-first. MapLibre for maps; geocoding and route caching
-  on the client; alerts synthesised in Web Audio, so there is no audio asset to ship.
+- **Client** — Svelte 5 in the browser, mobile-first. The Maps JS API for maps; geocoding and route
+  caching on the client, which is what keeps the billed calls rare; alerts synthesised in Web Audio,
+  so there is no audio asset to ship.
 - **Server** — SvelteKit endpoints on Cloudflare Workers. Every request gets its own Neon connection;
   nothing that touches the database escapes `withRequestDatabase`.
 - **Data** — Postgres. Eleven tables: four for Better Auth, two role profiles, and the dispatch
@@ -226,8 +229,10 @@ control at least privilege, and rate-limited authentication.
   once, so races are the normal case: two riders tapping Accept resolve as one winner.
 - Profile photos are restricted to `data:image/(png|jpeg|webp)` — that string ends up in an
   `<img src>`, and `data:text/html` can carry script.
-- The routing key stays server-side; the proxy is signed-in-only, so it can't become someone else's
-  free routing API.
+- The Google Maps key is browser-visible because the Maps JS API cannot be proxied. It is withheld
+  from signed-out visitors, referrer-restricted to the deployment origin and quota-capped, so a
+  copied key is worth nothing off this domain. That is a weaker guarantee than a server-side key,
+  and it is the price of the SDK.
 
 **Scalability**
 
@@ -293,7 +298,7 @@ statutory timelines.
 - Payloads are JSON and small, and map tiles are the only heavy asset. Dropped polls and failed
   location posts are retried on the next tick rather than surfacing an error, so a tunnel costs
   freshness, not the screen.
-- Keyless map stack, so the client needs no credential of its own.
+- One browser map credential, referrer-restricted and quota-capped in Google Cloud.
 - Cloudflare Workers runtime — code must stay inside it (no Node-only APIs on the request path).
 
 ## Assumptions & Dependencies
@@ -305,9 +310,10 @@ the system can fail that is not a bug in it:
   smartphone with location services on and a live data connection for the whole shift.
 - Users grant the location permission. Without it a courier cannot be matched at all — dispatch
   reads the availability flag, then the position, and a rider with no fix is not in any ring.
-- Third-party mapping and geocoding are reachable. Tiles, Photon/Nominatim and OpenRouteService are
-  all external; routing degrades to straight-line estimates when ORS is down, but map and search
-  do not degrade, they just stop.
+- Google Maps Platform is reachable and the key's billing account is in good standing. Tiles,
+  geocoding, autocomplete and routing are one vendor now, so they fail together: a disabled key
+  takes out the map, the address search and the ETA at once. The landmark table is what still names
+  a dropped pin when it does.
 - The hosting infrastructure and network stay up. There is no offline mode and no local queue.
 - Couriers know how to read a map and follow a route; the app hands them a destination, not
   turn-by-turn navigation.
@@ -332,8 +338,8 @@ Create `App/.env` with at least the three required variables:
 | `DATABASE_URL`                       | yes      | Neon **pooled** connection string (the one containing `-pooler`)                  |
 | `BETTER_AUTH_SECRET`                 | yes      | Random string. Also salts the `/api/couriers/nearby` marker refs                  |
 | `BETTER_AUTH_URL`                    | yes      | Must exactly match the origin the browser uses, or sign-ins won't stick           |
-| `MAP_STYLE_URL`                      | no       | MapLibre style document. Defaults to the OpenFreeMap Liberty style                |
-| `ORS_API_KEY`                        | no       | OpenRouteService. Without it, routing returns `503` and the app falls back to estimates |
+| `GOOGLE_MAPS_API_KEY`                | no       | Maps JS, Places, Geocoding and Routes. Without it every map is the grid placeholder |
+| `GOOGLE_MAPS_MAP_ID`                 | no       | Required for Advanced Markers. Defaults to `DEMO_MAP_ID`, which is not for production |
 | `OAUTH_GOOGLE_CLIENT_ID` / `_SECRET` | no       | Google sign-in is skipped unless both are set                                     |
 | `BREVO_API_KEY`                      | no       | Without it, mail is logged to the console instead of sent                         |
 | `EMAIL_FROM` / `EMAIL_FROM_NAME`     | no       | `EMAIL_FROM` must be a **verified sender** in Brevo                               |
@@ -399,10 +405,16 @@ terms are why it was picked over MIT for a project with several authors and no C
 The documentation and design assets in [`Docs/`](Docs) and [`Design/`](Design) are licensed
 **CC BY 4.0** — see [`LICENSE-DOCS`](LICENSE-DOCS).
 
-Map data throughout the app is **© OpenStreetMap contributors**, under the
-[ODbL 1.0](https://www.openstreetmap.org/copyright). Tiles, address search and routing all read it,
-and the attribution renders on every map screen. Dependency and data credits are recorded in
-[`NOTICE`](NOTICE) and [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+Maps, address search and routing come from **Google Maps Platform** and are governed by its
+[terms of service](https://cloud.google.com/maps-platform/terms), which the SDK's own attribution
+satisfies on screen.
+
+One dataset is not Google's: the landmark table in `App/src/lib/shared/geo/landmarks.ts` holds 36
+coordinates read from OpenStreetMap, **© OpenStreetMap contributors** under the
+[ODbL 1.0](https://www.openstreetmap.org/copyright). It survived the move back to Google and keeps
+its attribution — an insubstantial extract, so ODbL's share-alike does not reach this repository.
+Dependency and data credits are recorded in [`NOTICE`](NOTICE) and
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
 No dependency imposes a copyleft obligation: the tree is MIT, Apache-2.0, ISC, BSD and CC-BY
 throughout. The only LGPL code is `sharp`'s libvips binaries, which are build tooling and never

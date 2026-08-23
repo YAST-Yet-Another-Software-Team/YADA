@@ -77,7 +77,7 @@
 		}
 
 		try {
-			const route = await computeDrivingRoute(origin, destination);
+			const route = await computeDrivingRoute(maps.apiKey, origin, destination);
 			estimate = {
 				distanceKm: route.distanceKm,
 				durationMinutes: route.durationMinutes,

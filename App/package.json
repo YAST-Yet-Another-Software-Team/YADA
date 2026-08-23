@@ -23,18 +23,36 @@
     "test": "npm run test:e2e"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "^1.6.25",
+    "@better-auth/core": "1.6.25",
+    "@better-auth/drizzle-adapter": "1.6.25",
     "@better-auth/infra": "^0.3.7",
+    "@googlemaps/js-api-loader": "^2.1.1",
     "@neondatabase/serverless": "^1.1.0",
     "@sveltejs/kit": "^2.69.3",
-    "better-auth": "^1.6.25",
+    "better-auth": "1.6.25",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
-    "maplibre-gl": "^6.1.0",
     "socket.io-client": "^4.8.3",
     "svelte": "^5.0.0",
     "ws": "^8.21.2",
     "zod": "^4.4.3"
+  },
+  "//better-auth": [
+    "The three better-auth packages are pinned exactly, not caretted, and",
+    "@better-auth/core is a direct dependency even though nothing imports it",
+    "directly. 1.7.x moved exports between the two halves — `getIp` left core,",
+    "`additionalAuthorizationParamsSchema` arrived in it — so a tree mixing",
+    "1.6.x and 1.7.x fails at runtime with a missing export, in whichever",
+    "direction the mismatch runs.",
+    "Caret ranges cannot hold this on their own: @better-auth/drizzle-adapter",
+    "declares core as a peer of ^1.6.25, which npm now satisfies with 1.7.1 and",
+    "hoists over the 1.6.25 better-auth itself depends on. The SSR bundle keeps",
+    "@better-auth/core external, so the built Worker resolves that hoisted copy.",
+    "Naming core here is what makes the hoisted one 1.6.25. Lift all three",
+    "together or none."
+  ],
+  "overrides": {
+    "cookie": "^0.7.2"
   },
   "devDependencies": {
     "@iconify-json/devicon": "^1.2.62",
@@ -43,6 +61,7 @@
     "@playwright/test": "^1.60.0",
     "@sveltejs/adapter-cloudflare": "^7.2.9",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@types/google.maps": "^3.65.5",
     "@types/node": "^22.13.0",
     "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.20",
@@ -57,8 +76,5 @@
     "unplugin-icons": "^23.0.1",
     "vite": "^6.1.0",
     "wrangler": "^4.118.0"
-  },
-  "overrides": {
-    "cookie": "^0.7.2"
   }
 }

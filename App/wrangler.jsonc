@@ -23,13 +23,12 @@
     // where vite-plugin-socket-io does attach one.
     "REALTIME_ENABLED": "false",
     // Must exactly match the origin the browser uses, or sign-ins appear to
-    // succeed and then don't stick. This is the OSM origin, not the Google one.
+    // succeed and then don't stick.
     "BETTER_AUTH_URL": "https://yada.flaviosobbin04.workers.dev",
-    // MapLibre style document. OpenFreeMap serves OSM tiles with no key, no
-    // quota and no sign-up; swap for a Protomaps or self-hosted style URL to
-    // change the cartography. Blank it and the map falls back to the grid
-    // placeholder, which is the only way `maps.enabled` is false on this stack.
-    "MAP_STYLE_URL": "https://tiles.openfreemap.org/styles/liberty",
+    // Map ID for AdvancedMarkerElement, which renders nothing without one.
+    // A plain var, not a secret: it identifies a map style, not a credential.
+    // Unset falls back to DEMO_MAP_ID, which works but is not for production.
+    "GOOGLE_MAPS_MAP_ID": "DEMO_MAP_ID",
     // The From on confirmation and password-reset mail. Must be an address
     // *verified as a sender* in Brevo — it emails you a link to click. Not a
     // domain: this deployment is on a workers.dev subdomain with no DNS of its
@@ -47,13 +46,18 @@
   //   BREVO_API_KEY          transactional mail; absent falls back to the
   //                          console transport, which logs the link instead of
   //                          sending it. See $lib/server/email.
-  //   ORS_API_KEY            OpenRouteService; absent means routingEnabled is
-  //                          false and the app falls back to no ETA rather
-  //                          than erroring. It is a secret and not a var
-  //                          because ORS keys cannot be referrer-locked, which
-  //                          is the whole reason /api/geo/route exists.
+  //   GOOGLE_MAPS_API_KEY    the browser map credential. Maps JavaScript API,
+  //                          Places API (New), Geocoding API and Routes API
+  //                          all bill against it, and `maps.enabled` is false
+  //                          without it — the map falls back to the grid
+  //                          placeholder rather than erroring.
   //
-  // No GOOGLE_MAPS_* here: this stack has no browser map credential at all.
+  //                          It reaches the browser by design: the Maps JS API
+  //                          authenticates the client directly and cannot be
+  //                          proxied. Restrict it by HTTP referrer to this
+  //                          origin and cap the quota — that, not secrecy, is
+  //                          what protects it. It is still set as a secret so
+  //                          it stays out of this file and out of git.
   //
   // Unlike the `yada` worker, nothing on this one was ever set as a plaintext
   // dashboard variable — set them as secrets from the start and `npm run deploy`

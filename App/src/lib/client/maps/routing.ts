@@ -1,19 +1,7 @@
+import { loadGoogleMapsRoutes } from './google-maps-loader';
 import type { DrivingRouteResult, LatLng } from '$lib/utils/types';
 import { GeoError, geoErrorMessage } from '$lib/shared/geo/errors';
-import type { GeoErrorCode } from '$lib/utils/types';
 import { clientRouteCache, routeCacheKey } from './route-cache';
-
-/**
- * Driving routes, from OpenRouteService by way of `/api/geo/route`.
- *
- * The provider changed; the economics did not. ORS's free tier is ~2,000
- * requests/day, so the three cache layers below and the caller-side rule that
- * only recomputes when the rider drifts off the drawn line matter as much as
- * they did against Google's billing. The normalised `DrivingRouteResult` is
- * unchanged, which is what keeps the four call sites identical.
- *
- * No API key parameter: the key is the server's, and the browser never sees it.
- */
 
 type RouteCacheEntry = {
   key: string;
@@ -36,14 +24,46 @@ function formatDuration(seconds: number) {
   return rem ? `${hours} hr ${rem} min` : `${hours} hr`;
 }
 
+function decodePolyline(encoded: string): LatLng[] {
+  const points: LatLng[] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    let result = 0;
+    let shift = 0;
+    let b: number;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlat = result & 1 ? ~(result >> 1) : result >> 1;
+    lat += dlat;
+
+    result = 0;
+    shift = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlng = result & 1 ? ~(result >> 1) : result >> 1;
+    lng += dlng;
+
+    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+
+  return points;
+}
+
 /**
- * Compute a driving route between two points.
- *
- * Answers from the persisted cache, the last-route memo, or an in-flight
- * request before it reaches the network — in that order — unless `force` is set,
- * which the live-tracking callers use when the rider has left the drawn line.
+ * Compute a driving route via the Maps JS Routes library, falling back to the
+ * Routes REST API when that library is unavailable in the loaded SDK.
  */
 export async function computeDrivingRoute(
+  apiKey: string,
   origin: LatLng,
   destination: LatLng,
   options?: { force?: boolean }
@@ -72,36 +92,68 @@ export async function computeDrivingRoute(
 
   const routePromise = (async () => {
     try {
-      const response = await fetch('/api/geo/route', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ origin, destination })
-      });
+      const routesLibrary = await loadGoogleMapsRoutes(apiKey);
+      const RouteApi = (
+        routesLibrary as unknown as {
+          Route?: {
+            computeRoutes: (request: unknown) => Promise<{
+              routes: Array<{
+                legs?: Array<{
+                  distanceMeters?: number;
+                  duration?: { seconds?: string } | string;
+                  distance?: { text?: string; value?: number };
+                  durationText?: string;
+                }>;
+                path?: Array<google.maps.LatLng | LatLng>;
+                polyline?: { encodedPolyline?: string };
+              }>;
+            }>;
+          };
+        }
+      ).Route;
 
-      const payload = (await response.json().catch(() => null)) as {
-        ok?: boolean;
-        code?: GeoErrorCode;
-        distanceMeters?: number;
-        durationSeconds?: number;
-        path?: LatLng[];
-      } | null;
-
-      if (!response.ok || !payload?.ok) {
-        const code = payload?.code ?? 'unavailable';
-        throw new GeoError(code, geoErrorMessage(code));
+      if (!RouteApi?.computeRoutes) {
+        return computeDrivingRouteRest(apiKey, origin, destination, cacheKey);
       }
 
-      const distanceMeters = payload.distanceMeters ?? 0;
-      const durationSeconds = payload.durationSeconds ?? 0;
+      const response = await RouteApi.computeRoutes({
+        origin,
+        destination,
+        travelMode: 'DRIVING',
+        fields: ['legs', 'path', 'polyline']
+      });
 
-      // ORS returns the full geometry; a two-point fallback keeps the map able
-      // to draw something rather than nothing if it ever comes back empty.
-      const path = payload.path?.length ? payload.path : [origin, destination];
+      const route = response.routes[0];
+      if (!route) {
+        throw new GeoError('no_results', geoErrorMessage('no_results'));
+      }
+
+      const leg = route.legs?.[0];
+      const distanceMeters = leg?.distanceMeters ?? leg?.distance?.value ?? 0;
+      let durationSeconds = 0;
+
+      const rawDuration = leg?.duration;
+      if (typeof rawDuration === 'string') {
+        durationSeconds = Number.parseInt(rawDuration.replace('s', ''), 10) || 0;
+      } else if (rawDuration && typeof rawDuration === 'object' && 'seconds' in rawDuration) {
+        durationSeconds = Number(rawDuration.seconds) || 0;
+      }
+
+      let path: LatLng[] = [];
+      if (route.path?.length) {
+        path = route.path.map((p) =>
+          typeof (p as google.maps.LatLng).lat === 'function'
+            ? { lat: (p as google.maps.LatLng).lat(), lng: (p as google.maps.LatLng).lng() }
+            : (p as LatLng)
+        );
+      } else if (route.polyline?.encodedPolyline) {
+        path = decodePolyline(route.polyline.encodedPolyline);
+      }
 
       const result: DrivingRouteResult = {
         distanceMeters,
         durationSeconds,
-        distanceText: formatDistance(distanceMeters),
+        distanceText: leg?.distance?.text ?? formatDistance(distanceMeters),
         durationText: formatDuration(durationSeconds || 60),
         path,
         distanceKm: Math.round((distanceMeters / 1000) * 100) / 100,
@@ -111,6 +163,9 @@ export async function computeDrivingRoute(
       lastRoute = { key: cacheKey, result };
       clientRouteCache.set(cacheKey, result);
       return result;
+    } catch (error) {
+      if (error instanceof GeoError) throw error;
+      return computeDrivingRouteRest(apiKey, origin, destination, cacheKey);
     } finally {
       inFlightRoutes.delete(requestKey);
     }
@@ -118,6 +173,74 @@ export async function computeDrivingRoute(
 
   inFlightRoutes.set(requestKey, routePromise);
   return routePromise;
+}
+
+async function computeDrivingRouteRest(
+  apiKey: string,
+  origin: LatLng,
+  destination: LatLng,
+  cacheKey: string
+): Promise<DrivingRouteResult> {
+  const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': apiKey,
+      'X-Goog-FieldMask':
+        'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
+    },
+    body: JSON.stringify({
+      origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
+      destination: {
+        location: { latLng: { latitude: destination.lat, longitude: destination.lng } }
+      },
+      travelMode: 'DRIVE',
+      routingPreference: 'TRAFFIC_AWARE'
+    })
+  });
+
+  if (response.status === 429) {
+    throw new GeoError('quota', geoErrorMessage('quota'));
+  }
+  if (response.status === 403) {
+    throw new GeoError('denied', geoErrorMessage('denied'));
+  }
+  if (!response.ok) {
+    throw new GeoError('unavailable', geoErrorMessage('unavailable'));
+  }
+
+  const data = (await response.json()) as {
+    routes?: Array<{
+      distanceMeters?: number;
+      duration?: string;
+      polyline?: { encodedPolyline?: string };
+    }>;
+  };
+
+  const route = data.routes?.[0];
+  if (!route) {
+    throw new GeoError('no_results', geoErrorMessage('no_results'));
+  }
+
+  const distanceMeters = route.distanceMeters ?? 0;
+  const durationSeconds = Number.parseInt((route.duration ?? '0s').replace('s', ''), 10) || 0;
+  const path = route.polyline?.encodedPolyline
+    ? decodePolyline(route.polyline.encodedPolyline)
+    : [origin, destination];
+
+  const result: DrivingRouteResult = {
+    distanceMeters,
+    durationSeconds,
+    distanceText: formatDistance(distanceMeters),
+    durationText: formatDuration(durationSeconds || 60),
+    path,
+    distanceKm: Math.round((distanceMeters / 1000) * 100) / 100,
+    durationMinutes: Math.max(1, Math.round((durationSeconds || 60) / 60))
+  };
+
+  lastRoute = { key: cacheKey, result };
+  clientRouteCache.set(cacheKey, result);
+  return result;
 }
 
 export const OFF_ROUTE_THRESHOLD_KM = 0.15;

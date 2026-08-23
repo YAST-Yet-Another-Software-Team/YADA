@@ -22,9 +22,6 @@ const SIGNED_OUT_ENDPOINTS = [
   { method: "GET", path: "/api/trips?id=00000000-0000-0000-0000-000000000000" },
   { method: "POST", path: "/api/trips" },
   { method: "GET", path: "/api/couriers/nearby" },
-  // OSM stack: the ORS proxy. Signed-in only, because an ORS key cannot be
-  // referrer-locked and an open proxy is someone else's free routing API.
-  { method: "POST", path: "/api/geo/route" },
   { method: "POST", path: "/api/location" },
   { method: "POST", path: "/api/courier/accept-trip" },
   { method: "POST", path: "/api/courier/decline-trip" },

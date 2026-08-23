@@ -152,9 +152,10 @@ export const POST: RequestHandler = apiRoute(
           pickup: { lat: business.lat, lng: business.lng },
           dropoff: { lat: dropoffLat, lng: dropoffLng },
           // Recorded so a trip with no stored ETA can be told apart later from
-          // one where routing was simply unconfigured. Tiles and geocoding need
-          // no key on this stack, so ORS is the only thing left to report.
-          routingConfigured: Boolean(env.ORS_API_KEY),
+          // one where routing was simply unconfigured. Maps, geocoding and
+          // routing all bill against the one Google key, so it answers for all
+          // three.
+          routingConfigured: Boolean(env.GOOGLE_MAPS_API_KEY),
         }),
       });
 

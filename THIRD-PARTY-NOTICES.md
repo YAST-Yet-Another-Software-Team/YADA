@@ -5,54 +5,11 @@ YADA is licensed under Apache-2.0 (see [`LICENSE`](LICENSE)). It builds on the w
 This file covers what **ships to a user** — the browser bundle and the Cloudflare Worker bundle.
 Build and development tooling (TypeScript, Vite, Playwright, Wrangler, Miniflare, drizzle-kit,
 Prettier, Tailwind's compiler) is not distributed and is not listed. That distinction matters in one
-place: `sharp`'s libvips binaries are LGPL-3.0-or-later and are pulled in by Miniflare and
-MapLibre's own dev dependencies. They run at build time only, never enter either bundle, and
-therefore place no obligation on YADA or on anyone deploying it.
+place: `sharp`'s libvips binaries are LGPL-3.0-or-later and are pulled in by Miniflare. They run at
+build time only, never enter either bundle, and therefore place no obligation on YADA or on anyone
+deploying it.
 
 ## Software
-
-### BSD-3-Clause
-
-**maplibre-gl 6.5.0** — https://github.com/maplibre/maplibre-gl-js
-
-```
-Copyright (c) 2023, MapLibre contributors
-
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice,
-      this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice,
-      this list of conditions and the following disclaimer in the documentation
-      and/or other materials provided with the distribution.
-    * Neither the name of MapLibre GL JS nor the names of its contributors
-      may be used to endorse or promote products derived from this software
-      without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-```
-
-MapLibre GL JS contains code from mapbox-gl-js v1.13 and earlier, Copyright (c) 2020 Mapbox, also
-under a BSD-3-Clause licence. Both notices appear in full in `maplibre-gl`'s `LICENSE.txt`.
-
-The minified client bundle carries only a short banner —
-`@license 3-Clause BSD. Full text of license: https://github.com/maplibre/maplibre-gl-js/blob/v6.5.0/LICENSE.txt`
-— because the minifier strips comment blocks. That is why the copyright notice is reproduced above:
-BSD-3-Clause asks that a binary redistribution carry it "in the documentation and/or other materials
-provided with the distribution", and this file is those materials.
 
 ### Apache-2.0
 
@@ -77,6 +34,8 @@ One icon from this set ships: `solar/shop-bold`, used as the pickup marker in
 - **better-auth 1.6.25** and **@better-auth/drizzle-adapter 1.6.25** — https://better-auth.com
 - **@neondatabase/serverless 1.1.0** — https://github.com/neondatabase/serverless
 - **socket.io-client 4.8.3** — https://socket.io
+- **@googlemaps/js-api-loader 2.1.1** — https://github.com/googlemaps/js-api-loader — loads the
+  Maps JavaScript API at runtime; the SDK itself is served by Google, not bundled.
 - **zod 4.4.3** — https://zod.dev
 - **Devicon** (`@iconify-json/devicon` 1.2.62) by konpa — https://github.com/devicons/devicon —
   one icon ships: the Google mark on the sign-in button. Google's own brand guidelines govern the
@@ -87,33 +46,26 @@ those comments from the shipped bundle, so this file is where the notices travel
 
 ## Data and services
 
-YADA's entire map stack reads OpenStreetMap data. Attribution is required, and is rendered in the
-app through MapLibre's attribution control on every map screen.
+- **Google Maps Platform** — the Maps JavaScript API (basemap and Advanced Markers), Places API
+  (New) for as-you-type predictions, the Geocoding API for naming a dropped pin and resolving a
+  typed address, and the Routes API for the driving leg and its ETA. All four bill against one
+  browser key. Use is governed by the
+  [Google Maps Platform Terms of Service](https://cloud.google.com/maps-platform/terms), which
+  carry their own obligations — most relevantly: the SDK's on-map attribution and logo must not be
+  hidden, and geocoding results may be cached only for performance and only for up to 30 days.
+  `App/src/lib/client/maps/route-cache.ts` and the picker's geocode cache are both short-lived TTL
+  caches sized for that rule.
 
-- **OpenStreetMap** — map data © OpenStreetMap contributors, licensed under the
+- **OpenStreetMap** — the landmark table in `App/src/lib/shared/geo/landmarks.ts` holds 36
+  coordinates read from OpenStreetMap, © OpenStreetMap contributors, licensed under the
   [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/).
   https://www.openstreetmap.org/copyright
 
-  The landmark table in `App/src/lib/shared/geo/landmarks.ts` holds 36 coordinates read from
-  OpenStreetMap. That is an insubstantial extract, so ODbL's share-alike provision is not triggered
-  on this repository, but the source is credited here and in the file itself.
-
-- **OpenFreeMap** — vector tiles and the Liberty style, served without an API key.
-  https://openfreemap.org — tiles are built from OpenStreetMap data (ODbL, as above).
-
-- **Photon** by komoot — geocoding and place search, used keyless from the browser.
-  https://photon.komoot.io — data from OpenStreetMap (ODbL).
-
-- **Nominatim** (OpenStreetMap Foundation) — reverse-geocoding fallback.
-  https://nominatim.openstreetmap.org — data from OpenStreetMap (ODbL). Use is subject to the
-  [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/): an
-  identifiable client and no more than one request per second. YADA calls it only when Photon fails,
-  from the browser, well inside that ceiling.
-
-- **OpenRouteService** — driving routes and durations, proxied server-side through
-  `/api/geo/route` so the API key never reaches the client. https://openrouteservice.org — routing
-  is computed over OpenStreetMap data (ODbL). Their terms require visible attribution wherever a
-  route is shown; "Routing by openrouteservice" appears in the map attribution control.
+  This is the one piece of the OSM stack that outlived it. Thirty-six hand-picked points is an
+  insubstantial extract, so ODbL's share-alike provision is not triggered on this repository, but
+  the source is credited here, in NOTICE, and in the file itself. Displaying these names over a
+  Google basemap is fine in both directions: Google's terms restrict taking *their* content
+  elsewhere, not bringing your own.
 
 - **Cloudflare Workers** (hosting) and **Neon** (Postgres) are services rather than distributed
   components, and impose no attribution requirement.

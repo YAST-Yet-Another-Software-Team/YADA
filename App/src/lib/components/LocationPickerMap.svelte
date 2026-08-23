@@ -15,8 +15,8 @@
 
   /**
    * Module scope, not instance scope: the caches have to outlive a single visit
-   * to a picker, or navigating away and back re-runs every lookup against
-   * Photon's rate limit. Pickers are the only thing in the app that geocodes.
+   * to a picker, or navigating away and back re-bills every lookup against the
+   * Geocoding API. Pickers are the only thing in the app that geocodes.
    */
   const geocodeCache = createClientGeocodeCache();
   const searchCache = new TtlCache<CachedGeocode[]>({ persistKey: 'yada:address-search-v1' });
@@ -32,16 +32,16 @@
    *
    *   1. the landmark table — free, curated, and the name people here use;
    *   2. the cache — free, and holds a month of previously named cells;
-   *   3. Photon, then Nominatim — free too, but rate-limited and remote, so the
-   *      answer is cached the moment it arrives;
+   *   3. the Geocoding API — billed per call and remote, so the answer is
+   *      cached the moment it arrives;
    *   4. "Near <landmark>" — for a point the geocoder couldn't name, or named
    *      with a Plus Code, which is coordinates in another costume;
    *   5. a plain "Pinned location", which at least reads as a thing.
    *
-   * Nothing here is billed any more, but the order still earns its keep: steps 1
-   * and 2 answer instantly and offline, which is what the pin actually needs.
+   * Steps 1 and 2 answer instantly, offline and for nothing, which is both what
+   * the pin actually needs and what keeps the billed step rare.
    */
-  async function nameForPoint(point: LatLng, mapsEnabled: boolean) {
+  async function nameForPoint(apiKey: string, point: LatLng, mapsEnabled: boolean) {
     const known = describePoint(point);
     if (known && !known.startsWith('Near ')) return { address: known, failed: false };
 
@@ -52,7 +52,7 @@
     if (!mapsEnabled) return { address: known ?? UNNAMED_POINT, failed: false };
 
     try {
-      const entry = await lookupAddress(point);
+      const entry = await lookupAddress(apiKey, point);
 
       // Prefer a landmark we know over a Plus Code we don't. Either way the
       // label that gets shown is the label that gets cached, so the next tap in
@@ -66,12 +66,12 @@
     }
   }
 
-  async function searchAddress(query: string): Promise<CachedGeocode[]> {
+  async function searchAddress(apiKey: string, query: string): Promise<CachedGeocode[]> {
     const key = forwardCacheKey(query);
     const cached = searchCache.get(key);
     if (cached) return cached;
 
-    const results = await forwardGeocode(query);
+    const results = await forwardGeocode(apiKey, query);
     if (results.length > 0) searchCache.set(key, results);
 
     return results;
@@ -154,7 +154,7 @@
   let searched = $state(false);
 
   /**
-   * A row in the suggestion list: either a Photon prediction or a landmark from
+   * A row in the suggestion list: either a Places prediction or a landmark from
    * the table. Both already carry a coordinate and a name, so neither costs a
    * second lookup to take — the split survives because the table answers
    * offline and instantly, and so still goes first.
@@ -208,7 +208,7 @@
 
     resolving = true;
     try {
-      const named = await nameForPoint(next, maps.enabled);
+      const named = await nameForPoint(maps.apiKey, next, maps.enabled);
       address = named.address;
 
       // A pin that couldn't be named is still a valid pin — it keeps whatever
@@ -263,7 +263,7 @@
       suggesting = true;
 
       try {
-        const results = await fetchPlaceSuggestions(text);
+        const results = await fetchPlaceSuggestions(maps.apiKey, text);
         if (request !== suggestRequest) return;
 
         // Local names keep the top of the list; predictions fill in behind them,
@@ -354,7 +354,7 @@
     matches = [];
 
     try {
-      const results = await searchAddress(text);
+      const results = await searchAddress(maps.apiKey, text);
       // Every match is offered. The search is still *biased* to the zone (see
       // `getZoneBounds` in the geocoding client), so what's nearby still sorts
       // first — nothing is dropped for being further out.
