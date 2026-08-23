@@ -8,7 +8,7 @@
  * flattened equivalents.
  *
  * Each value is the exact sRGB conversion of the OKLCH token named beside it,
- * from `Design System/tokens/colors.css`. **If a ramp changes there, these must
+ * from `Design/tokens/colors.css`. **If a ramp changes there, these must
  * be regenerated** — they cannot track it automatically.
  */
 export const MAP_COLORS = {

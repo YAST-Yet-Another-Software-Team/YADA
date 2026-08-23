@@ -1,0 +1,15 @@
+YADA (Yet Another Delivery App)
+Copyright 2026 The YADA contributors
+
+This product includes data from OpenStreetMap, © OpenStreetMap contributors,
+available under the Open Database License (ODbL 1.0):
+https://www.openstreetmap.org/copyright
+
+Map tiles, address search and routing are all derived from that data. The
+landmark table in App/src/lib/shared/geo/landmarks.ts holds coordinates read
+from OpenStreetMap and carries the same attribution.
+
+Third-party software licences are recorded in THIRD-PARTY-NOTICES.md. They are
+kept out of this file deliberately: anything placed in a NOTICE file must be
+propagated by every downstream distributor, and only the attribution above is
+owed that treatment.

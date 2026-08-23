@@ -3,6 +3,9 @@
 Everything visual for YADA in one place: the tokens the app imports, the component
 system built on them, the screens, and captures of the running product.
 
+Licensed [CC BY 4.0](../LICENSE-DOCS), like everything in `Docs/` — the application
+code is Apache-2.0 instead.
+
 This folder was two — `Design/` and `Design System/` — and is now one. Nothing that
 follows is aspirational: `App/src/lib/styles/app.css` imports `tokens/*.css` from
 here and `App/tailwind.config.ts` exposes every one as a utility, so **changing a ramp
