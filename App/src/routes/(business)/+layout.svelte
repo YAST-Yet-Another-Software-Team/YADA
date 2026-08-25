@@ -99,8 +99,20 @@
 </script>
 
 <!-- A flex column, so a full-bleed page can claim the height left by the header
-     without anyone having to hardcode what that header measures. -->
-<div class="flex min-h-svh flex-col bg-bg">
+     without anyone having to hardcode what that header measures.
+
+     `min-h-svh` alone lets the column grow past the window, which is what a
+     padded, scrolling page like the dashboard wants. A full-bleed page does
+     not: its panes size themselves against the space under the header, so the
+     column has to be exactly the window on the desktop — otherwise a tall side
+     panel pushes the whole workspace down and the *page* scrolls instead of the
+     panel. Left as a minimum on the phone, where the sheet has its own svh cap
+     and the browser chrome moves. -->
+<div
+  class="flex min-h-svh flex-col bg-bg {fullBleed
+    ? 'lg:h-svh lg:overflow-hidden'
+    : ''}"
+>
   <!-- Mobile chrome: one bar — menu (or back), the screen's name, the account.
        Navigation lives in the drawer behind the menu button, which keeps the
        three destinations legible at any label length and leaves the bar itself

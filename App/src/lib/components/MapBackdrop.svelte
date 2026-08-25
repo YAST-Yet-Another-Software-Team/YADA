@@ -71,6 +71,19 @@
     rider: true
   };
 
+  /**
+   * The roles whose position is *sampled over time* rather than placed.
+   *
+   * Only these slide between updates. A rider's coordinates are a stream of
+   * fixes and the gaps between them are the thing worth papering over; a pin the
+   * viewer just dropped on the map is not — it belongs under their finger on the
+   * next frame, and easing it there would read as lag. Both ends of a job take
+   * their coordinates from the trip row and never move at all.
+   */
+  const ROLE_IS_SAMPLED: Partial<Record<MapMarkerRole, boolean>> = {
+    rider: true
+  };
+
   /** The throw a pulsing marker gets when its caller doesn't ask for one. */
   const DEFAULT_PULSE_SCALE = 3.4;
 
@@ -100,14 +113,59 @@
   /** Pointer size — small enough to be a hint, big enough to have a direction. */
   const POINTER_W = 11;
   const POINTER_H = 9;
+
+  /**
+   * How long a marker takes to slide from one fix to the next.
+   *
+   * The slide is dead reckoning between two samples, so it should finish just as
+   * the next sample lands: finishing early leaves the marker parked and then
+   * lurching, finishing late gets it cut off mid-travel. The duration is
+   * therefore the *observed* gap for that marker, clamped at both ends.
+   *
+   * The ceiling is the business's trip poll — the slowest cadence that is still
+   * live tracking rather than a hole in the data, and past which a marker
+   * gliding for ten seconds would be animating a signal that has already gone.
+   * The floor covers the rider's own screens, where the location reporter hands
+   * up every `watchPosition` callback rather than the throttled ones it posts,
+   * so gaps of a few hundred milliseconds are ordinary — and below about that a
+   * slide reads as a jump anyway while costing a frame budget to draw.
+   */
+  const TWEEN_MIN_MS = 400;
+  const TWEEN_MAX_MS = 4000;
+
+  /**
+   * A gap longer than this is not a cadence, so the next fix is put down rather
+   * than flown to.
+   *
+   * Comfortably above the ceiling above, not equal to it: the business's poll
+   * lands every four seconds give or take, and a threshold sitting exactly on
+   * that figure would send half of an ordinary trip down the teleport path on
+   * jitter alone. What it is really catching is the signal coming back after a
+   * dead spot, where the marker has been sitting still and the next fix is news
+   * rather than the continuation of a journey.
+   */
+  const TWEEN_STALE_MS = 8000;
+
+  /**
+   * Past this, a marker is put down rather than flown.
+   *
+   * At any believable cadence half a kilometre is not a rider, it is a tunnel, a
+   * reconnect, or the socket and the poll disagreeing. Sliding across it would
+   * animate a gap in the data as though it were a journey; the honest rendering
+   * of "we lost them and found them somewhere else" is that they are somewhere
+   * else.
+   */
+  const TWEEN_MAX_KM = 0.5;
 </script>
 
 <script lang="ts">
   import { mount, onDestroy, onMount, unmount, type Snippet } from 'svelte';
+  import { prefersReducedMotion } from 'svelte/motion';
   import { loadGoogleMaps, loadGoogleMapsMarker } from '$lib/client/maps/google-maps-loader';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import { zoomToContain } from '$lib/shared/geo/fit';
-  import { KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
+  import { haversineKm, KUMASI_CENTER, KUMASI_DEFAULT_ZOOM } from '$lib/shared/geo/service-area';
+  import { interpolate } from '$lib/shared/geo/path-progress';
   import {
     AUTO_FIT_DELAY_MS,
     boundsOf,
@@ -220,9 +278,22 @@
      * wrong way round; carrying the total means every turn takes the short way.
      */
     angle: number;
+    /** The slide this marker is on, or null while it is sitting still. */
+    tween: { from: LatLng; to: LatLng; startedAt: number; durationMs: number } | null;
+    /**
+     * When this marker's position last actually changed, which is what the next
+     * slide's duration is measured against. Zero means never: a marker being
+     * placed for the first time has nowhere to travel from, the same reason
+     * `buildMarker` writes the heading straight onto the element rather than
+     * transitioning it.
+     */
+    lastMoveAt: number;
   };
 
   let rendered = new Map<string, RenderedMarker>();
+
+  /** The single frame every sliding marker shares; 0 when nothing is moving. */
+  let tweenFrame = 0;
 
   /**
    * True while a camera move of ours is in flight.
@@ -285,6 +356,10 @@
    * This was six, which is 0.11 m: finer than any GPS fix is accurate, so the
    * guard it exists to be never once held and the camera was re-aimed on every
    * jitter. A cell this size is smaller than the marker drawn in it.
+   *
+   * That argument is about cameras and markers, and does not extend to a
+   * polyline's head — see `pathKey`, which keeps its own precision for exactly
+   * that reason.
    */
   function centerKey(point: LatLng | null) {
     if (!point) return '';
@@ -546,6 +621,8 @@
     clampListener?.remove();
     clampListener = null;
     clearRefit();
+    if (tweenFrame) cancelAnimationFrame(tweenFrame);
+    tweenFrame = 0;
     rendered.forEach((entry) => {
       entry.marker.map = null;
       entry.icons.forEach((icon) => void unmount(icon));
@@ -722,6 +799,119 @@
     entry.rotor.style.transform = `rotate(${entry.angle}deg)`;
   }
 
+  /** Where a marker is drawn right now — mid-slide, that is not where it is going. */
+  function currentPosition(entry: RenderedMarker): LatLng | null {
+    const position = entry.marker.position;
+    if (!position) return null;
+
+    return typeof position.lat === 'function'
+      ? { lat: (position as google.maps.LatLng).lat(), lng: (position as google.maps.LatLng).lng() }
+      : { lat: position.lat as number, lng: position.lng as number };
+  }
+
+  /**
+   * Move a marker that is already on screen, sliding rather than teleporting.
+   *
+   * `AdvancedMarkerElement.position` repositions Google's own wrapper rather
+   * than the element handed to it, so unlike the direction pointer above there
+   * is no node a CSS transition could be declared on: the interpolation has to
+   * happen here, a frame at a time. The rest of `applyHeading`'s shape carries
+   * over — state on the entry, plain writes to something already on screen.
+   *
+   * Linear, deliberately. This is interpolation between two samples of a body
+   * travelling at roughly constant speed; an eased slide would show the rider
+   * braking into every fix and accelerating away from it, which is a claim about
+   * their riding that the data does not make, and it sits further from where
+   * they actually are for most of the interval than a straight line does. The
+   * pointer keeps its ease-out, because a *turn* genuinely has a beginning and
+   * an end.
+   *
+   * Reading `prefersReducedMotion` here makes it a dependency of the effect that
+   * calls this, which is deliberate: someone who turns the setting on mid-trip
+   * gets still markers from the next fix rather than the next reload.
+   */
+  function moveMarker(entry: RenderedMarker, marker: MapMarker) {
+    const to = { lat: marker.lat, lng: marker.lng };
+    const from = currentPosition(entry);
+    const now = performance.now();
+
+    const settle = () => {
+      entry.tween = null;
+      entry.marker.position = to;
+    };
+
+    // Under a metre is a GPS shiver, not travel — and the socket and the poll
+    // do report the same fix twice. Measured against where the marker is
+    // *headed* rather than where it is, so a repeat arriving mid-slide leaves
+    // that slide to finish instead of snapping it to its own destination.
+    // `lastMoveAt` is deliberately left where it is either way: a fix that says
+    // nothing new must not reset the cadence clock and halve the next move.
+    const heldTarget = entry.tween?.to ?? from;
+    if (heldTarget && haversineKm(heldTarget, to) < 0.001) {
+      if (!entry.tween) settle();
+      return;
+    }
+
+    // Put it down, and remember when, so the *next* update has a gap to measure
+    // itself against: a marker that is not a sampled position, one being placed
+    // for the first time, one that has been still long enough for this to be
+    // news rather than travel, one that has jumped further than a rider could,
+    // and anyone who has asked for less motion.
+    if (
+      !from ||
+      !ROLE_IS_SAMPLED[marker.role ?? 'dropoff'] ||
+      entry.lastMoveAt === 0 ||
+      now - entry.lastMoveAt > TWEEN_STALE_MS ||
+      haversineKm(from, to) > TWEEN_MAX_KM ||
+      prefersReducedMotion.current
+    ) {
+      entry.lastMoveAt = now;
+      settle();
+      return;
+    }
+
+    entry.tween = {
+      from,
+      to,
+      startedAt: now,
+      durationMs: Math.min(TWEEN_MAX_MS, Math.max(TWEEN_MIN_MS, now - entry.lastMoveAt))
+    };
+    entry.lastMoveAt = now;
+
+    if (!tweenFrame) tweenFrame = requestAnimationFrame(pumpTweens);
+  }
+
+  /**
+   * Advance every slide by one frame.
+   *
+   * One loop for all of them rather than one each: a search map can carry a
+   * dozen rider dots, and this way they cost a single `requestAnimationFrame`
+   * between them however many there are.
+   */
+  function pumpTweens() {
+    tweenFrame = 0;
+
+    if (!map) return;
+
+    let moving = false;
+
+    for (const entry of rendered.values()) {
+      const tween = entry.tween;
+      if (!tween) continue;
+
+      const t = Math.min(1, (performance.now() - tween.startedAt) / tween.durationMs);
+      entry.marker.position = t >= 1 ? tween.to : interpolate(tween.from, tween.to, t);
+
+      if (t >= 1) {
+        entry.tween = null;
+      } else {
+        moving = true;
+      }
+    }
+
+    if (moving) tweenFrame = requestAnimationFrame(pumpTweens);
+  }
+
   /**
    * Content for the roles that aren't a dropped pin.
    *
@@ -866,7 +1056,11 @@
       icons,
       signature: markerSignature(marker),
       rotor: built.rotor,
-      angle: marker.heading ?? 0
+      angle: marker.heading ?? 0,
+      // New DOM at the new position: there is nothing to glide from, which is
+      // the same reason the heading below is written rather than transitioned.
+      tween: null,
+      lastMoveAt: 0
     };
 
     // Straight onto the element, with no transition to play: a marker being
@@ -904,7 +1098,10 @@
       const existing = rendered.get(marker.id);
 
       if (existing && existing.signature === markerSignature(marker)) {
-        existing.marker.position = { lat: marker.lat, lng: marker.lng };
+        moveMarker(existing, marker);
+        // Position and facing are independent — a rider can be pointed one way
+        // while sliding down the last few metres of the other — so the pointer
+        // keeps its own transition and is written straight through.
         applyHeading(existing, marker.heading);
         continue;
       }
@@ -917,6 +1114,8 @@
       rendered.set(marker.id, buildMarker(marker, currentMarkerApi));
     }
 
+    // A reaped entry takes any slide it was on with it: `pumpTweens` walks
+    // `rendered` and nothing else, so leaving is cancelling.
     for (const [id, entry] of rendered) {
       if (seen.has(id)) continue;
 
@@ -929,12 +1128,21 @@
     reviewFraming();
   }
 
-  /** Cheap identity for a path: nothing but its ends and its length move. */
+  /**
+   * Cheap identity for a path: its length, its head and its tail.
+   *
+   * Six decimals on the head against `centerKey`'s four everywhere else. The
+   * head is the one vertex that moves *without* the path changing length —
+   * trimming the ridden road off the front slides it a few metres at a time
+   * along the same segment — and at 11m cells the line would sit still for
+   * two or three fixes and then jump a whole vertex. The tail is a destination
+   * that does not move; its cell only has to tell two destinations apart.
+   */
   function pathKey(path: LatLng[]) {
     if (path.length === 0) return '';
     const first = path[0];
     const last = path[path.length - 1];
-    return `${path.length}:${centerKey(first)}:${centerKey(last)}`;
+    return `${path.length}:${first.lat.toFixed(6)},${first.lng.toFixed(6)}:${centerKey(last)}`;
   }
 
   let routeKey = '';
@@ -948,10 +1156,17 @@
 
     if (nextRouteKey !== routeKey) {
       routeKey = nextRouteKey;
-      routePolyline?.setMap(null);
-      routePolyline = null;
 
-      if (polylinePath.length >= 2) {
+      if (polylinePath.length < 2) {
+        routePolyline?.setMap(null);
+        routePolyline = null;
+      } else if (routePolyline) {
+        // `setPath` rather than a rebuild. The route is now edited on almost
+        // every fix — the road behind the rider is trimmed off its head — and
+        // tearing the line down and constructing a new one for that drops it
+        // for a frame each time.
+        routePolyline.setPath(polylinePath);
+      } else {
         routePolyline = new googleMaps.Polyline({
           map,
           path: polylinePath,
@@ -965,10 +1180,15 @@
 
     if (nextHintKey !== hintKey) {
       hintKey = nextHintKey;
-      hintPolyline?.setMap(null);
-      hintPolyline = null;
 
-      if (hintPath.length >= 2) {
+      if (hintPath.length < 2) {
+        hintPolyline?.setMap(null);
+        hintPolyline = null;
+      } else if (hintPolyline) {
+        // Nothing trims a hint, but two branches of one function that disagree
+        // about how a path is applied is how the next bug gets in.
+        hintPolyline.setPath(hintPath);
+      } else {
         // Dashes are the SDK's way of saying "this is not a route": a
         // transparent stroke with a repeating dash symbol along it. Drawn
         // under the routed leg, because it is context rather than the thing

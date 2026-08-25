@@ -10,11 +10,16 @@
 	import RatingStars from '$lib/components/RatingStars.svelte';
 	import StatusPill from '$lib/components/StatusPill.svelte';
 	import ClosedAccountTag from '$lib/components/ClosedAccountTag.svelte';
-	import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+	import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
+	import { advanceAlongPath, pathLengthKm } from '$lib/shared/geo/path-progress';
 	import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
 	import { createHeadingTracker } from '$lib/shared/geo/heading';
 	import type { LatLng } from '$lib/utils/types';
-	import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
+	import {
+		computeDrivingRoute,
+		formatDuration,
+		OFF_ROUTE_THRESHOLD_KM
+	} from '$lib/client/maps/routing';
 	import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
 	import { getSoundAlerts } from '$lib/client/sound-alerts.svelte';
 	import {
@@ -39,7 +44,12 @@
 		ringForElapsed,
 		ringReach
 	} from '$lib/shared/dispatch';
-	import { isCancellableByBusiness, isPickupPhase, toDispatchStage } from '$lib/shared/trip-status';
+	import {
+		isCancellableByBusiness,
+		isPickupPhase,
+		toDispatchStage,
+		toTripPhase
+	} from '$lib/shared/trip-status';
 	import { formatCedis } from '$lib/shared/text';
 	import { formatPhone } from '$lib/shared/phone';
 	import { formatPlate } from '$lib/shared/plate';
@@ -103,6 +113,13 @@
 	const heading = createHeadingTracker();
 	let etaText = $state('—');
 	let routePath = $state<LatLng[]>([]);
+	/**
+	 * The leg the drawn path came from: how long the Routes API said it would
+	 * take, and how long it was when it said so. Held together because the ETA
+	 * is only meaningful as a ratio between them — see `remainingEta`.
+	 */
+	let routeSeconds = 0;
+	let routeTotalKm = 0;
 	let cancelling = $state(false);
 	let confirming = $state(false);
 
@@ -257,23 +274,33 @@
 	);
 
 	/**
-	 * The one leg this screen draws: the rider's run to the shop, from wherever
-	 * they were when they took the job.
+	 * Which half of the journey is on screen: the rider's run to the counter,
+	 * and then their run to the customer.
 	 *
-	 * Nothing is drawn after the parcel is collected. Watching a line crawl to
-	 * the customer tells the sender nothing they can act on — the delivery is out
-	 * of their hands by then — whereas the approach to their own counter is the
-	 * thing they're waiting on and have to confirm. Markers carry the rest.
+	 * This screen used to stop drawing at the handover, on the reasoning that a
+	 * line crawling to the customer told the sender nothing they could act on.
+	 * What that produced was a map that went quiet at the exact moment the
+	 * sender starts fielding "where is my order?" — the parcel is out of their
+	 * hands by then, the question is not, and passing on an answer is the one
+	 * thing they can still do. Both legs are the same drawing; only the
+	 * destination changes.
+	 *
+	 * `toTripPhase` names the two halves, so this screen and the rider's cannot
+	 * disagree about which one a status belongs to. `closed` has to be excluded
+	 * explicitly: a completed trip is a delivery phase by that reckoning, and
+	 * without the guard a finished job would keep a live leg.
 	 *
 	 * A key rather than a point, because polling replaces `trip` every few
 	 * seconds and a derived coordinate object would look new each time.
 	 */
-	const legKey = $derived(awaitingPickup ? 'pickup' : '');
+	const legKey = $derived(!trip || searching || closed ? '' : toTripPhase(trip.status));
 
 	function legTarget(): LatLng | null {
 		if (!trip || !legKey) return null;
 
-		return { lat: trip.pickupLat, lng: trip.pickupLng };
+		return legKey === 'pickup'
+			? { lat: trip.pickupLat, lng: trip.pickupLng }
+			: { lat: trip.dropoffLat, lng: trip.dropoffLng };
 	}
 
 	async function drawRoute(origin: LatLng, destination: LatLng) {
@@ -282,10 +309,29 @@
 		try {
 			const route = await computeDrivingRoute(maps.apiKey, origin, destination, { force: true });
 			routePath = route.path;
+			routeSeconds = route.durationSeconds;
+			routeTotalKm = pathLengthKm(route.path);
 			etaText = route.durationText;
 		} catch {
 			etaText = 'Unavailable';
 		}
+	}
+
+	/**
+	 * The ETA, scaled to whatever is still ahead of the rider.
+	 *
+	 * The figure the Routes API returned belongs to the whole leg it was asked
+	 * about. Trimming the ridden road off that leg costs nothing, so an ETA left
+	 * frozen at the original number while the line visibly shortens would be the
+	 * one part of this screen that had stopped tracking. Scaling by the fraction
+	 * of the route still ahead assumes the average speed that route predicted —
+	 * it cannot see traffic that has appeared since — but it counts down, and a
+	 * fresh call replaces it the moment the rider leaves the line.
+	 */
+	function remainingEta() {
+		if (!routeSeconds || routeTotalKm <= 0) return etaText;
+
+		return formatDuration((routeSeconds * pathLengthKm(routePath)) / routeTotalKm);
 	}
 
 	/**
@@ -396,10 +442,14 @@
 		const target = legTarget();
 		if (!target) return;
 
-		// A fix that lands on the line we already drew changes nothing about the
-		// route — only the dot moves. Recomputing on every fix would bill a Routes
-		// call every couple of seconds to redraw the same path.
-		if (routePath.length > 1 && distanceToPolylineKm(riderPoint, routePath) <= OFF_ROUTE_THRESHOLD_KM) {
+		// A fix that lands on the line we already drew buys nothing from the Routes
+		// API: the road behind the rider is simply no longer part of the route, and
+		// dropping it is geometry rather than a billed call. Only a rider who has
+		// genuinely left the line is worth computing again.
+		const ahead = advanceAlongPath(routePath, riderPoint, OFF_ROUTE_THRESHOLD_KM);
+		if (ahead) {
+			routePath = ahead;
+			etaText = remainingEta();
 			return;
 		}
 
@@ -415,37 +465,50 @@
 		unsub = onRiderLocation(handleRiderLocation);
 	});
 
-	/** No leg being drawn — searching, collected, or over — means no line. */
-	$effect(() => {
-		if (!legKey) {
-			routePath = [];
-		}
-	});
-
-	// Draw when the leg starts, and stop claiming a live ETA when it ends. Keyed
-	// on the leg rather than the position, so an ordinary fix along the same leg
-	// doesn't trigger a fresh Routes call.
+	// Draw when a leg starts and drop what belonged to the last one. Keyed on the
+	// leg rather than the position, so an ordinary fix along the same leg doesn't
+	// trigger a fresh Routes call — that is `handleRiderLocation`'s decision, and
+	// it makes it by geometry.
+	//
+	// One effect rather than the two this used to be. At the handover the leg
+	// *changes* rather than ending, and for the few hundred milliseconds the new
+	// Routes call is in flight the old line to the counter would otherwise sit
+	// under a caption promising a time to the customer.
 	$effect(() => {
 		legKey;
 
 		untrack(() => {
+			// Whatever is drawn belongs to the leg that just ended, and so does the
+			// number above it.
+			routePath = [];
+			routeSeconds = 0;
+			routeTotalKm = 0;
+
 			if (!legKey) {
-				// Nothing is being routed any more, so the last number computed for the
-				// run to the shop must not sit there looking like a time to the
-				// customer. What's left is the estimate made when the trip was booked.
+				// Nothing is being routed any more, so the last live number must not
+				// sit there as though it still meant something. What's left is the
+				// estimate made when the trip was booked.
 				etaText = trip?.estimatedDurationMinutes
 					? `${Math.round(trip.estimatedDurationMinutes)} min`
 					: '—';
 				return;
 			}
 
+			etaText = '—';
+
 			const target = legTarget();
 			if (target && riderPoint) void drawRoute(riderPoint, target);
 		});
 	});
 
-	/** Whether `etaText` is being recomputed from the rider's position right now. */
-	const etaIsLive = $derived(Boolean(legKey));
+	/** What the number above it is a time *to*, in the sender's own terms. */
+	const etaCaption = $derived(
+		legKey === 'delivery'
+			? 'live — rider to the customer'
+			: legKey === 'pickup'
+				? 'live — rider to your counter'
+				: 'estimated when you booked'
+	);
 
 	async function confirmPickup() {
 		if (!trip || confirming) return;
@@ -700,6 +763,23 @@
 		nearbyMarkers.map((rider) => ({ lat: rider.lat, lng: rider.lng }))
 	);
 
+	/**
+	 * Who has to stay on screen together: the rider, and whichever end of the job
+	 * they are heading for.
+	 *
+	 * This was pinned to the counter, which framed the rider against a place they
+	 * had already left for the whole delivery and pushed the customer's address
+	 * off screen. Keyed off the status rather than `legKey`, so a finished trip
+	 * still frames where the parcel ended up rather than dropping the camera.
+	 *
+	 * The swap at the handover needs nothing from `MapBackdrop`: the set stays two
+	 * markers long, so the dropoff simply reads as off screen and the ordinary
+	 * grace period eases the camera over instead of snapping it.
+	 */
+	const fitMarkerIds = $derived(
+		!trip || searching ? [] : ['rider', isPickupPhase(trip.status) ? 'pickup' : 'dropoff']
+	);
+
 	const markers = $derived(
 		trip
 			? [
@@ -898,16 +978,16 @@
 		<!-- Focus follows the job. While the request is open the destination is the
 		     only thing to look at; the moment a rider takes it the map frames the
 		     rider *and* this counter together, because what the sender is watching
-		     is the gap between the two closing. The only line drawn is the rider's
-		     run to the counter — the dashed pickup→dropoff hint that used to sit
-		     under it is gone: it competed with the leg actually being watched, and
-		     it described a journey nobody has started. The dropoff keeps its
-		     marker, so where the parcel goes next is still on the map. -->
+		     is the gap between the two closing. The line follows the rider through
+		     both halves of the job — to the counter, then to the customer — and the
+		     frame moves with it. The dashed pickup→dropoff hint that used to sit
+		     under it is still gone: it competed with the leg actually being
+		     watched, and it described a journey nobody had started. -->
 		<MapBackdrop
 			center={mapCentre}
 			{markers}
 			polylinePath={routePath}
-			fitIds={searching ? [] : ['rider', 'pickup']}
+			fitIds={fitMarkerIds}
 			locationUnavailable={!searching && riderStale}
 			zoom={searchZoom}
 			contain={searchContain}
@@ -1066,7 +1146,7 @@
 			<div class="hidden lg:block">
 				<p class="font-mono-data text-2xl font-bold text-primary">{etaText}</p>
 				<p class="text-xs text-ink-tertiary">
-					{etaIsLive ? 'live — rider to your counter' : 'estimated when you booked'}
+					{etaCaption}
 				</p>
 			</div>
 		{/if}

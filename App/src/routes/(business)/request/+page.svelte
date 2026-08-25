@@ -300,7 +300,7 @@
 			     its top corners are a 28px radius, so 16px of padding put the first
 			     label inside the curve. The top padding has to clear the radius. -->
 			<div
-				class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 pt-7 lg:gap-5 lg:p-6"
+				class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 pt-7 lg:gap-3.5 lg:px-5 lg:py-5"
 			>
 				{#if business}
 					<div class="rise hidden lg:block" style="--rise-delay: 150ms">
@@ -450,7 +450,7 @@
 			<!-- The one action, always on screen: on a phone it stays at the foot of
 			     the sheet however long the addresses run. -->
 			<div
-				class="fade-in shrink-0 border-t border-border px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 lg:border-t-0 lg:px-6 lg:pb-6 lg:pt-0"
+				class="fade-in shrink-0 border-t border-border px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 lg:border-t-0 lg:px-5 lg:pb-5 lg:pt-0"
 				style="--rise-delay: 320ms"
 			>
 				{#if business}

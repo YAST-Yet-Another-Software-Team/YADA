@@ -226,9 +226,9 @@
   <meta name="description" content="Sign in to YADA." />
 </svelte:head>
 
-<div class="min-h-svh bg-surface-sunken lg:px-8 lg:py-10">
+<div class="min-h-svh bg-surface-sunken lg:px-8 lg:py-4">
   <div
-    class="mx-auto flex min-h-svh max-w-6xl items-stretch justify-center lg:min-h-[calc(100vh-2rem)] lg:items-center"
+    class="mx-auto flex min-h-svh max-w-6xl items-stretch justify-center lg:min-h-[calc(100svh-2rem)] lg:items-center"
   >
     <div
       class="grid w-full grid-cols-1 overflow-hidden bg-surface lg:grid-cols-[1fr_1fr] lg:rounded-xl lg:border lg:border-border lg:shadow-lg"
@@ -397,7 +397,7 @@
 
       <!-- Auth form -->
       <section
-        class="flex flex-col justify-center p-5 sm:p-6 lg:items-center lg:p-12"
+        class="flex flex-col justify-center p-5 sm:p-6 lg:items-center lg:px-10 lg:py-6"
       >
         <div class="mx-auto w-full max-w-sm">
           <div class="flex flex-col items-center text-center">
@@ -408,9 +408,9 @@
                  transparent end of its own animation gets photographed
                  transparent — the logo would blink out mid-morph. It is the
                  anchor of the card, so arriving in place suits it anyway. -->
-            <img src="/logo.svg" alt="logo-yada" class="vt-brand-logo h-14 w-auto" />
+            <img src="/logo.svg" alt="logo-yada" class="vt-brand-logo h-14 w-auto lg:h-9" />
             <h2
-              class="rise mt-3 text-xl font-semibold tracking-tight text-ink lg:mt-5 lg:text-2xl"
+              class="rise mt-3 text-xl font-semibold tracking-tight text-ink lg:mt-2"
               style="--rise-delay: 110ms"
             >
               <!-- Keyed on the mode so the heading is re-created, and therefore
@@ -430,16 +430,19 @@
                 </span>
               {/key}
             </h2>
-            <p
-              class="rise mt-1 text-sm leading-relaxed text-ink-secondary lg:mt-1.5"
-              style="--rise-delay: 170ms"
-            >
-              {#if mode === "reset"}
+            <!-- Only reset has a subtitle. Rendered inside the `{#if}` rather
+                 than around an empty `{#if}`, so the other two modes don't pay
+                 for a blank line's margin under the heading. -->
+            {#if mode === "reset"}
+              <p
+                class="rise mt-1 text-sm leading-relaxed text-ink-secondary lg:mt-1.5"
+                style="--rise-delay: 170ms"
+              >
                 {form?.sent
                   ? `If an account exists for ${form.email}, we've sent a reset link.`
                   : "Enter the email linked to your account and we'll send you a reset link."}
-              {/if}
-            </p>
+              </p>
+            {/if}
           </div>
 
           {#if mode === "reset"}
@@ -447,7 +450,7 @@
               method="POST"
               action="?/reset"
               use:enhance={submitReset}
-              class="rise mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4"
+              class="rise mt-5 flex flex-col gap-3 lg:mt-4"
               style="--rise-delay: 230ms"
               transition:slide={{ duration: 220 }}
             >
@@ -488,7 +491,7 @@
               method="POST"
               action={mode === "sign-up" ? "?/signup" : "?/signin"}
               use:enhance={submitCredentials}
-              class="rise mt-5 flex flex-col gap-3 lg:mt-7 lg:gap-4"
+              class="rise mt-5 flex flex-col gap-3 lg:mt-4"
               style="--rise-delay: 230ms"
               transition:slide={{ duration: 220 }}
             >
@@ -511,17 +514,17 @@
                    between fields are unchanged. -->
               {#key mode}
                 <div
-                  class="flex min-w-0 flex-col gap-3 lg:gap-4"
+                  class="flex min-w-0 flex-col gap-3"
                   in:fly={motion({ y: 14, duration: 340, easing: cubicOut })}
                 >
                   {#if mode === "sign-up"}
                     <fieldset
-                      class="grid grid-cols-2 gap-2 rounded-full border border-border bg-surface-sunken p-1"
+                      class="grid grid-cols-2 gap-2 rounded-full border border-border bg-surface-sunken p-1 lg:p-0.5"
                     >
                       <legend class="sr-only">I am signing up as</legend>
                       {#each [{ value: "business", label: "Business" }, { value: "courier", label: "Courier" }] as option}
                         <label
-                          class="cursor-pointer rounded-full px-3 py-2 text-center text-sm font-medium transition {role ===
+                          class="cursor-pointer rounded-full px-3 py-2 text-center text-sm font-medium transition lg:py-1.5 {role ===
                           option.value
                             ? 'bg-primary text-primary-on shadow-sm'
                             : 'text-ink-secondary hover:text-ink'}"
@@ -561,7 +564,7 @@
                     {#if role === "business" || (role === "courier" && step === 0)}
                       <fieldset
                         bind:this={detailsFields}
-                        class="flex min-w-0 flex-col gap-3 lg:gap-4"
+                        class="flex min-w-0 flex-col gap-3"
                         hidden={multiStep && step !== 0}
                         aria-hidden={multiStep && step !== 0}
                       >
@@ -621,7 +624,7 @@
                     {:else if role === "courier" && step === 1}
                       <!-- Step two, and the only reason a courier has one. -->
                       <fieldset
-                        class="flex min-w-0 flex-col gap-3 lg:gap-4"
+                        class="flex min-w-0 flex-col gap-3"
                         hidden={multiStep && step !== 1}
                         aria-hidden={multiStep && step !== 1}
                       >
@@ -805,7 +808,7 @@
                  provider is unconfigured — disabled is the honest state for an
                  option that is real and coming but can't be started yet. -->
             <div
-              class="rise mt-4 flex flex-col gap-3 lg:mt-5"
+              class="rise mt-4 flex flex-col gap-3 lg:mt-3 lg:gap-2"
               style="--rise-delay: 320ms"
             >
               <div class="flex items-center gap-3" aria-hidden="true">
@@ -836,7 +839,7 @@
                 <button
                   type="submit"
                   disabled={!data.googleEnabled || googlePending}
-                  class="inline-flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-4 py-3 text-base font-semibold text-ink transition-colors hover:bg-wash focus-visible:outline focus-visible:outline-3 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
+                  class="inline-flex w-full items-center justify-center gap-3 rounded-md border border-border bg-surface px-4 py-3 text-base font-semibold text-ink transition-colors lg:py-2.5 hover:bg-wash focus-visible:outline focus-visible:outline-3 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <IconGoogle class="h-5 w-5 shrink-0" aria-hidden="true" />
                   {#key mode}
@@ -860,7 +863,7 @@
             </div>
 
             <div
-              class="rise mt-4 flex items-center justify-center gap-2 text-sm text-ink-secondary"
+              class="rise mt-4 flex items-center justify-center gap-2 text-sm text-ink-secondary lg:mt-2"
               style="--rise-delay: 390ms"
             >
               {#key mode}

@@ -16,7 +16,15 @@ function formatDistance(meters: number) {
   return `${Math.round(meters)} m`;
 }
 
-function formatDuration(seconds: number) {
+/**
+ * "12 min", "1 hr 5 min" — how every screen writes an ETA.
+ *
+ * Exported because the ETA no longer changes only when a route is bought: the
+ * three tracking screens scale the last routed duration by how much of the line
+ * is still ahead of the rider, and that number has to be written the same way
+ * as the one it replaces.
+ */
+export function formatDuration(seconds: number) {
   const minutes = Math.max(1, Math.round(seconds / 60));
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);

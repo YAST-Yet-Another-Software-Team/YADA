@@ -5,11 +5,16 @@
   import Alert from '$lib/components/Alert.svelte';
   import Button from '$lib/components/Button.svelte';
   import ClosedAccountTag from '$lib/components/ClosedAccountTag.svelte';
-  import { KUMASI_CENTER, distanceToPolylineKm } from '$lib/shared/geo/service-area';
+  import { KUMASI_CENTER } from '$lib/shared/geo/service-area';
+  import { advanceAlongPath, pathLengthKm } from '$lib/shared/geo/path-progress';
   import { isWithinRange, metresBetween, PICKUP_PROXIMITY_KM } from '$lib/shared/geo/proximity';
   import { isReleasableByCourier } from '$lib/shared/trip-status';
   import type { LatLng, TripStatus } from '$lib/utils/types';
-  import { computeDrivingRoute, OFF_ROUTE_THRESHOLD_KM } from '$lib/client/maps/routing';
+  import {
+    computeDrivingRoute,
+    formatDuration,
+    OFF_ROUTE_THRESHOLD_KM
+  } from '$lib/client/maps/routing';
   import { getMapsConfig } from '$lib/client/maps/maps-config.svelte';
   import IconCheck from '~icons/mdi/check';
   import IconArrowRight from '~icons/mdi/arrow-right';
@@ -48,6 +53,13 @@
   let riderPoint = $state<LatLng | null>(null);
   let riderHeading = $state<number | null>(null);
   let routePath = $state<LatLng[]>([]);
+  /**
+   * The leg the drawn path came from: how long the Routes API said it would
+   * take, and how long it was when it said so. Held together because the ETA is
+   * only meaningful as a ratio between them — see `remainingEta`.
+   */
+  let routeSeconds = 0;
+  let routeTotalKm = 0;
   let etaText = $state('Calculating…');
   let locationUnavailable = $state(false);
   let starting = $state(false);
@@ -95,10 +107,29 @@
     try {
       const route = await computeDrivingRoute(maps.apiKey, from, pickupPoint, { force: true });
       routePath = route.path;
+      routeSeconds = route.durationSeconds;
+      routeTotalKm = pathLengthKm(route.path);
       etaText = route.durationText;
     } catch {
       etaText = 'Unavailable';
     }
+  }
+
+  /**
+   * The ETA, scaled to whatever is still ahead of the rider.
+   *
+   * The figure the Routes API returned belongs to the whole leg it was asked
+   * about. Trimming the ridden road off that leg costs nothing, so an ETA left
+   * frozen at the original number while the line visibly shortens would be the
+   * one part of this screen that had stopped tracking. Scaling by the fraction
+   * of the route still ahead assumes the average speed that route predicted —
+   * it cannot see traffic that has appeared since — but it counts down, and a
+   * fresh call replaces it the moment the rider leaves the line.
+   */
+  function remainingEta() {
+    if (!routeSeconds || routeTotalKm <= 0) return etaText;
+
+    return formatDuration((routeSeconds * pathLengthKm(routePath)) / routeTotalKm);
   }
 
   /**
@@ -176,13 +207,14 @@
         riderHeading = point.heading;
         locationUnavailable = point.stale;
 
-        // Redraw only when there's no route yet or the courier has left the one
-        // on screen — otherwise every fix would bill a fresh Routes call for the
-        // same line.
-        if (
-          routePath.length > 1 &&
-          distanceToPolylineKm(riderPoint, routePath) <= OFF_ROUTE_THRESHOLD_KM
-        ) {
+        // A fix that lands on the line already drawn buys nothing from the
+        // Routes API: the road behind the rider is simply no longer part of the
+        // route, and dropping it is geometry rather than a billed call. Only a
+        // rider who has genuinely left the line is worth computing again.
+        const ahead = advanceAlongPath(routePath, riderPoint, OFF_ROUTE_THRESHOLD_KM);
+        if (ahead) {
+          routePath = ahead;
+          etaText = remainingEta();
           return;
         }
 
