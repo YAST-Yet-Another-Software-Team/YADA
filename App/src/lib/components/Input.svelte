@@ -118,12 +118,12 @@
   }
 </script>
 
-<label class="flex w-full flex-col gap-1.5" for={fieldId}>
+<label class="flex w-full flex-col gap-1.5 lg:gap-1" for={fieldId}>
   {#if label}
     <span class="text-sm font-semibold text-ink">{label}</span>
   {/if}
   <div
-    class="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2.5 transition focus-within:border-md focus-within:border-primary focus-within:outline focus-within:outline-3 focus-within:outline-focus"
+    class="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2.5 transition focus-within:border-md focus-within:border-primary focus-within:outline focus-within:outline-3 focus-within:outline-focus lg:py-2"
   >
     {#if icon}
       <span class="shrink-0 text-ink-tertiary">{@render icon()}</span>

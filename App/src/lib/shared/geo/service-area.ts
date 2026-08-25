@@ -75,30 +75,11 @@ export function haversineKm(a: LatLng, b: LatLng): number {
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-/** Approximate distance from a point to the nearest polyline vertex/segment (km). */
-export function distanceToPolylineKm(point: LatLng, path: LatLng[]): number {
-  if (path.length === 0) return Infinity;
-  let min = Infinity;
-  for (let i = 0; i < path.length - 1; i++) {
-    min = Math.min(min, pointToSegmentKm(point, path[i], path[i + 1]));
-  }
-  return min;
-}
-
-function pointToSegmentKm(p: LatLng, a: LatLng, b: LatLng): number {
-  // Local equirectangular projection for short segments
-  const x = p.lng;
-  const y = p.lat;
-  const x1 = a.lng;
-  const y1 = a.lat;
-  const x2 = b.lng;
-  const y2 = b.lat;
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  if (dx === 0 && dy === 0) return haversineKm(p, a);
-  const t = Math.max(
-    0,
-    Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)),
-  );
-  return haversineKm(p, { lat: y1 + t * dy, lng: x1 + t * dx });
-}
+/*
+ * `distanceToPolylineKm` and its `pointToSegmentKm` helper used to live here.
+ * They measured how far a rider had strayed from the line already drawn and
+ * threw away the rest of what that measurement knew — where along the line they
+ * were. Both now sit in `./path-progress` as `projectOntoPath`, which answers
+ * the drift question and the "how much of this route is behind them" question
+ * from one pass, because they are the same question.
+ */
