@@ -11,6 +11,9 @@
   "observability": {
     "enabled": true
   },
+  "placement": {
+    "mode": "smart"
+  },
   "vars": {
     // No always-on Node process on Workers, so Socket.IO cannot attach. Tracking
     // falls back to the existing GET /api/trips poll. Leave this `true` locally,
