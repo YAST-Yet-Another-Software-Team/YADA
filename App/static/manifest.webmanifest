@@ -1,0 +1,34 @@
+{
+  "name": "YADA — Yet Another Delivery App",
+  "short_name": "YADA",
+  "description": "On-demand motor courier dispatch. Raise a delivery, ring nearby riders, and track it through to the door.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#fbf8f7",
+  "theme_color": "#c43b2f",
+  "categories": ["business", "productivity", "travel"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

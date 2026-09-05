@@ -383,7 +383,7 @@ drizzle/        SQL migrations
 
 One SvelteKit application serves both workspaces. Each route group has a `+layout.server.ts` that
 gates the whole workspace, so signed-out visitors go to `/auth` and an account in the wrong role is
-redirected to its own home rather than shown an error. There are eleven tables: four for Better
+redirected to its own home rather than shown an error. There are ten tables: four for Better
 Auth, two role profiles, and the dispatch domain around `delivery_requests`. See
 [`Docs/database_erd.md`](../Docs/database_erd.md).
 
@@ -467,7 +467,8 @@ unchanged.
 - Tuning the dispatch constants against field data, which is expected to move the numbers while the
   shape stays.
 - Scheduling deliveries in advance, and demand indicators that help riders position themselves.
-- Localisation of language and currency per market, behind the picker that already stores a choice.
+- Localisation of language and currency per market. The placeholder language picker was removed
+  before launch; this starts from an i18n layer rather than from a stored preference.
 - Object storage on R2 for full-resolution photos, if courier verification ever needs the original.
 
 **Deliberately out of scope.** YADA does not price, charge for or settle deliveries. The order value
