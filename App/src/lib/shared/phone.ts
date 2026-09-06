@@ -14,7 +14,7 @@
 /** The spellings a person may type, and the schema will accept. */
 export const PHONE_PATTERN = /^(0\d{9}|\+?233\d{9})$/;
 
-const COUNTRY_CODE = '233';
+const COUNTRY_CODE = "233";
 
 /** Nine digits. Ghana's mobile numbers are `0XX XXX XXXX` behind the code. */
 const NATIONAL_DIGITS = 9;
@@ -27,11 +27,11 @@ const NATIONAL_DIGITS = 9;
  * unique, so two spellings of one phone must not be two accounts.
  */
 export function phoneDigits(value: string | null | undefined) {
-  const digits = (value ?? '').replace(/\D/g, '');
+  const digits = (value ?? "").replace(/\D/g, "");
 
   const national = digits.startsWith(COUNTRY_CODE)
     ? digits.slice(COUNTRY_CODE.length)
-    : digits.startsWith('0')
+    : digits.startsWith("0")
       ? digits.slice(1)
       : digits;
 
@@ -48,7 +48,7 @@ export function phoneDigits(value: string | null | undefined) {
 export function normalisePhone(value: string | null | undefined) {
   const digits = phoneDigits(value);
 
-  return digits.length > 0 ? `+${COUNTRY_CODE}${digits}` : '';
+  return digits.length > 0 ? `+${COUNTRY_CODE}${digits}` : "";
 }
 
 /**
@@ -59,9 +59,18 @@ export function normalisePhone(value: string | null | undefined) {
  * should look like what it is rather than be dressed up as a valid one.
  */
 export function formatPhone(value: string | null | undefined) {
-  const digits = phoneDigits(value);
+  // The *spelling* is what decides this, not the digit count. `phoneDigits`
+  // alone will happily reduce a foreign number to nine significant digits, and
+  // `+44 20 7946 0958` came back as `+233 44 207 9460` — a plausible Ghanaian
+  // number belonging to nobody, printed beside the `tel:` link on the tracking
+  // screen. This is the same test the server's schema applies, so the two
+  // cannot disagree about what counts as a Ghanaian number.
+  const compact = (value ?? "").replace(/[^\d+]/g, "");
+  if (!PHONE_PATTERN.test(compact)) return value ?? "";
 
-  if (digits.length !== NATIONAL_DIGITS) return value ?? '';
+  const digits = phoneDigits(compact);
+
+  if (digits.length !== NATIONAL_DIGITS) return value ?? "";
 
   return `+${COUNTRY_CODE} ${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`;
 }
@@ -77,23 +86,29 @@ export function formatPhone(value: string | null | undefined) {
  * deleting past the code entirely is how the field is emptied.
  */
 export function maskPhone(raw: string) {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length === 0) return '';
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 0) return "";
 
-  const ours = raw.trimStart().startsWith('+');
+  const ours = raw.trimStart().startsWith("+");
   const national = (
     ours || digits.startsWith(COUNTRY_CODE)
       ? digits.slice(COUNTRY_CODE.length)
-      : digits.startsWith('0')
+      : digits.startsWith("0")
         ? digits.slice(1)
         : digits
   ).slice(0, NATIONAL_DIGITS);
 
   if (national.length === 0) {
-    return ours && digits.length < COUNTRY_CODE.length ? '' : `+${COUNTRY_CODE} `;
+    return ours && digits.length < COUNTRY_CODE.length
+      ? ""
+      : `+${COUNTRY_CODE} `;
   }
 
-  const groups = [national.slice(0, 2), national.slice(2, 5), national.slice(5)];
+  const groups = [
+    national.slice(0, 2),
+    national.slice(2, 5),
+    national.slice(5),
+  ];
 
-  return `+${COUNTRY_CODE} ${groups.filter((group) => group.length > 0).join(' ')}`;
+  return `+${COUNTRY_CODE} ${groups.filter((group) => group.length > 0).join(" ")}`;
 }

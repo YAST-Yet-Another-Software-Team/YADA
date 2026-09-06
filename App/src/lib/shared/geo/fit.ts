@@ -26,7 +26,9 @@ function mercatorY(lat: number) {
   const clamped = Math.max(-85.05112878, Math.min(85.05112878, lat));
   const radians = (clamped * Math.PI) / 180;
 
-  return (1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2;
+  return (
+    (1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2
+  );
 }
 
 export type ContainOptions = {

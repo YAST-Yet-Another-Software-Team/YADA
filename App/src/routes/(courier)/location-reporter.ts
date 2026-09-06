@@ -6,7 +6,7 @@
  * over Socket.IO — is `(business)/realtime`.
  */
 
-import { createHeadingTracker } from '$lib/shared/geo/heading';
+import { createHeadingTracker } from "$lib/shared/geo/heading";
 
 /**
  * How often a fix is actually POSTed, by what the courier is doing.
@@ -43,7 +43,7 @@ export function startCourierLocationReporter(options: {
     /** Which way they are going, 0–360° from north, or null while unknown. */
     heading: number | null;
   }) => void;
-  onError?: (code: 'denied' | 'unavailable') => void;
+  onError?: (code: "denied" | "unavailable") => void;
 }) {
   // A trip id is what separates the two cadences: it is only ever set by the
   // pickup and deliver screens, and by the home screen when that courier has a
@@ -79,8 +79,8 @@ export function startCourierLocationReporter(options: {
   // reporter that was deliberately never started has nothing to apologise for.
   if (!options.enabled) return stop;
 
-  if (typeof navigator === 'undefined' || !navigator.geolocation) {
-    options.onError?.('unavailable');
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    options.onError?.("unavailable");
     return stop;
   }
 
@@ -91,7 +91,7 @@ export function startCourierLocationReporter(options: {
       const point = {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
-        recordedAt
+        recordedAt,
       };
       lastPoint = point;
       lastHeading = heading.next(point, position.coords.heading);
@@ -105,15 +105,15 @@ export function startCourierLocationReporter(options: {
         lat: point.lat,
         lng: point.lng,
         heading: lastHeading,
-        recordedAt
+        recordedAt,
       };
 
       // POST only — the endpoint persists the fix and then broadcasts it over
       // Socket.IO itself, so there is nothing for the client to emit.
-      void fetch('/api/location', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      void fetch("/api/location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       }).catch(() => {
         // keep UI on last known
       });
@@ -125,20 +125,23 @@ export function startCourierLocationReporter(options: {
       // Reporting every one of them as `denied` threw that away, and left the
       // `unavailable` half of this callback's own union unreachable except
       // when the API is missing altogether.
-      options.onError?.(error.code === error.PERMISSION_DENIED ? 'denied' : 'unavailable');
+      options.onError?.(
+        error.code === error.PERMISSION_DENIED ? "denied" : "unavailable",
+      );
       if (lastPoint) {
         options.onUpdate?.({
           ...lastPoint,
-          stale: Date.now() - new Date(lastPoint.recordedAt).getTime() > STALE_MS,
-          heading: lastHeading
+          stale:
+            Date.now() - new Date(lastPoint.recordedAt).getTime() > STALE_MS,
+          heading: lastHeading,
         });
       }
     },
     {
       enableHighAccuracy: true,
       maximumAge: 2000,
-      timeout: 10000
-    }
+      timeout: 10000,
+    },
   );
 
   return stop;

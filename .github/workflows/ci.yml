@@ -1,0 +1,48 @@
+name: CI
+
+# Fast checks only: typecheck, formatting and the unit suite. No database and
+# no browsers, so this stays under a minute and cannot flake.
+#
+# The end-to-end suite is deliberately not here. Its `guards` project needs a
+# full Cloudflare build plus a preview server, and the `journey` project writes
+# to a database — it belongs on a throwaway Neon branch, run deliberately. See
+# App/README.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: App
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: App/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run check
+
+      - name: Formatting
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit

@@ -13,9 +13,9 @@
  * arriving over the socket.
  */
 
-import type { LatLng } from '$lib/utils/types';
+import type { LatLng } from "$lib/utils/types";
 
-import { haversineKm } from './service-area';
+import { haversineKm } from "./service-area";
 
 /**
  * How far a rider must move before a new bearing is believed.
@@ -38,7 +38,8 @@ export function bearingBetween(from: LatLng, to: LatLng) {
 
   const y = Math.sin(deltaLng) * Math.cos(toLat);
   const x =
-    Math.cos(fromLat) * Math.sin(toLat) - Math.sin(fromLat) * Math.cos(toLat) * Math.cos(deltaLng);
+    Math.cos(fromLat) * Math.sin(toLat) -
+    Math.sin(fromLat) * Math.cos(toLat) * Math.cos(deltaLng);
 
   return (Math.atan2(y, x) * DEGREES + 360) % 360;
 }
@@ -92,6 +93,6 @@ export function createHeadingTracker() {
     reset() {
       anchor = null;
       heading = null;
-    }
+    },
   };
 }

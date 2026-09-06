@@ -13,13 +13,13 @@
  */
 export const MAP_COLORS = {
   /** --color-primary → --red-500: oklch(60% 0.215 27) */
-  primary: '#e4312f',
+  primary: "#e4312f",
   /** --color-secondary → --orange-500: oklch(68% 0.19 55) */
-  secondary: '#ed6f00',
+  secondary: "#ed6f00",
   /** --color-success → --green-600: oklch(53% 0.15 149) */
-  success: '#008236',
+  success: "#008236",
   /** --color-info → --blue-600: oklch(50% 0.15 250) */
-  info: '#0065b4'
+  info: "#0065b4",
 } as const;
 
 /**
@@ -37,8 +37,8 @@ export const MAP_COLORS = {
  * halves of `--color-surface`.
  */
 export const MAP_SURFACE = {
-  light: '#ffffff',
-  dark: '#14110f'
+  light: "#ffffff",
+  dark: "#14110f",
 } as const;
 
 /**
@@ -63,5 +63,5 @@ export const MAP_ROLE_COLORS = {
   /** A pin mid-placement in the picker — the destination before it is fixed. */
   search: MAP_COLORS.secondary,
   rider: MAP_COLORS.primary,
-  business: MAP_COLORS.primary
+  business: MAP_COLORS.primary,
 } as const;
