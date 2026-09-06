@@ -30,7 +30,7 @@ One icon from this set ships: `solar/shop-bold`, used as the pickup marker in
 
 ### MIT
 
-- **SvelteKit 2.70.2** and **Svelte 5.56.8** — https://github.com/sveltejs/kit
+- **SvelteKit 2.70.3** and **Svelte 5.56.10** — https://github.com/sveltejs/kit
 - **better-auth 1.6.25** and **@better-auth/drizzle-adapter 1.6.25** — https://better-auth.com
 - **@neondatabase/serverless 1.1.0** — https://github.com/neondatabase/serverless
 - **socket.io-client 4.8.3** — https://socket.io

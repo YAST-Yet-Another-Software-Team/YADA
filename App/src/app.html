@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#c43b2f" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Installability. The manifest is what makes "Add to Home Screen" open
+         standalone with its own icon rather than as a browser bookmark; iOS
+         ignores the manifest's icons, so apple-touch-icon carries the same
+         image for it. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="YADA" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Runs before first paint so an explicit light/dark choice is already on

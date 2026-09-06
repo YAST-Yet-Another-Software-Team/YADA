@@ -1,6 +1,6 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-import { normalisePhone, PHONE_PATTERN } from '$lib/shared/phone';
+import { normalisePhone, PHONE_PATTERN } from "$lib/shared/phone";
 
 /**
  * A Ghanaian mobile number, normalised to E.164.
@@ -19,9 +19,9 @@ import { normalisePhone, PHONE_PATTERN } from '$lib/shared/phone';
  * thing Google cannot supply.
  */
 export const phoneNumber = z
-	.string()
-	.transform((value) => value.replace(/[^\d+]/g, ''))
-	.refine((value) => PHONE_PATTERN.test(value), {
-		message: 'Enter a 10-digit phone number, like 024 123 4567.'
-	})
-	.transform(normalisePhone);
+  .string()
+  .transform((value) => value.replace(/[^\d+]/g, ""))
+  .refine((value) => PHONE_PATTERN.test(value), {
+    message: "Enter a 10-digit phone number, like 024 123 4567.",
+  })
+  .transform(normalisePhone);

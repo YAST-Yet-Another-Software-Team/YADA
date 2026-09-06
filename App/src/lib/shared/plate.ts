@@ -23,7 +23,7 @@ const YEAR_DIGITS = 2;
 
 /** Letters and digits, in order, with the separators dropped. */
 function significant(value: string) {
-  return value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
 /**
@@ -35,8 +35,8 @@ function significant(value: string) {
  * length.
  */
 export function formatPlate(value: string | null | undefined) {
-  const raw = (value ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
-  if (raw.length === 0) return '';
+  const raw = (value ?? "").trim().replace(/\s+/g, " ").toUpperCase();
+  if (raw.length === 0) return "";
 
   const letters = raw.slice(0, LETTERS);
   const rest = raw.slice(LETTERS);
@@ -44,11 +44,12 @@ export function formatPlate(value: string | null | undefined) {
   // Not two letters and then nothing but digits, spaces and one hyphen: it is a
   // plate we do not know the shape of, and guessing at it would be worse than
   // printing what the rider typed.
-  if (!/^[A-Z]{2}$/.test(letters) || !/^[\s\d]*-?[\s\d]*$/.test(rest)) return raw;
+  if (!/^[A-Z]{2}$/.test(letters) || !/^[\s\d]*-?[\s\d]*$/.test(rest))
+    return raw;
 
-  const cut = rest.lastIndexOf('-');
-  const serial = cut >= 0 ? rest.slice(0, cut).replace(/\D/g, '') : '';
-  const year = cut >= 0 ? rest.slice(cut + 1).replace(/\D/g, '') : '';
+  const cut = rest.lastIndexOf("-");
+  const serial = cut >= 0 ? rest.slice(0, cut).replace(/\D/g, "") : "";
+  const year = cut >= 0 ? rest.slice(cut + 1).replace(/\D/g, "") : "";
 
   if (cut >= 0) {
     if (serial.length < 1 || serial.length > SERIAL_DIGITS) return raw;
@@ -57,8 +58,9 @@ export function formatPlate(value: string | null | undefined) {
     return `${letters} ${serial}-${year}`;
   }
 
-  const digits = rest.replace(/\D/g, '');
-  if (digits.length < 1 || digits.length > SERIAL_DIGITS + YEAR_DIGITS) return raw;
+  const digits = rest.replace(/\D/g, "");
+  if (digits.length < 1 || digits.length > SERIAL_DIGITS + YEAR_DIGITS)
+    return raw;
 
   // Four digits or fewer are all serial. They *could* be split into a serial
   // and a year, but doing so invents a hyphen and a registration year out of
@@ -95,9 +97,9 @@ export function normalisePlate(value: string | null | undefined) {
 export function maskPlate(raw: string) {
   const upper = raw.toUpperCase();
   const clean = significant(upper);
-  if (clean.length === 0) return '';
+  if (clean.length === 0) return "";
 
-  const letters = clean.match(/^[A-Z]{0,2}/)?.[0] ?? '';
+  const letters = clean.match(/^[A-Z]{0,2}/)?.[0] ?? "";
   const rest = clean.slice(letters.length);
 
   // Still typing the region code.
@@ -108,10 +110,10 @@ export function maskPlate(raw: string) {
   if (!/^[A-Z]{2}$/.test(letters) || !/^\d+$/.test(rest)) return upper;
   if (rest.length > SERIAL_DIGITS + YEAR_DIGITS) return upper;
 
-  const cut = upper.lastIndexOf('-');
-  const typedSerial = cut >= 0 ? upper.slice(0, cut).replace(/\D/g, '') : '';
+  const cut = upper.lastIndexOf("-");
+  const typedSerial = cut >= 0 ? upper.slice(0, cut).replace(/\D/g, "") : "";
   const theirs = typedSerial.length > 0;
-  const typedYear = theirs ? upper.slice(cut + 1).replace(/\D/g, '') : '';
+  const typedYear = theirs ? upper.slice(cut + 1).replace(/\D/g, "") : "";
 
   // Their split has to fit the shape, or it is not a shape we can hold them to.
   // Truncating instead — which is what this did — *ate a digit they had typed*:
@@ -119,7 +121,10 @@ export function maskPlate(raw: string) {
   // with nothing on screen to say so. A year of three digits is the same story
   // from the other end, and `formatPlate` would refuse to read back what the
   // mask had emitted.
-  if (theirs && (typedSerial.length > SERIAL_DIGITS || typedYear.length > YEAR_DIGITS)) {
+  if (
+    theirs &&
+    (typedSerial.length > SERIAL_DIGITS || typedYear.length > YEAR_DIGITS)
+  ) {
     return upper;
   }
 

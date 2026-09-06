@@ -6,18 +6,18 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "binding": "ASSETS",
-    "directory": ".svelte-kit/cloudflare"
+    "directory": ".svelte-kit/cloudflare",
   },
   "observability": {
-    "enabled": true
+    "enabled": true,
   },
   "placement": {
-    "mode": "smart"
+    "mode": "smart",
   },
   "vars": {
     // No always-on Node process on Workers, so Socket.IO cannot attach. Tracking
     // falls back to the existing GET /api/trips poll. Leave this `true` locally,
     // where vite-plugin-socket-io does attach one.
     "REALTIME_ENABLED": "false",
-  }
+  },
 }

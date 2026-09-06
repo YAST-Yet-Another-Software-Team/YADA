@@ -344,9 +344,72 @@ npm run format       # Prettier, write
 npm run db:generate  # generate a migration from schema.ts
 npm run db:migrate   # apply pending migrations
 npm run db:studio    # Drizzle Studio against DATABASE_URL
+npm run test:unit    # Vitest, the pure logic — no database, a few seconds
 npm run test:e2e     # Playwright
+npm run test         # both
 npm run deploy       # build + wrangler deploy
 ```
+
+## Tests
+
+Two suites, split by what they need.
+
+### Unit — `npm run test:unit`
+
+Vitest over the pure logic: the dispatch clock, the trip state machine, the
+matching maths, the geo helpers and the validation schemas. No database, no
+browser, no network — it runs in seconds and is what CI enforces on every push.
+
+Tests sit beside their source as `*.test.ts`. Playwright matches `*.e2e.ts`, so
+the two runners never pick up each other's files.
+
+Worth knowing about two of them:
+
+- `geo/landmarks.test.ts` asserts table _invariants_ as well as behaviour —
+  every landmark inside the service area, and no two within the hit radius of
+  each other. The failure mode there is data, not logic, and a landmark in the
+  wrong place misnames every pin near it.
+- `validation/photo.test.ts` is the security one. The accepted string ends up in
+  an `<img src>`, so it checks that `data:text/html`, SVG and `javascript:` are
+  all refused.
+
+### End to end — `npm run test:e2e`
+
+Two Playwright projects.
+
+**`guards`** runs by default and needs nothing: it asserts every `/api` endpoint
+answers `401` rather than `405` to a signed-out caller (a missing route export is
+neither a type error nor a build error — `GET /api/trips` was once deleted by a
+refactor and shipped), and covers the verify-email and password-reset states.
+
+**`journey`** drives one whole delivery with both actors on screen: the courier
+goes online, the business raises a request, the offer reaches the board, the
+courier accepts, their own position flips the trip to `courier_arriving`, the
+business confirms the handover, the courier delivers at the drop-off and both
+sides rate each other. It also asserts the order value never appears anywhere in
+the courier's DOM.
+
+It **creates accounts and writes trips**, so it is off unless you ask for it:
+
+```bash
+DATABASE_URL=<a throwaway Neon branch> E2E_ALLOW_DESTRUCTIVE=1 npm run test:e2e
+```
+
+Point that at a Neon branch, never at the database the app is deployed against.
+Branching is instant and free-tier friendly. Every account the suite makes is
+prefixed `yada-e2e-`, and teardown deletes by that prefix — the foreign keys
+cascade the trips, events, declines and ratings with them.
+
+Two things the journey does directly to the database, because the app has no
+interface for them: marking an address verified (there is no inbox in CI, and
+verification gates both sending a delivery and going online), and that cleanup.
+
+### CI
+
+`.github/workflows/ci.yml` runs typecheck, formatting and the unit suite on
+every push and pull request. The e2e suite is deliberately not in CI — `guards`
+needs a full Cloudflare build and a preview server, and `journey` needs a
+database.
 
 > The `drizzle/meta` snapshot chain was rebuilt on 2026-08-20 and verified against the live
 > database, so `db:generate` produces correct incremental migrations. Generate them rather than
@@ -383,7 +446,7 @@ drizzle/        SQL migrations
 
 One SvelteKit application serves both workspaces. Each route group has a `+layout.server.ts` that
 gates the whole workspace, so signed-out visitors go to `/auth` and an account in the wrong role is
-redirected to its own home rather than shown an error. There are eleven tables: four for Better
+redirected to its own home rather than shown an error. There are ten tables: four for Better
 Auth, two role profiles, and the dispatch domain around `delivery_requests`. See
 [`Docs/database_erd.md`](../Docs/database_erd.md).
 
@@ -463,11 +526,13 @@ unchanged.
 - Durable Object WebSockets with hibernation, replacing polling on the Cloudflare path.
   `REALTIME_ENABLED` is the flag that switches back on.
 - Push notifications, for which the courier settings screen already has the toggles.
-- Unit tests for `dispatch.ts`, `matching.ts` and `trip-status.ts`, all of which are pure functions.
+- Broader end-to-end coverage. The pure logic is now under Vitest and one full two-actor
+  journey runs under Playwright; what is still thin is everything between those two.
 - Tuning the dispatch constants against field data, which is expected to move the numbers while the
   shape stays.
 - Scheduling deliveries in advance, and demand indicators that help riders position themselves.
-- Localisation of language and currency per market, behind the picker that already stores a choice.
+- Localisation of language and currency per market. The placeholder language picker was removed
+  before launch; this starts from an i18n layer rather than from a stored preference.
 - Object storage on R2 for full-resolution photos, if courier verification ever needs the original.
 
 **Deliberately out of scope.** YADA does not price, charge for or settle deliveries. The order value

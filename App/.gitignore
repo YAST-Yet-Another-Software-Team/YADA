@@ -17,3 +17,6 @@ yarn.lock
 !README.md
 # Playwright
 test-results
+
+# Playwright saves signed-in sessions here for the journey suite.
+e2e/.auth/

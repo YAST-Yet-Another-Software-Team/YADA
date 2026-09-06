@@ -13,10 +13,8 @@
 	import IconPlate from '~icons/mdi/card-text-outline';
 	import IconBell from '~icons/mdi/bell-outline';
 	import IconTheme from '~icons/mdi/theme-light-dark';
-	import IconTranslate from '~icons/mdi/translate';
 	import IconShieldCheck from '~icons/mdi/shield-check-outline';
 	import IconDocument from '~icons/mdi/file-document-outline';
-	import IconFeedback from '~icons/mdi/message-outline';
 	import IconInfo from '~icons/mdi/information-outline';
 	import IconChevronRight from '~icons/mdi/chevron-right';
 	import { getCourierOnline } from '../courier-online.svelte';
@@ -44,20 +42,14 @@
 	const plate = $derived(formatPlate(data.courierProfile.plateNumber));
 
 	const THEME_KEY = 'yada.courierTheme';
-	const LANG_KEY = 'yada.courierLanguage';
 
 	let themeLabel = $state('System');
-	let languageLabel = $state('English');
 
 	onMount(() => {
 		const theme = localStorage.getItem(THEME_KEY);
-		const lang = localStorage.getItem(LANG_KEY);
 		if (theme === 'light') themeLabel = 'Light';
 		else if (theme === 'dark') themeLabel = 'Dark';
 		else themeLabel = 'System';
-		if (lang === 'tw') languageLabel = 'Twi';
-		else if (lang === 'fr') languageLabel = 'French';
-		else languageLabel = 'English';
 	});
 
 	/**
@@ -163,22 +155,12 @@
 						<IconChevronRight class="h-5 w-5" />
 					</span>
 				</a>
-				<a href="/settings/theme" class="settings-row">
+				<a href="/settings/theme" class="settings-row settings-row-last">
 					<span class="settings-icon" aria-hidden="true">
 						<IconTheme class="h-[22px] w-[22px]" />
 					</span>
 					<span class="settings-label">Theme</span>
 					<span class="settings-value">{themeLabel}</span>
-					<span class="settings-chevron" aria-hidden="true">
-						<IconChevronRight class="h-5 w-5" />
-					</span>
-				</a>
-				<a href="/settings/languages" class="settings-row settings-row-last">
-					<span class="settings-icon" aria-hidden="true">
-						<IconTranslate class="h-[22px] w-[22px]" />
-					</span>
-					<span class="settings-label">Preferred Languages</span>
-					<span class="settings-value">{languageLabel}</span>
 					<span class="settings-chevron" aria-hidden="true">
 						<IconChevronRight class="h-5 w-5" />
 					</span>
@@ -217,15 +199,6 @@
 				About
 			</h2>
 			<div class="overflow-hidden rounded-lg bg-surface shadow-sm">
-				<a href="/settings/feedback" class="settings-row">
-					<span class="settings-icon" aria-hidden="true">
-						<IconFeedback class="h-[22px] w-[22px]" />
-					</span>
-					<span class="settings-label">Feedback</span>
-					<span class="settings-chevron" aria-hidden="true">
-						<IconChevronRight class="h-5 w-5" />
-					</span>
-				</a>
 				<a href="/settings/about" class="settings-row settings-row-last">
 					<span class="settings-icon" aria-hidden="true">
 						<IconInfo class="h-[22px] w-[22px]" />

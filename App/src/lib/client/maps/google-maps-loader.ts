@@ -9,42 +9,44 @@
  * at runtime through the root layout — see `./maps-config.svelte`.
  */
 
-import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
+import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 
 let configuredApiKey: string | null = null;
 
 function configure(apiKey: string) {
   if (!apiKey) {
-    throw new Error('Google Maps is not configured (GOOGLE_MAPS_API_KEY is unset).');
+    throw new Error(
+      "Google Maps is not configured (GOOGLE_MAPS_API_KEY is unset).",
+    );
   }
   if (configuredApiKey !== apiKey) {
-    setOptions({ key: apiKey, v: 'weekly' });
+    setOptions({ key: apiKey, v: "weekly" });
     configuredApiKey = apiKey;
   }
 }
 
 export function loadGoogleMaps(apiKey: string) {
   configure(apiKey);
-  return importLibrary('maps');
+  return importLibrary("maps");
 }
 
 export function loadGoogleMapsGeocoding(apiKey: string) {
   configure(apiKey);
-  return importLibrary('geocoding');
+  return importLibrary("geocoding");
 }
 
 export function loadGoogleMapsPlaces(apiKey: string) {
   configure(apiKey);
-  return importLibrary('places');
+  return importLibrary("places");
 }
 
 export function loadGoogleMapsRoutes(apiKey: string) {
   configure(apiKey);
-  return importLibrary('routes');
+  return importLibrary("routes");
 }
 
 /** `AdvancedMarkerElement` and `PinElement`, which replace `google.maps.Marker`. */
 export function loadGoogleMapsMarker(apiKey: string) {
   configure(apiKey);
-  return importLibrary('marker');
+  return importLibrary("marker");
 }

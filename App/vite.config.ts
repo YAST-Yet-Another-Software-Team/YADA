@@ -1,32 +1,36 @@
-import { sveltekit } from '@sveltejs/kit/vite';
-import Icons from 'unplugin-icons/vite';
-import { defineConfig } from 'vite';
-import { socketIoDevPlugin } from './vite-plugin-socket-io';
+import { sveltekit } from "@sveltejs/kit/vite";
+import Icons from "unplugin-icons/vite";
+import { defineConfig } from "vite";
+import { socketIoDevPlugin } from "./vite-plugin-socket-io";
 
 export default defineConfig({
   plugins: [
     sveltekit(),
     // `import Helmet from '~icons/mdi/racing-helmet'` — icons compile into the
     // bundle as Svelte components, so nothing is fetched from a CDN at runtime.
-    Icons({ compiler: 'svelte' }),
-    socketIoDevPlugin()
+    Icons({ compiler: "svelte" }),
+    socketIoDevPlugin(),
   ],
   /**
-   * MapLibre asks for its tile-parsing worker as a module worker, so the bundle
-   * Vite emits for it has to be an ES module too — the default `iife` output
-   * would be fetched with `type: 'module'` and fall over on the first split
-   * chunk. MapBackdrop is the only worker in the app, so this is safe to set
-   * globally.
+   * Unit tests. Node environment because everything under test is pure logic —
+   * the dispatch clock, the trip state machine, the matching maths, geo and
+   * validation. Component and journey coverage is Playwright's job, and its
+   * `*.e2e.ts` files are matched by a different runner so the two never collide.
    */
-  worker: { format: 'es' },
-  optimizeDeps: {
+  test: {
+    environment: "node",
+    include: ["src/**/*.test.ts"],
     /**
-     * Pre-bundling rewrites MapLibre's `import.meta.url` to `.vite/deps/`,
-     * which its worker file is never copied into — dev then served a 404 with
-     * no MIME type and the browser blocked the worker, taking every map down
-     * with it. Excluded so dev keeps loading it from the real dist directory.
-     * The build takes the explicit URL MapBackdrop passes to `setWorkerUrl`.
+     * `$lib/server/db` throws at import time when DATABASE_URL is absent, and
+     * `data/matching.ts` holds pure scoring functions beside its one query. No
+     * unit test opens a connection — `createConnection()` is lazy — so a
+     * syntactically valid dummy is all that import needs to succeed.
+     *
+     * Deliberately not the real credential: nothing here should be able to
+     * reach a live database by accident.
      */
-    exclude: ['maplibre-gl']
-  }
+    env: {
+      DATABASE_URL: "postgresql://test:test@localhost:5432/test",
+    },
+  },
 });
