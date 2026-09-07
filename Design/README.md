@@ -19,7 +19,7 @@ in this folder changes the product**.
 | `styles.css` | Import-only entry point that pulls the four token files in. |
 | `components/` | The component system — forms, feedback, surfaces. Each ships `.jsx`, `.d.ts` and a `.prompt.md`. |
 | `guidelines/` | Specimen cards for colour, type, spacing, elevation, radius and brand. Open them in a browser. |
-| `screenshots/` | 51 captures of the running app, 2026-08-22 — `mobile/` at 390x844, `desktop/` at 1440x900, both 2x. |
+| `screenshots/` | 51 captures of the running app in `new/` (2026-09-07) and the superseded set in `old/` (2026-08-22). `mobile/` at 390x844, `desktop/` at 1440x900, both 2x. Regenerate with `App/e2e/capture.ts`. |
 | `canvas/` | Sources for the design canvas: `lib.mjs` plus three builders that generate the `.dc.html` artboards, and `canvas.json` for the layout. |
 | `yada-screens.html` | The seeded canvas — 33 artboards over four pages. Opens in a browser; also published as an artifact. |
 | `SKILL.md` | Portable description of this system for Claude Code. |
@@ -28,6 +28,33 @@ in this folder changes the product**.
 ### Captures
 
 Every stage of a real delivery, driven end to end through the API — not mocked.
+
+`new/` is the current set; `old/` is the 2026-08-22 batch it replaced, kept for
+comparison. Two differences beyond the app having moved on:
+
+- **The maps are Google, not MapLibre.** `old/` was captured on the OSM branch;
+  `new/` is `main`, which renders the Google Maps JavaScript API.
+- **The courier settings screen is shorter.** The language picker and the feedback
+  form were removed before launch — they were boilerplate that reported success
+  while doing nothing.
+
+They are reproducible rather than hand-taken. `App/e2e/capture.ts` drives one real
+delivery from both sides across four contexts — business and courier, each at a
+desktop and a mobile viewport — and photographs every stage on the way past, which
+is the only way to get shots that agree with each other: a trip is one-way, so
+`biz-searching-tracking` and `biz-completed-tracking` cannot both be staged after
+the fact.
+
+```bash
+cd App
+npm run dev                                   # must be :5173 — see below
+E2E_ALLOW_DESTRUCTIVE=1 node e2e/capture.ts
+```
+
+The dev server rather than the preview build, because `BETTER_AUTH_URL` is
+`http://localhost:5173`: sessions only stick on that origin, and it is the origin
+the Maps key's referrer restriction allows. The script creates two accounts and a
+trip and deletes them again, before and after.
 
 | Prefix | What it shows |
 | --- | --- |
@@ -51,7 +78,7 @@ builders, not the output. Four pages:
 
 Drawn from the captures screen by screen rather than from the token files. Where a
 screen and a token disagree, the screen is what shipped. Maps in the artboards are
-placeholders — the real ones render MapLibre tiles, which cannot load in a sandboxed
+placeholders — the real ones render live map tiles, which cannot load in a sandboxed
 artboard.
 
 Two layout facts the captures settle, neither guessable from the tokens:
