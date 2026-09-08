@@ -26,6 +26,7 @@ import path from "node:path";
 
 import {
   chromium,
+  type APIRequestContext,
   type Browser,
   type BrowserContext,
   type Page,
@@ -74,7 +75,7 @@ const MOBILE_ONLY = new Set([
 const BUSINESS = {
   email: `${E2E_EMAIL_PREFIX}kitchen@example.com`,
   password: "capture-password-1234",
-  name: "Favoire Kitchen",
+  name: "Favorie Kitchen",
   phone: "0241234567",
 };
 const COURIER = {
@@ -128,6 +129,36 @@ function pair(desktop: Page, mobile: Page) {
  * SvelteKit navigates on the client, so no `load` event fires and Playwright's
  * URL wait can sit until it times out. Poll the address bar instead.
  */
+/**
+ * Wait for the offer, and rescue the run if the search lapsed first.
+ *
+ * `POST /api/trips/retry` is refused while riders are still being alerted
+ * ("give it a moment"), so a re-ring has to wait out the remainder of the
+ * window before it will take.
+ */
+async function ensureOffer(
+  pages: Page[],
+  request: APIRequestContext,
+  tripId: string,
+) {
+  const offer = (p: Page) =>
+    p.getByText(/new request/i).waitFor({ timeout: 20_000 });
+
+  try {
+    await Promise.all(pages.map(offer));
+    return;
+  } catch {
+    console.log("  (search lapsed — re-ringing)");
+    await pages[0].waitForTimeout(62_000);
+    const again = await request.post(`${ORIGIN}/api/trips/retry`, {
+      data: { tripId },
+    });
+    if (!again.ok()) throw new Error(await again.text());
+    await Promise.all(pages.map((p) => p.reload()));
+    await Promise.all(pages.map(offer));
+  }
+}
+
 async function waitForPath(page: Page, fragment: string, timeout = 25_000) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
@@ -340,14 +371,20 @@ async function main() {
   const tripId: string = (await created.json()).trip.id;
 
   console.log("searching");
-  await goto(bizPages, `/tracking?trip=${tripId}`, true);
-  await shoot("biz-searching-tracking", biz);
+  /**
+   * Navigate both sides at once. The dispatch window is 60 s from the request,
+   * and a 2880x1800 PNG of a live map is not instant — done serially, the
+   * screenshots can outlast the window and the offer card vanishes before
+   * anything can click Accept. Overlapping the two navigations keeps the whole
+   * sequence comfortably inside it.
+   */
+  await Promise.all([
+    goto(bizPages, `/tracking?trip=${tripId}`, true),
+    goto(riderPages, "/home", true),
+  ]);
+  await ensureOffer(riderPages, bizD.request, tripId);
 
-  await goto(riderPages, "/home", true);
-  await awaitAll(riderPages, (p) =>
-    p.getByText(/new request/i).waitFor({ timeout: 30_000 }),
-  );
-  await Promise.all(riderPages.map((p) => settle(p, true)));
+  await shoot("biz-searching-tracking", biz);
   await shoot("rider-offer-home", rider);
 
   /**
